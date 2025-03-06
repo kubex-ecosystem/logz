@@ -1,39 +1,64 @@
 package logz
 
 import (
+	"fmt"
 	core "github.com/faelmori/logz/internal/logger"
 	logz "github.com/faelmori/logz/logger"
+	vs "github.com/faelmori/logz/version"
+	"os"
 	"sync"
 )
 
 var (
-	prfx   = "Logz"     // Default prefix
-	logger LogzLogger   // Global logger instance
-	mu     sync.RWMutex // Mutex for concurrency control
-	once   sync.Once    // Ensure single initialization
+	pfx            = "Logz"     // Default prefix
+	logger         Logger       // Global logger instance
+	mu             sync.RWMutex // Mutex for concurrency control
+	once           sync.Once    // Ensure single initialization
+	versionService vs.VersionService
 )
 
 type LogLevel = core.LogLevel
 type LogFormat = core.LogFormat
-type LogzConfig = core.Config
-type LogzConfigManager = core.ConfigManager
-type LogzNotifierManager = core.NotifierManager
-type LogzNotifier = core.Notifier
-type LogzLogger = logz.LogzLogger
-type LogzWriter = core.LogWriter
+type Config = core.Config
+type ConfigManager = core.ConfigManager
+type NotifierManager = core.NotifierManager
+type Notifier = core.Notifier
+type Logger = logz.LogzLogger
+type Writer = core.LogWriter
 
 // initializeLogger initializes the global logger with the given prefix.
 func initializeLogger(prefix string) {
 	once.Do(func() {
 		if prefix == "" {
-			prefix = prfx
+			prefix = pfx
+		}
+		if logger != nil {
+			return
 		}
 		logger = logz.NewLogger(prefix)
+		logLevel := os.Getenv("LOG_LEVEL")
+		if logLevel != "" {
+			logger.SetLevel(core.LogLevel(logLevel))
+		} else {
+			logger.SetLevel(core.INFO)
+		}
+		logFormat := os.Getenv("LOG_FORMAT")
+		if logFormat != "" {
+			logger.GetConfig().SetFormat(core.LogFormat(logFormat))
+		} else {
+			logger.GetConfig().SetFormat(core.TEXT)
+		}
+		logOutput := os.Getenv("LOG_OUTPUT")
+		if logOutput != "" {
+			logger.GetConfig().SetOutput(logOutput)
+		} else {
+			logger.GetConfig().SetOutput("stdout")
+		}
 	})
 }
 
 // GetLogger returns the global logger instance, initializing it if necessary.
-func GetLogger(prefix string) LogzLogger {
+func GetLogger(prefix string) Logger {
 	initializeLogger(prefix)
 
 	mu.RLock()
@@ -42,15 +67,12 @@ func GetLogger(prefix string) LogzLogger {
 }
 
 // NewLogger creates a new logger instance with the given prefix.
-func NewLogger(prefix string) LogzLogger {
-	if prefix == "" {
-		prefix = prfx
-	}
-	return logz.NewLogger(prefix)
+func NewLogger(prefix string) Logger {
+	return GetLogger(prefix)
 }
 
 // SetLogger sets the global logger instance to the provided logger.
-func SetLogger(newLogger LogzLogger) {
+func SetLogger(newLogger Logger) {
 	mu.Lock()
 	defer mu.Unlock()
 	logger = newLogger
@@ -60,14 +82,14 @@ func SetLogger(newLogger LogzLogger) {
 func SetPrefix(prefix string) {
 	mu.Lock()
 	defer mu.Unlock()
-	prfx = prefix
+	pfx = prefix
 }
 
 // GetPrefix returns the global prefix for the logger.
 func GetPrefix() string {
 	mu.RLock()
 	defer mu.RUnlock()
-	return prfx
+	return pfx
 }
 
 // SetLogLevel sets the log level for the global logger.
@@ -90,7 +112,7 @@ func GetLogLevel() LogLevel {
 }
 
 // SetLogWriter sets the log writer for the global logger.
-func SetLogWriter(writer LogzWriter) {
+func SetLogWriter(writer Writer) {
 	mu.Lock()
 	defer mu.Unlock()
 	if logger != nil {
@@ -99,7 +121,7 @@ func SetLogWriter(writer LogzWriter) {
 }
 
 // GetLogWriter returns the log writer of the global logger.
-func GetLogWriter() LogzWriter {
+func GetLogWriter() Writer {
 	mu.RLock()
 	defer mu.RUnlock()
 	if logger == nil {
@@ -109,7 +131,7 @@ func GetLogWriter() LogzWriter {
 }
 
 // SetLogConfig sets the configuration for the global logger.
-func SetLogConfig(config LogzConfig) {
+func SetLogConfig(config Config) {
 	mu.Lock()
 	defer mu.Unlock()
 	if logger != nil {
@@ -118,7 +140,7 @@ func SetLogConfig(config LogzConfig) {
 }
 
 // GetLogConfig returns the configuration of the global logger.
-func GetLogConfig() LogzConfig {
+func GetLogConfig() Config {
 	mu.RLock()
 	defer mu.RUnlock()
 	if logger == nil {
@@ -182,7 +204,7 @@ func FatalC(msg string, ctx map[string]interface{}) {
 }
 
 // AddNotifier adds a notifier to the global logger's configuration.
-func AddNotifier(name string, notifier LogzNotifier) {
+func AddNotifier(name string, notifier Notifier) {
 	mu.Lock()
 	defer mu.Unlock()
 	if logger != nil {
@@ -194,7 +216,7 @@ func AddNotifier(name string, notifier LogzNotifier) {
 }
 
 // GetNotifier returns the notifier with the given name from the global logger's configuration.
-func GetNotifier(name string) (LogzNotifier, bool) {
+func GetNotifier(name string) (Notifier, bool) {
 	mu.RLock()
 	defer mu.RUnlock()
 	if logger == nil {
@@ -257,4 +279,31 @@ func GetLogOutput() string {
 		return "stdout"
 	}
 	return logger.GetConfig().Output()
+}
+
+// CheckVersion checks the version of the logger.
+func CheckVersion() string {
+	if versionService == nil {
+		versionService = vs.NewVersionService()
+	}
+	if isLatest, err := versionService.IsLatestVersion(); err != nil {
+		return "error checking version"
+	} else {
+		if isLatest {
+			return "latest version"
+		}
+	}
+	if latestVersion, err := versionService.GetLatestVersion(); err != nil {
+		return "error getting latest version"
+	} else {
+		return fmt.Sprintf("latest version: %s\nYou are using version: %s", latestVersion, versionService.GetCurrentVersion())
+	}
+}
+
+// Version returns the current version of the logger.
+func Version() string {
+	if versionService == nil {
+		versionService = vs.NewVersionService()
+	}
+	return versionService.GetCurrentVersion()
 }
