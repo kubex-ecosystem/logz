@@ -1,12 +1,11 @@
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-BINARY_NAME := $(ROOT_DIR)loggz
+BINARY_NAME := $(ROOT_DIR)logz
 CMD_DIR := $(ROOT_DIR)cmd
 INSTALL_SCRIPT=$(ROOT_DIR)scripts/install.sh
 ARGS :=
 
 # Alvo para build
 build:
-	#sh $(INSTALL_SCRIPT) build $(ARGS)
 	go build -ldflags "-s -w -X main.version=$(git describe --tags) -X main.commit=$(git rev-parse HEAD) -X main.date=$(date +%Y-%m-%d)" -trimpath -o $(BINARY_NAME) ${CMD_DIR} &&\
     upx $(BINARY_NAME) --force-overwrite --lzma --no-progress --no-color
 
