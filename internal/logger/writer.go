@@ -76,11 +76,11 @@ func (f *TextFormatter) Format(entry *LogEntry) (string, error) {
 
 	metadata := ""
 	if len(entry.Metadata) > 0 {
-		metadata = fmt.Sprintf("%s(%s)", strings.Repeat(" ", len(entry.Timestamp.Format(time.RFC3339))+3), formatMetadata(entry.Metadata))
+		metadata = fmt.Sprintf("\n%s(%s)", strings.Repeat(" ", len(entry.Timestamp.Format(time.RFC3339))+3), formatMetadata(entry.Metadata))
 	}
 
 	// The formatting includes timestamp, icon, level, message, and context.
-	return fmt.Sprintf("[%s] %s %s - %s %s\n%s",
+	return fmt.Sprintf("[%s] %s %s - %s %s%s",
 		entry.Timestamp.Format(time.RFC3339),
 		icon,
 		levelStr,
