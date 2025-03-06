@@ -23,7 +23,7 @@
 ## **About the Project**
 Logz is a flexible and powerful solution for managing logs and metrics in modern systems. Built in **Go**, it provides extensive support for multiple notification methods such as **HTTP Webhooks**, **ZeroMQ**, and **DBus**, alongside seamless integration with **Prometheus** for advanced monitoring.
 
-Logz is designed to be robust, highly configurable, and scalable, catering to developers, DevOps teams, and software architects who need a centralized approach to logging and metrics.
+Logz is designed to be robust, highly configurable, and scalable, catering to developers, DevOps teams, and software architects who need a centralized approach to logging, metrics and many other aspects of their systems.
 
 **Why Logz?**
 - 💡 **Ease of Use**: Configure and manage logs effortlessly.
