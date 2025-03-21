@@ -5,6 +5,7 @@ import (
 	"github.com/faelmori/logz/internal/logger"
 	"github.com/spf13/cobra"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -31,11 +32,16 @@ func MetricsCmd() *cobra.Command {
 // enableMetricsCmd creates the command to enable Prometheus integration.
 func enableMetricsCmd() *cobra.Command {
 	var port string
+	var mu sync.RWMutex
+
 	enMCmd := &cobra.Command{
 		Use:     "enable",
 		Aliases: []string{"en"},
 		Short:   "Enable Prometheus integration",
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			pm := logger.GetPrometheusManager()
 			pm.Enable(port)
 		},
@@ -46,11 +52,16 @@ func enableMetricsCmd() *cobra.Command {
 
 // disableMetricsCmd creates the command to disable Prometheus integration.
 func disableMetricsCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use:     "disable",
 		Aliases: []string{"dis"},
 		Short:   "Disable Prometheus integration",
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			pm := logger.GetPrometheusManager()
 			pm.Disable()
 		},
@@ -59,12 +70,17 @@ func disableMetricsCmd() *cobra.Command {
 
 // addMetricCmd creates the command to add or update a Prometheus metric.
 func addMetricCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use:     "add [name] [value]",
 		Aliases: []string{"a"},
 		Short:   "Add or update a Prometheus metric",
 		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			name := args[0]
 			value, valueErr := strconv.ParseFloat(args[1], 64)
 			if valueErr != nil {
@@ -79,12 +95,17 @@ func addMetricCmd() *cobra.Command {
 
 // removeMetricCmd creates the command to remove a Prometheus metric.
 func removeMetricCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use:     "remove [name]",
 		Aliases: []string{"r"},
 		Short:   "Remove a Prometheus metric",
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			name := args[0]
 			pm := logger.GetPrometheusManager()
 			pm.RemoveMetric(name)
@@ -94,11 +115,16 @@ func removeMetricCmd() *cobra.Command {
 
 // listMetricsCmd creates the command to list all Prometheus metrics.
 func listMetricsCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"l"},
 		Short:   "List all Prometheus metrics",
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.RLock()
+			defer mu.RUnlock()
+
 			pm := logger.GetPrometheusManager()
 			metrics := pm.GetMetrics()
 			if len(metrics) == 0 {

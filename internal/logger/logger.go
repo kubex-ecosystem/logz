@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type LogMode string
@@ -39,6 +40,7 @@ type LogzCoreImpl struct {
 	config   Config
 	metadata map[string]interface{}
 	mode     LogMode // Mode control: service or standalone
+	mu       sync.RWMutex
 }
 
 // NewLogger creates a new instance of LogzCoreImpl with the provided configuration.
@@ -98,6 +100,8 @@ func NewLogger(config Config) *LogzCoreImpl {
 
 // SetMetadata sets a metadata key-value pair for the LogzCoreImpl.
 func (l *LogzCoreImpl) SetMetadata(key string, value interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.metadata[key] = value
 }
 
@@ -111,6 +115,9 @@ func (l *LogzCoreImpl) log(level LogLevel, msg string, ctx map[string]interface{
 	if !l.shouldLog(level) {
 		return
 	}
+
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 
 	entry := NewLogEntry().
 		WithLevel(level).
@@ -186,8 +193,16 @@ func (l *LogzCoreImpl) GetWriter() LogWriter       { return l.writer }
 
 func (l *LogzCoreImpl) GetMode() LogMode { return l.mode }
 
-func (l *LogzCoreImpl) SetConfig(config Config) { l.config = config }
-func (l *LogzCoreImpl) GetConfig() Config       { return l.config }
+func (l *LogzCoreImpl) SetConfig(config Config) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.config = config
+}
+func (l *LogzCoreImpl) GetConfig() Config {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.config
+}
 
 // trimFilePath trims the file path to show only the last two segments.
 func trimFilePath(filePath string) string {
