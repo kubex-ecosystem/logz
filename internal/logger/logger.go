@@ -1,10 +1,8 @@
 package logger
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -45,56 +43,54 @@ type LogzCoreImpl struct {
 
 // NewLogger creates a new instance of LogzCoreImpl with the provided configuration.
 func NewLogger(config Config) *LogzCoreImpl {
-	// Set the log level from the Config
-	level := LogLevel(config.Level()) // Method config.Level() returns the log level as a string
+	level := INFO
 
-	var out *os.File
-	if strings.ToLower(config.Output()) == "stdout" || config.Output() == "" || config.Output() == os.Stdout.Name() {
-		out = os.Stdout
-	} else {
-		fmt.Println("Output: ", config.Output())
-		// Ensure the log file exists and has the correct permissions
-		if _, err := os.Stat(config.Output()); os.IsNotExist(err) {
-			if err := os.MkdirAll(filepath.Dir(config.Output()), 0755); err != nil {
-				log.Printf("Error creating log directory: %v\nRedirecting to stdout...\n", err)
-				out = os.Stdout
-			} else {
-				out, err = os.OpenFile(config.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					log.Printf("Error opening log file: %v\nRedirecting to stdout...\n", err)
-					out = os.Stdout
-				}
-			}
-		} else {
-			out, err = os.OpenFile(config.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				log.Printf("Error opening log file: %v\nRedirecting to stdout...\n", err)
-				out = os.Stdout
-			}
-		}
+	if config != nil {
+		// Set the log level from the Config
+		level = LogLevel(config.Level()) // Method config.Level() returns the log level as a string
 	}
+
+	//var out *os.File
+	//if strings.ToLower(config.Output()) == "stdout" || config.Output() == "" || config.Output() == os.Stdout.Name() {
+	//	out = os.Stdout
+	//} else {
+	//	fmt.Println("Output: ", config.Output())
+	//	// Ensure the log file exists and has the correct permissions
+	//	if _, err := os.Stat(config.Output()); os.IsNotExist(err) {
+	//		if err := os.MkdirAll(filepath.Dir(config.Output()), 0755); err != nil {
+	//			log.Printf("Error creating log directory: %v\nRedirecting to stdout...\n", err)
+	//			out = os.Stdout
+	//		} else {
+	//			out, err = os.OpenFile(config.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//			if err != nil {
+	//				log.Printf("Error opening log file: %v\nRedirecting to stdout...\n", err)
+	//				out = os.Stdout
+	//			}
+	//		}
+	//	} else {
+	//		out, err = os.OpenFile(config.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//		if err != nil {
+	//			log.Printf("Error opening log file: %v\nRedirecting to stdout...\n", err)
+	//			out = os.Stdout
+	//		}
+	//	}
+	//}
+
+	out := os.Stdout
 
 	// Initialize the formatter (JSON or text)
 	var formatter LogFormatter
-	if config.Format() == "json" {
-		formatter = &JSONFormatter{}
-	} else {
-		formatter = &TextFormatter{}
+	if config != nil && config.Format() != "" {
+		formatter = config.GetFormatter()
 	}
 	writer := NewDefaultWriter(out, formatter)
-
-	// Read the mode from Config
-	mode := config.Mode()
-	if mode != ModeService && mode != ModeStandalone {
-		mode = ModeStandalone // Default to standalone if not specified
-	}
 
 	return &LogzCoreImpl{
 		level:    level,
 		writer:   writer,
 		config:   config,
 		metadata: make(map[string]interface{}),
-		mode:     mode,
+		mode:     ModeStandalone,
 	}
 }
 

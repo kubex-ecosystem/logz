@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"fmt"
 	"github.com/faelmori/logz/internal/logger"
 	"log"
 	"os"
@@ -175,18 +174,13 @@ func (l *logzLogger) SetConfig(config Config) { l.coreLogger.SetConfig(config) }
 
 // NewLogger creates a new instance of logzLogger with an optional prefix.
 func NewLogger(prefix string) LogzLogger {
-	configManager := logger.NewConfigManager()
-	if configManager == nil {
-		fmt.Println("Error initializing ConfigManager.")
-		return nil
-	}
-	cfgMgr := *configManager
-	config, err := cfgMgr.LoadConfig()
-	if err != nil {
-		fmt.Printf("Error loading configuration: %v\n", err)
-		return nil
-	}
-	logr := logger.NewLogger(config)
+	//cfgMgr := *configManager
+	//config, err := cfgMgr.LoadConfig()
+	//if err != nil {
+	//	fmt.Printf("Error loading configuration: %v\n", err)
+	//	return nil
+	//}
+	logr := logger.NewLogger(nil)
 	return &logzLogger{
 		logger: log.New(
 			os.Stdout,

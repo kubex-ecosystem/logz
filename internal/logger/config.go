@@ -3,9 +3,7 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -81,29 +79,33 @@ func (c *ConfigImpl) SetLevel(level LogLevel)          { c.VlLevel = level }
 func (c *ConfigImpl) Format() string                   { return strings.ToLower(string(c.VlFormat)) }
 func (c *ConfigImpl) SetFormat(format LogFormat)       { c.VlFormat = format }
 func (c *ConfigImpl) Output() string {
-	if c.VlOutput != "" {
-		return c.VlOutput
+	if c.VlOutput == "" {
+		return os.Stdout.Name()
 	}
-	home, homeErr := os.UserHomeDir()
-	if homeErr != nil {
-		home, homeErr = os.UserConfigDir()
-		if homeErr != nil {
-			home, homeErr = os.UserCacheDir()
-			if homeErr != nil {
-				home = "/tmp"
-			}
-		}
-	}
-	logPath := filepath.Join(home, ".kubex", "logz", "logz.log")
-	if mkdirErr := os.MkdirAll(filepath.Dir(logPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
-		return ""
-	}
-	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		if _, createErr := os.Create(logPath); createErr != nil {
-			return ""
-		}
-	}
-	return logPath
+	return c.VlOutput
+	//if c.VlOutput != "" {
+	//	return c.VlOutput
+	//}
+	//home, homeErr := os.UserHomeDir()
+	//if homeErr != nil {
+	//	home, homeErr = os.UserConfigDir()
+	//	if homeErr != nil {
+	//		home, homeErr = os.UserCacheDir()
+	//		if homeErr != nil {
+	//			home = "/tmp"
+	//		}
+	//	}
+	//}
+	//logPath := filepath.Join(home, ".kubex", "logz", "logz.log")
+	//if mkdirErr := os.MkdirAll(filepath.Dir(logPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+	//	return ""
+	//}
+	//if _, err := os.Stat(logPath); os.IsNotExist(err) {
+	//	if _, createErr := os.Create(logPath); createErr != nil {
+	//		return ""
+	//	}
+	//}
+	//return logPath
 }
 func (c *ConfigImpl) SetOutput(configPath string) {
 	c.VlOutput = configPath
@@ -125,16 +127,6 @@ func (c *ConfigImpl) GetInt(key string, defaultValue int) int {
 
 	// Caso não encontre ou a conversão falhe, retorna o valor padrão
 	return defaultValue
-}
-
-// ConfigManager interface defines methods to manage configuration.
-type ConfigManager interface {
-	GetConfig() Config
-	GetPidPath() string
-	GetConfigPath() string
-	Output() string
-	SetOutput(configPath string)
-	LoadConfig() (Config, error)
 }
 
 // ConfigManagerImpl implements the ConfigManager interface.
