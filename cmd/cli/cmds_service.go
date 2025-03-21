@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/faelmori/logz/internal/logger"
 	"github.com/spf13/cobra"
+	"time"
 )
 
 // ServiceCmd creates the main command for managing the web service.
@@ -28,20 +29,26 @@ func startServiceCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Start the web service",
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			defaultConfig := logger.LogzConfig{
+				LogLevel:     "info",
+				LogFilePath:  "/tmp/logz.log",
+				ReadTimeout:  10 * time.Second,
+				WriteTimeout: 10 * time.Second,
+			}
+			configManager := logger.NewConfigManager(defaultConfig)
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
-			config, err := cfgMgr.LoadConfig()
+			_, err := cfgMgr.LoadConfig()
 			if err != nil {
 				fmt.Printf("Error loading configuration: %v\n", err)
 				return
 			}
 
-			if err := logger.Start(config.Port()); err != nil {
+			if err := logger.Start("9999"); err != nil {
 				fmt.Printf("Error starting service: %v\n", err)
 			} else {
 				fmt.Println("Service started successfully.")

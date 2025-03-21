@@ -17,7 +17,7 @@ func CheckLogSize(config Config) error {
 	logDir := config.Output()
 	files, err := os.ReadDir(logDir)
 	if err != nil {
-		globalLogger.Error("Error reading the log directory", map[string]interface{}{"error": err})
+		fmt.Println("Error reading the log directory:", err)
 		return err
 	}
 
@@ -32,7 +32,7 @@ func CheckLogSize(config Config) error {
 		if strings.HasSuffix(file.Name(), ".log") {
 			fileInfo, err := file.Info()
 			if err != nil {
-				globalLogger.Error("Error getting file information", map[string]interface{}{"file": file.Name(), "error": err})
+				fmt.Println("Error getting file information:", err)
 				continue
 			}
 			totalSize += fileInfo.Size()
@@ -44,18 +44,18 @@ func CheckLogSize(config Config) error {
 
 	// Rotation based on total size
 	if totalSize > int64(maxLogSize) {
-		globalLogger.Info("Total log size exceeded. Archiving old logs...", nil)
+		fmt.Println("Archiving logs due to excessive size...")
 		if err := ArchiveLogs(filesToRotate); err != nil {
-			globalLogger.Error("Error archiving logs", map[string]interface{}{"error": err})
+			fmt.Println("Error archiving logs:", err)
 			return err
 		}
 	}
 
 	// Individual rotation of large files
 	if len(filesToRotate) > 0 {
-		globalLogger.Info("Archiving individual logs due to excessive size...", nil)
+		fmt.Println("Rotating large log files...")
 		if err := RotateLogFiles(filesToRotate); err != nil {
-			globalLogger.Error("Error rotating logs", map[string]interface{}{"error": err})
+			fmt.Println("Error rotating log files:", err)
 			return err
 		}
 	}
@@ -67,10 +67,10 @@ func CheckLogSize(config Config) error {
 func RotateLogFiles(files []string) error {
 	for _, logFile := range files {
 		if err := RotateLogFile(logFile); err != nil {
-			globalLogger.Error("Error rotating log file", map[string]interface{}{"file": logFile, "error": err})
+			fmt.Println("Error rotating the log file:", err)
 			continue
 		}
-		globalLogger.Info("Log file rotated successfully", map[string]interface{}{"file": logFile})
+		fmt.Println("Log file rotated successfully:", logFile)
 	}
 	return nil
 }
@@ -111,8 +111,7 @@ func CreateTarGz(archivePath string, files []string) error {
 			return err
 		}
 	}
-
-	globalLogger.Info("tar.gz file created successfully", map[string]interface{}{"path": archivePath})
+	fmt.Println("Logs archived successfully:", archivePath)
 	return nil
 }
 
@@ -179,7 +178,7 @@ func ArchiveLogs(files []string) error {
 		}
 	}
 
-	globalLogger.Info("Logs archived successfully", map[string]interface{}{"archive": archivePath})
+	fmt.Println("Logs archived successfully:", archivePath)
 	return nil
 }
 

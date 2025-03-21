@@ -32,7 +32,7 @@ func LogzCmds() []*cobra.Command {
 func newLogCmd(level string, aliases []string) *cobra.Command {
 	var metaData, ctx map[string]string
 	var msg, output, format string
-	
+
 	cmd := &cobra.Command{
 		Use:     level,
 		Aliases: aliases,
@@ -41,7 +41,13 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			defaultConfig := logger.LogzConfig{
+				LogLevel:     level,
+				LogFilePath:  "/tmp/logz.log",
+				ReadTimeout:  10 * time.Second,
+				WriteTimeout: 10 * time.Second,
+			}
+			configManager := logger.NewConfigManager(defaultConfig)
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
@@ -55,14 +61,14 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			}
 
 			if format != "" {
-				config.SetFormat(logger.LogFormat(format))
+				config.LogFormat = format
 			}
 
 			if output != "" {
-				config.SetOutput(output)
+				config.LogFilePath = output
 			}
 
-			logr := logger.NewLogger(config)
+			logr := logger.NewLogger(nil)
 			for k, v := range metaData {
 				logr.SetMetadata(k, v)
 			}
@@ -105,20 +111,26 @@ func rotateLogsCmd() *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			defaultConfig := logger.LogzConfig{
+				LogLevel:     "info",
+				LogFilePath:  "/tmp/logz.log",
+				ReadTimeout:  10 * time.Second,
+				WriteTimeout: 10 * time.Second,
+			}
+			configManager := logger.NewConfigManager(defaultConfig)
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
-			config, err := cfgMgr.LoadConfig()
+			_, err := cfgMgr.LoadConfig()
 			if err != nil {
 				fmt.Printf("Error loading configuration: %v\n", err)
 				return
 			}
 
-			err = logger.CheckLogSize(config)
+			err = logger.CheckLogSize(nil)
 			if err != nil {
 				fmt.Printf("Error rotating logs: %v\n", err)
 			} else {
@@ -137,7 +149,13 @@ func checkLogSizeCmd() *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			defaultConfig := logger.LogzConfig{
+				LogLevel:     "info",
+				LogFilePath:  "/tmp/logz.log",
+				ReadTimeout:  10 * time.Second,
+				WriteTimeout: 10 * time.Second,
+			}
+			configManager := logger.NewConfigManager(defaultConfig)
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
@@ -150,7 +168,7 @@ func checkLogSizeCmd() *cobra.Command {
 				return
 			}
 
-			logDir := config.Output()
+			logDir := config.LogFilePath
 			logSize, err := logger.GetLogDirectorySize(filepath.Dir(logDir)) // Add this function to logger
 			if err != nil {
 				fmt.Printf("Error calculating log size: %v\n", err)
@@ -191,7 +209,13 @@ func watchLogsCmd() *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			defaultConfig := logger.LogzConfig{
+				LogLevel:     "info",
+				LogFilePath:  "/tmp/logz.log",
+				ReadTimeout:  10 * time.Second,
+				WriteTimeout: 10 * time.Second,
+			}
+			configManager := logger.NewConfigManager(defaultConfig)
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
@@ -204,7 +228,7 @@ func watchLogsCmd() *cobra.Command {
 				return
 			}
 
-			logFilePath := config.Output()
+			logFilePath := config.LogFilePath
 			reader := logger.NewFileLogReader()
 			stopChan := make(chan struct{})
 

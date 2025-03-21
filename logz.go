@@ -10,17 +10,17 @@ import (
 )
 
 var (
-	pfx            = "Logz"     // Default prefix
-	logger         Logger       // Global logger instance
-	mu             sync.RWMutex // Mutex for concurrency control
-	once           sync.Once    // Ensure single initialization
+	pfx    = "Logz" // Default prefix
+	logger Logger   // Global logger instance
+	//mu             sync.RWMutex // Mutex for concurrency control
+	once           sync.Once // Ensure single initialization
 	versionService vs.VersionService
 )
 
 type LogLevel = core.LogLevel
 type LogFormat = core.LogFormat
 type Config = core.Config
-type ConfigManager = core.ConfigManager
+type ConfigManager = core.LogzConfigManager
 type NotifierManager = core.NotifierManager
 type Notifier = core.Notifier
 type Logger = logz.LogzLogger
@@ -28,74 +28,74 @@ type Writer = core.LogWriter
 
 // initializeLogger initializes the global logger with the given prefix.
 func initializeLogger(prefix string) {
-	once.Do(func() {
-		if prefix == "" {
-			prefix = pfx
-		}
-		if logger != nil {
-			return
-		}
-		logger = logz.NewLogger(prefix)
-		logLevel := os.Getenv("LOG_LEVEL")
-		if logLevel != "" {
-			logger.SetLevel(core.LogLevel(logLevel))
-		} else {
-			logger.SetLevel(core.INFO)
-		}
-		logFormat := os.Getenv("LOG_FORMAT")
-		if logFormat != "" {
-			logger.GetConfig().SetFormat(core.LogFormat(logFormat))
-		} else {
-			logger.GetConfig().SetFormat(core.TEXT)
-		}
-		logOutput := os.Getenv("LOG_OUTPUT")
-		if logOutput != "" {
-			logger.GetConfig().SetOutput(logOutput)
-		} else {
-			logger.GetConfig().SetOutput(os.Stdout.Name())
-		}
-	})
+	//	once.Do(func() {
+	if prefix == "" {
+		prefix = pfx
+	}
+	if logger != nil {
+		return
+	}
+	logger = logz.NewLogger(prefix)
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel != "" {
+		logger.SetLevel(core.LogLevel(logLevel))
+	} else {
+		logger.SetLevel(core.INFO)
+	}
+	logFormat := os.Getenv("LOG_FORMAT")
+	if logFormat != "" {
+		logger.GetConfig().SetFormat(core.LogFormat(logFormat))
+	} else {
+		logger.GetConfig().SetFormat(core.TEXT)
+	}
+	logOutput := os.Getenv("LOG_OUTPUT")
+	if logOutput != "" {
+		logger.GetConfig().SetOutput(logOutput)
+	} else {
+		logger.GetConfig().SetOutput(os.Stdout.Name())
+	}
+	//	})
 }
 
 // GetLogger returns the global logger instance, initializing it if necessary.
 func GetLogger(prefix string) Logger {
 	initializeLogger(prefix)
 
-	mu.RLock()
-	defer mu.RUnlock()
+	////mu.RLock()
+	//defer mu.RUnlock()
 	return logger
 }
 
 // NewLogger creates a new logger instance with the given prefix.
 func NewLogger(prefix string) Logger {
-	return GetLogger(prefix)
+	return logz.NewLogger(prefix)
 }
 
 // SetLogger sets the global logger instance to the provided logger.
 func SetLogger(newLogger Logger) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	logger = newLogger
 }
 
 // SetPrefix sets the global prefix for the logger.
 func SetPrefix(prefix string) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	pfx = prefix
 }
 
 // GetPrefix returns the global prefix for the logger.
 func GetPrefix() string {
-	mu.RLock()
-	defer mu.RUnlock()
+	////mu.RLock()
+	//defer mu.RUnlock()
 	return pfx
 }
 
 // SetLogLevel sets the log level for the global logger.
 func SetLogLevel(level LogLevel) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	if logger != nil {
 		logger.SetLevel(level)
 	}
@@ -103,8 +103,8 @@ func SetLogLevel(level LogLevel) {
 
 // GetLogLevel returns the log level of the global logger.
 func GetLogLevel() LogLevel {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger == nil {
 		return core.DEBUG
 	}
@@ -113,8 +113,8 @@ func GetLogLevel() LogLevel {
 
 // SetLogWriter sets the log writer for the global logger.
 func SetLogWriter(writer Writer) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	if logger != nil {
 		logger.SetWriter(writer)
 	}
@@ -122,8 +122,8 @@ func SetLogWriter(writer Writer) {
 
 // GetLogWriter returns the log writer of the global logger.
 func GetLogWriter() Writer {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger == nil {
 		return nil
 	}
@@ -132,8 +132,8 @@ func GetLogWriter() Writer {
 
 // SetLogConfig sets the configuration for the global logger.
 func SetLogConfig(config Config) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	if logger != nil {
 		logger.SetConfig(config)
 	}
@@ -141,8 +141,8 @@ func SetLogConfig(config Config) {
 
 // GetLogConfig returns the configuration of the global logger.
 func GetLogConfig() Config {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger == nil {
 		return nil
 	}
@@ -151,8 +151,8 @@ func GetLogConfig() Config {
 
 // SetMetadata sets a metadata key-value pair for the global logger.
 func SetMetadata(key string, value interface{}) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	if logger != nil {
 		logger.SetMetadata(key, value)
 	}
@@ -160,8 +160,8 @@ func SetMetadata(key string, value interface{}) {
 
 // Debug logs a debug message with the given context.
 func Debug(msg string, ctx map[string]interface{}) {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger != nil {
 		logger.Debug(msg, ctx)
 	}
@@ -169,8 +169,8 @@ func Debug(msg string, ctx map[string]interface{}) {
 
 // Info logs an info message with the given context.
 func Info(msg string, ctx map[string]interface{}) {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger != nil {
 		logger.Info(msg, ctx)
 	}
@@ -178,8 +178,8 @@ func Info(msg string, ctx map[string]interface{}) {
 
 // Warn logs a warning message with the given context.
 func Warn(msg string, ctx map[string]interface{}) {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger != nil {
 		logger.Warn(msg, ctx)
 	}
@@ -187,8 +187,8 @@ func Warn(msg string, ctx map[string]interface{}) {
 
 // Error logs an error message with the given context.
 func Error(msg string, ctx map[string]interface{}) {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger != nil {
 		logger.Error(msg, ctx)
 	}
@@ -196,8 +196,8 @@ func Error(msg string, ctx map[string]interface{}) {
 
 // FatalC logs a fatal message with the given context and exits the application.
 func FatalC(msg string, ctx map[string]interface{}) {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger != nil {
 		logger.FatalC(msg, ctx)
 	}
@@ -205,8 +205,8 @@ func FatalC(msg string, ctx map[string]interface{}) {
 
 // AddNotifier adds a notifier to the global logger's configuration.
 func AddNotifier(name string, notifier Notifier) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	if logger != nil {
 		logger.
 			GetConfig().
@@ -217,8 +217,8 @@ func AddNotifier(name string, notifier Notifier) {
 
 // GetNotifier returns the notifier with the given name from the global logger's configuration.
 func GetNotifier(name string) (Notifier, bool) {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger == nil {
 		return nil, false
 	}
@@ -230,8 +230,8 @@ func GetNotifier(name string) (Notifier, bool) {
 
 // ListNotifiers returns a list of all notifier names in the global logger's configuration.
 func ListNotifiers() []string {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger == nil {
 		return nil
 	}
@@ -243,8 +243,8 @@ func ListNotifiers() []string {
 
 // SetLogFormat sets the log format for the global logger.
 func SetLogFormat(format LogFormat) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	if logger != nil {
 		logger.
 			GetConfig().
@@ -254,8 +254,8 @@ func SetLogFormat(format LogFormat) {
 
 // GetLogFormat returns the log format of the global logger.
 func GetLogFormat() string {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger == nil {
 		return "text"
 	}
@@ -264,8 +264,8 @@ func GetLogFormat() string {
 
 // SetLogOutput sets the log output for the global logger.
 func SetLogOutput(output string) {
-	mu.Lock()
-	defer mu.Unlock()
+	//mu.Lock()
+	//defer mu.Unlock()
 	if logger != nil {
 		logger.GetConfig().SetOutput(output)
 	}
@@ -273,8 +273,8 @@ func SetLogOutput(output string) {
 
 // GetLogOutput returns the log output of the global logger.
 func GetLogOutput() string {
-	mu.RLock()
-	defer mu.RUnlock()
+	//mu.RLock()
+	//defer mu.RUnlock()
 	if logger == nil {
 		return os.Stdout.Name()
 	}
@@ -306,12 +306,4 @@ func Version() string {
 		versionService = vs.NewVersionService()
 	}
 	return versionService.GetCurrentVersion()
-}
-
-func main() {
-	logger = GetLogger("main")
-	logger.Info("Hello Universe!", map[string]interface{}{
-		"context": "Logz - A simple logging library for Go",
-		"version": Version(),
-	})
 }

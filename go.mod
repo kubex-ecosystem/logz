@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/fatih/color v1.18.0
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/olekukonko/tablewriter v0.0.5
 
@@ -16,6 +16,8 @@ require (
 	github.com/spf13/viper v1.19.0
 	golang.org/x/text v0.23.0
 )
+
+require github.com/faelmori/kubex-interfaces v0.0.0-20250321181654-90dc17f9d234
 
 require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
