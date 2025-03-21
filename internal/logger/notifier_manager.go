@@ -130,7 +130,7 @@ func (nm *NotifierManagerImpl) UpdateFromConfig() error {
 // WebServer returns the HTTP server instance.
 func (nm *NotifierManagerImpl) WebServer() *http.Server {
 	if nm.webServer == nil {
-		nm.webServer = service.Server
+		nm.webServer = Server()
 	}
 	return nm.webServer
 }
@@ -148,7 +148,7 @@ func (nm *NotifierManagerImpl) WebServer() *http.Server {
 // WebClient returns the HTTP client instance.
 func (nm *NotifierManagerImpl) WebClient() *http.Client {
 	if nm.webClient == nil {
-		nm.webClient = service.Client
+		nm.webClient = Client()
 	}
 	return nm.webClient
 }
@@ -156,7 +156,7 @@ func (nm *NotifierManagerImpl) WebClient() *http.Client {
 // DBusClient returns the DBus connection instance.
 func (nm *NotifierManagerImpl) DBusClient() *dbus.Conn {
 	if nm.dbusClient == nil {
-		nm.dbusClient = service.DBusConn
+		nm.dbusClient = DBus()
 	}
 	return nm.dbusClient
 }

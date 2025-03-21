@@ -1,11 +1,16 @@
 package logger
 
 import (
-	//"errors"
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	c "github.com/faelmori/kubex-interfaces/config"
 	"github.com/godbus/dbus/v5"
+
+	"github.com/spf13/viper"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -17,14 +22,10 @@ import (
 	"time"
 )
 
-type LogzService struct {
-	Server    *http.Server
-	Client    *http.Client
-	DBusConn  *dbus.Conn
-	Logger    *LogzCoreImpl
-	StartTime time.Time
-}
-
+const (
+	// pidFile is the name of the PID file used to track the running service.
+	pidFile = "logz_srv.pid"
+)
 
 var (
 	lSrv    *http.Server
@@ -50,79 +51,51 @@ func Run() error {
 		}
 	}
 
-	// Caso contrário, forneça uma configuração padrão
-	defaultConfig := LogzConfig{
-		LogLevel:     "INFO",
-		LogFilePath:  "/tmp/logz.log",
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+	// Initialize the ConfigManager and load the configuration
+	configManager := NewConfigManager()
+	if configManager == nil {
+		return errors.New("failed to initialize config manager")
 	}
-	cfg := c.NewConfigManager(defaultConfig)
-	if cfg == nil {
-		return nil, fmt.Errorf("falha ao criar o gerenciador de configuração")
-	}
+	cfgMgr := *configManager
 
-	// Salve a configuração padrão na instância global do logger
-	if loggerInstance != nil {
-		loggerInstance.Config = cfg
-	}
-
-	return cfg, nil
-}
-
-func IsRunning() bool {
-	lgConfig := configManager.GetConfig()
-	_, err := os.Stat(lgConfig.PidFile)
-	return err == nil
-}
-
-func Run() error {
-	// Verifica se já está rodando
-	if IsRunning() {
-		if err := Stop(); err != nil {
-			return fmt.Errorf("erro ao parar instância antiga: %w", err)
-		}
-	}
-
-	// Inicializa o ConfigManager
-	_, err := InitConfigManager()
+	config, err := cfgMgr.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("falha ao inicializar gerenciador de configuração: %w", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	//config := cfg.GetConfig()
+	// Initialize the global logger with the configuration
+	initializeGlobalLogger(config)
 
-	// Configura o servidor HTTP
+	// Set up the HTTP server
 	mux := http.NewServeMux()
 	if err := registerHandlers(mux); err != nil {
-		return fmt.Errorf("erro ao registrar handlers HTTP: %w", err)
+		return err
 	}
 
-	service.Server = &http.Server{
-		//Addr:         config.Address(),
-		//Handler:      loggingMiddleware(mux),
-		//ReadTimeout:  config.ReadTimeout(),
-		//WriteTimeout: config.WriteTimeout(),
-		//IdleTimeout:  config.IdleTimeout(),
+	lSrv = &http.Server{
+		Addr:         config.Address(),
+		Handler:      loggingMiddleware(mux),
+		ReadTimeout:  config.ReadTimeout(),
+		WriteTimeout: config.WriteTimeout(),
+		IdleTimeout:  config.IdleTimeout(),
 	}
 
-	// Gerenciamento de sinal para interrupção
-	//stop := make(chan os.Signal, 1)
-	//signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	//
-	//go func() {
-	//	service.Logger.Info(fmt.Sprintf("Serviço rodando em %s", config.Address()), nil)
-	//	if err := service.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-	//		service.Logger.Error(fmt.Sprintf("Erro no servidor: %v", err), nil)
-	//	}
-	//}()
-	//
-	//<-stop
-	return Stop()
+	// Start the HTTP server
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		globalLogger.Info(fmt.Sprintf("Service running on %s", config.Address()), nil)
+		if err := lSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			globalLogger.Error(fmt.Sprintf("Service encountered an error: %v", err), nil)
+		}
+	}()
+
+	<-stop
+	return shutdown()
 }
 
+// Start initiates the logging service on the specified port.
 func Start(port string) error {
-
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -136,74 +109,137 @@ func Start(port string) error {
 		return errors.New("viper not initialized")
 	}
 
-	cmd := exec.Command(os.Args[0], "service", "spawn", "-p", port)
+	cmd := exec.Command(os.Args[0], "service", "spawn", "-c", vpr.ConfigFileUsed())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("falha ao iniciar serviço: %w", err)
+		return fmt.Errorf("failed to start service: %w", err)
 	}
 
-	file, err := os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(getPidPath(), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return fmt.Errorf("falha ao abrir arquivo PID: %w", err)
+		return fmt.Errorf("failed to open PID file: %w", err)
 	}
 	defer file.Close()
 
-	pid := cmd.Process.Pid
-	if _, writeErr := file.WriteString(fmt.Sprintf("%d\n%s", pid, port)); writeErr != nil {
-		return fmt.Errorf("falha ao escrever PID: %w", writeErr)
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		return errors.New("another process is writing to the PID file")
 	}
 
-	service.Logger.Info(fmt.Sprintf("Serviço iniciado com PID %d na porta %s", pid, port), nil)
+	pid := cmd.Process.Pid
+	pidData := fmt.Sprintf("%d\n%s", pid, port)
+	if _, writeErr := file.Write([]byte(pidData)); writeErr != nil {
+		return fmt.Errorf("failed to write PID data: %w", writeErr)
+	}
+
+	globalLogger.Info(fmt.Sprintf("Service started with pid %d", pid), nil)
 	return nil
 }
 
+// Stop terminates the running logging service.
 func Stop() error {
-
 	mu.Lock()
 	defer mu.Unlock()
 
 	pid, port, pidPath, err := GetServiceInfo()
-
 	if err != nil {
-		return fmt.Errorf("não foi possível obter informações do serviço: %w", err)
+		return err
 	}
 
 	process, err := os.FindProcess(pid)
 	if err != nil {
-		return fmt.Errorf("processo não encontrado: %w", err)
+		return fmt.Errorf("failed to find process: %w", err)
 	}
 
 	if err := process.Signal(syscall.SIGTERM); err != nil {
-		return fmt.Errorf("erro ao enviar SIGTERM: %w", err)
+		return fmt.Errorf("failed to stop process: %w", err)
 	}
 
+	time.Sleep(1 * time.Second)
 	if err := os.Remove(pidPath); err != nil {
-		return fmt.Errorf("erro ao remover arquivo PID: %w", err)
+		return err
 	}
 
-	service.Logger.Info(fmt.Sprintf("Serviço com PID %d foi encerrado.", pid), nil)
+	globalLogger.Info(fmt.Sprintf("Service with pid %d and port %s stopped", pid, port), nil)
 	return nil
 }
 
+// Server returns the HTTP server instance.
+func Server() *http.Server {
+	return lSrv
+}
+
+// Client returns the HTTP client instance.
+func Client() *http.Client {
+	if lClient == nil {
+		lClient = &http.Client{}
+	}
+	return lClient
+}
+
+// Temporarily disabled due to external dependency on zmq4
+// Uncomment and ensure the required libraries are installed if needed in the future
+// Socket returns the ZMQ socket instance.
+//func Socket() *zmq4.Socket {
+//	if lSocket == nil {
+//		lSocket, _ = zmq4.NewSocket(zmq4.PUB)
+//	}
+//	return lSocket
+//}
+
+// DBus returns the DBus connection instance.
+func DBus() *dbus.Conn {
+	if lDBus == nil {
+		lDBus, _ = dbus.SystemBus()
+	}
+	return lDBus
+}
+
+// getPidPath returns the path to the PID file.
+func getPidPath() string {
+	if envPath := os.Getenv("LOGZ_PID_PATH"); envPath != "" {
+		return envPath
+	}
+	cacheDir, cacheDirErr := os.UserCacheDir()
+	if cacheDirErr != nil {
+		cacheDir = "/tmp"
+	}
+	cacheDir = filepath.Join(cacheDir, "logz", pidFile)
+	if mkdirErr := os.MkdirAll(filepath.Dir(cacheDir), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return ""
+	}
+	return cacheDir
+}
+
+// IsRunning checks if the service is currently running.
+func IsRunning() bool {
+	_, err := os.Stat(getPidPath())
+	return err == nil
+}
+
+// GetServiceInfo retrieves the PID, port, and PID file path of the running service.
 func GetServiceInfo() (int, string, string, error) {
 	pidPath := getPidPath()
-	file, err := os.Open(pidPath)
-	if err != nil {
-		return 0, "", "", fmt.Errorf("erro ao abrir arquivo PID: %w", err)
-	}
-	defer file.Close()
 
-	var pid int
-	var port string
-	if _, err := fmt.Fscanf(file, "%d\n%s", &pid, &port); err != nil {
-		return 0, "", "", fmt.Errorf("erro ao ler arquivo PID: %w", err)
+	data, err := os.ReadFile(pidPath)
+	if err != nil {
+		return 0, "", "", os.ErrNotExist
+	}
+
+	lines := strings.Split(string(data), "\n")
+	pid, pidErr := strconv.Atoi(lines[0])
+	if pidErr != nil {
+		return 0, "", "", os.ErrInvalid
+	}
+
+	port := "unknown"
+	if len(lines) > 1 {
+		port = lines[1]
 	}
 
 	return pid, port, pidPath, nil
 }
-
 
 // registerHandlers registers HTTP handlers for the service.
 func registerHandlers(mux *http.ServeMux) error {
@@ -266,7 +302,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 // metricsHandler handles metrics requests.
 func metricsHandler(w http.ResponseWriter, _ *http.Request) {
 	pm := GetPrometheusManager()
-	if (!pm.IsEnabled()) {
+	if !pm.IsEnabled() {
 		http.Error(w, "Prometheus integration is not enabled", http.StatusForbidden)
 		return
 	}
@@ -283,37 +319,30 @@ func metricsHandler(w http.ResponseWriter, _ *http.Request) {
 			fmt.Println(fmt.Sprintf("Error writing metric '%s': %v", name, err))
 		}
 	}
-
 }
 
+// loggingMiddleware logs incoming HTTP requests.
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		service.Logger.Info(fmt.Sprintf("Requisição recebida: %s %s", r.Method, r.URL.Path), nil)
+		log.Printf("Received %s request for %s from %s\n", r.Method, r.URL.Path, r.RemoteAddr)
 		next.ServeHTTP(w, r)
 	})
 }
 
-func registerHandlers(mux *http.ServeMux) error {
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+// shutdown gracefully shuts down the service.
+func shutdown() error {
+	globalLogger.Info("Shutting down service gracefully...", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	mux.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte("Método não permitido"))
-			return
-		}
+	if err := lSrv.Shutdown(ctx); err != nil {
+		globalLogger.Error(fmt.Sprintf("Service shutdown failed: %v", err), nil)
+		return fmt.Errorf("shutdown process failed: %w", err)
+	}
 
-		if err := r.ParseForm(); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, writeErr := w.Write([]byte("Erro ao registrar log"))
-			if writeErr != nil {
-				return
-			}
-			return
-		}
+	globalLogger.Info("Service stopped gracefully.", nil)
+	return nil
+}
 
 // initializeGlobalLogger initializes the global logger with the provided configuration.
 func initializeGlobalLogger(config Config) {
