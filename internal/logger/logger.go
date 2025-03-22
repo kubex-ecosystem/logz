@@ -45,17 +45,33 @@ type LogzCoreImpl struct {
 
 // NewLogger creates a new instance of LogzCoreImpl with the provided configuration.
 func NewLogger(config Config) *LogzCoreImpl {
+	level := INFO // Default log level
+
+	if config == nil {
+		// If no config is provided, create a new default config
+		// Create a new ConfigManager
+		if cfgMgr := NewConfigManager(); cfgMgr != nil {
+			configMgr := *cfgMgr
+			config = configMgr.GetConfig()
+		} else {
+			log.Println("Error creating ConfigManager")
+			return nil
+		}
+	}
+
 	// Set the log level from the Config
-	level := LogLevel(config.Level()) // Method config.Level() returns the log level as a string
+	level = LogLevel(config.Level()) // Method config.Level() returns the log level as a string
 
 	var out *os.File
+	var err error
+	// Set the output to stdout if not specified or if the output is invalid
 	if strings.ToLower(config.Output()) == "stdout" || config.Output() == "" || config.Output() == os.Stdout.Name() {
 		out = os.Stdout
 	} else {
 		fmt.Println("Output: ", config.Output())
 		// Ensure the log file exists and has the correct permissions
-		if _, err := os.Stat(config.Output()); os.IsNotExist(err) {
-			if err := os.MkdirAll(filepath.Dir(config.Output()), 0755); err != nil {
+		if _, err = os.Stat(config.Output()); os.IsNotExist(err) {
+			if err = os.MkdirAll(filepath.Dir(config.Output()), 0755); err != nil {
 				log.Printf("Error creating log directory: %v\nRedirecting to stdout...\n", err)
 				out = os.Stdout
 			} else {

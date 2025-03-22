@@ -35,7 +35,7 @@ type LogzConfigManager struct {
 	config *LogzConfig
 }
 
-func NewConfigManager(defaultConfig LogzConfig) *LogzConfigManager {
+func NewLogzConfigManager(defaultConfig LogzConfig) *LogzConfigManager {
 	return &LogzConfigManager{
 		ConfigManager: *c.NewConfigManager(defaultConfig),
 	}
@@ -142,23 +142,23 @@ func (lcm *LogzConfigManager) GetFormatter() LogFormatter {
 	}
 }
 
-// LoadConfig loads the configuration from the file and returns a Config instance.
-func (lcm *LogzConfigManager) LoadConfig() (*LogzConfig, error) {
-	cfg, err := InitConfigManager()
-	if err != nil {
-		return nil, fmt.Errorf("falha ao inicializar o gerenciador de configuração: %w", err)
-	}
-
-	// Load the configuration from the file
-	cf := cfg.GetConfig()
-
-	// Validate the configuration
-	if err := cf.Validate(); err != nil {
-		return nil, fmt.Errorf("falha ao validar a configuração: %w", err)
-	}
-
-	// Save the configuration
-	lcm.config = &cf
-
-	return lcm.config, nil
-}
+//// LoadConfig loads the configuration from the file and returns a Config instance.
+//func (lcm *LogzConfigManager) LoadConfig() (*LogzConfig, error) {
+//	cfg, err := InitConfigManager()
+//	if err != nil {
+//		return nil, fmt.Errorf("falha ao inicializar o gerenciador de configuração: %w", err)
+//	}
+//
+//	// Load the configuration from the file
+//	cf := cfg.GetConfig()
+//
+//	// Validate the configuration
+//	if err := cf.Validate(); err != nil {
+//		return nil, fmt.Errorf("falha ao validar a configuração: %w", err)
+//	}
+//
+//	// Save the configuration
+//	lcm.config = &cf
+//
+//	return lcm.config, nil
+//}
