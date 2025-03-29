@@ -7,7 +7,11 @@ import (
 	"golang.org/x/text/message"
 	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 )
 
 // LogFormatter defines the contract for formatting log entries.
@@ -154,6 +158,33 @@ func (w *DefaultWriter) Write(entry LogzEntry) error {
 	}
 	_, err = fmt.Fprintln(w.out, formatted)
 	return err
+}
+
+func Writer(module string) io.Writer {
+	currentPid := os.Getpid()
+	logFileName := strings.Join([]string{module, "logz_", strconv.Itoa(currentPid), ".log"}, "")
+	cacheDir, cacheDirErr := os.UserCacheDir()
+	if cacheDirErr != nil || cacheDir == "" {
+		cacheDir = os.TempDir()
+	}
+	logFilePath := filepath.Join(cacheDir, logFileName)
+	if logFileStatErr := os.Remove(logFilePath); logFileStatErr == nil {
+		cmdRm := fmt.Sprintf("rm -f %s", logFilePath)
+		if _, cmdRmErr := exec.Command("bash", "-c", cmdRm).Output(); cmdRmErr != nil {
+			fmt.Println(cmdRmErr)
+			return os.Stdout
+		}
+	}
+	if logFilePathErr := os.MkdirAll(filepath.Dir(logFilePath), 0777); logFilePathErr != nil {
+		fmt.Println(logFilePathErr)
+		return os.Stdout
+	}
+	logFile, logFileErr := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
+	if logFileErr != nil {
+		fmt.Println(logFileErr)
+		return os.Stdout
+	}
+	return logFile
 }
 
 // formatMetadata converts metadata to a JSON string.

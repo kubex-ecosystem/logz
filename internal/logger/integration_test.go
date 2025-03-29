@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bytes"
+	"github.com/spf13/viper"
 	"net/http"
 	"os"
 	"sync"

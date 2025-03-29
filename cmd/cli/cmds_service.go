@@ -25,8 +25,9 @@ func ServiceCmd() *cobra.Command {
 // startServiceCmd creates the command to start the web service.
 func startServiceCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "start",
-		Short: "Start the web service",
+		Use:    "start",
+		Short:  "Start the web service",
+		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			configManager := logger.NewConfigManager()
 			if configManager == nil {
@@ -53,8 +54,9 @@ func startServiceCmd() *cobra.Command {
 // stopServiceCmd creates the command to stop the web service.
 func stopServiceCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stop",
-		Short: "Stop the web service",
+		Use:    "stop",
+		Hidden: true,
+		Short:  "Stop the web service",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := logger.Stop(); err != nil {
 				fmt.Printf("Error stopping service: %v\n", err)
