@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -32,7 +33,8 @@ func LogzCmds() []*cobra.Command {
 func newLogCmd(level string, aliases []string) *cobra.Command {
 	var metaData, ctx map[string]string
 	var msg, output, format string
-	
+	var mu sync.RWMutex
+
 	cmd := &cobra.Command{
 		Use:     level,
 		Aliases: aliases,
@@ -69,6 +71,8 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			ctxInterface := make(map[string]interface{})
 			for k, v := range ctx {
 				ctxInterface[k] = v
+				mu.Lock()
+				defer mu.Unlock()
 			}
 			switch level {
 			case "debug":
@@ -98,6 +102,8 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 
 // rotateLogsCmd allows manual log rotation.
 func rotateLogsCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use: "rotate",
 		Annotations: GetDescriptions(
@@ -105,6 +111,9 @@ func rotateLogsCmd() *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			configManager := logger.NewConfigManager()
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
@@ -130,6 +139,8 @@ func rotateLogsCmd() *cobra.Command {
 
 // checkLogSizeCmd checks the current log size.
 func checkLogSizeCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use: "check-size",
 		Annotations: GetDescriptions(
@@ -137,6 +148,9 @@ func checkLogSizeCmd() *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			configManager := logger.NewConfigManager()
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
@@ -164,6 +178,8 @@ func checkLogSizeCmd() *cobra.Command {
 
 // archiveLogsCmd allows manual log archiving.
 func archiveLogsCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use: "archive",
 		Annotations: GetDescriptions(
@@ -171,6 +187,9 @@ func archiveLogsCmd() *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			err := logger.ArchiveLogs(nil)
 			if err != nil {
 				fmt.Printf("Error archiving logs: %v\n", err)
@@ -183,6 +202,8 @@ func archiveLogsCmd() *cobra.Command {
 
 // watchLogsCmd monitors logs in real-time.
 func watchLogsCmd() *cobra.Command {
+	var mu sync.RWMutex
+
 	return &cobra.Command{
 		Use:     "watch",
 		Aliases: []string{"w"},
@@ -191,6 +212,9 @@ func watchLogsCmd() *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
+			mu.Lock()
+			defer mu.Unlock()
+
 			configManager := logger.NewConfigManager()
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")

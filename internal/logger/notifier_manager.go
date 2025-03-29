@@ -5,6 +5,7 @@ import (
 	"github.com/godbus/dbus/v5"
 	"github.com/spf13/viper"
 	"net/http"
+	"sync"
 )
 
 // NotifierManager defines the interface for managing notifiers.
@@ -43,6 +44,7 @@ type NotifierManagerImpl struct {
 	webClient  *http.Client
 	dbusClient *dbus.Conn
 	notifiers  map[string]Notifier
+	mu         sync.RWMutex
 }
 
 // NewNotifierManager creates a new instance of NotifierManagerImpl.
@@ -57,24 +59,32 @@ func NewNotifierManager(notifiers map[string]Notifier) NotifierManager {
 
 // AddNotifier adds or updates a notifier with the given name.
 func (nm *NotifierManagerImpl) AddNotifier(name string, notifier Notifier) {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
 	nm.notifiers[name] = notifier
 	fmt.Printf("Notifier '%s' added/updated.\n", name)
 }
 
 // RemoveNotifier removes the notifier with the given name.
 func (nm *NotifierManagerImpl) RemoveNotifier(name string) {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
 	delete(nm.notifiers, name)
 	fmt.Printf("Notifier '%s' removed.\n", name)
 }
 
 // GetNotifier retrieves the notifier with the given name.
 func (nm *NotifierManagerImpl) GetNotifier(name string) (Notifier, bool) {
+	nm.mu.RLock()
+	defer nm.mu.RUnlock()
 	notifier, ok := nm.notifiers[name]
 	return notifier, ok
 }
 
 // ListNotifiers lists all registered notifier names.
 func (nm *NotifierManagerImpl) ListNotifiers() []string {
+	nm.mu.RLock()
+	defer nm.mu.RUnlock()
 	keys := make([]string, 0, len(nm.notifiers))
 	for name := range nm.notifiers {
 		keys = append(keys, name)

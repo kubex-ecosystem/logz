@@ -89,6 +89,6 @@ help:
 	$(call log,   make install ARGS='--prefix /usr/local')
 	$(call break, b )
 	$(call log, For more information, visit: )
-	$(call log, 'https://github.com/faelmori/logz' )
+	$(call log, 'https://github.com/faelmori/logz.git' )
 	$(call break, b )
 	$(call success, End of help message)

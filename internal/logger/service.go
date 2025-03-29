@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -35,10 +36,14 @@ var (
 	lDBus        *dbus.Conn
 	globalLogger *LogzCoreImpl // Global logger for the service
 	startTime    = time.Now()
+	mu           sync.RWMutex
 )
 
 // Run starts the logging service.
 func Run() error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	// Check if the service is already running to avoid multiple instances
 	if IsRunning() {
 		if stopErr := shutdown(); stopErr != nil {
@@ -91,6 +96,9 @@ func Run() error {
 
 // Start initiates the logging service on the specified port.
 func Start(port string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if IsRunning() {
 		return errors.New("service already running (pid file exists: " + getPidPath() + ")")
 	}
@@ -131,6 +139,9 @@ func Start(port string) error {
 
 // Stop terminates the running logging service.
 func Stop() error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	pid, port, pidPath, err := GetServiceInfo()
 	if err != nil {
 		return err
@@ -335,6 +346,9 @@ func shutdown() error {
 
 // initializeGlobalLogger initializes the global logger with the provided configuration.
 func initializeGlobalLogger(config Config) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if globalLogger == nil {
 		globalLogger = NewLogger(config)
 	}

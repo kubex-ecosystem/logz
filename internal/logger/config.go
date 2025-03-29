@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -139,9 +140,14 @@ type ConfigManager interface {
 // ConfigManagerImpl implements the ConfigManager interface.
 type ConfigManagerImpl struct {
 	config Config
+	mu     sync.RWMutex
 }
 
-func (cm *ConfigManagerImpl) GetConfig() Config { return cm.config }
+func (cm *ConfigManagerImpl) GetConfig() Config {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	return cm.config
+}
 
 // GetPidPath returns the path to the PID file.
 func (cm *ConfigManagerImpl) GetPidPath() string {
@@ -183,6 +189,8 @@ func (cm *ConfigManagerImpl) GetConfigPath() string {
 
 // SetOutput sets the path to the default log file.
 func (cm *ConfigManagerImpl) SetOutput(output string) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 	if cm.config != nil {
 		cm.config.SetOutput(output)
 	} else {
@@ -232,6 +240,8 @@ func (cm *ConfigManagerImpl) Output() string {
 }
 
 func (cm *ConfigManagerImpl) SetLevel(level LogLevel) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 	if cm.config != nil {
 		cm.config.SetLevel(level)
 	} else {
@@ -246,6 +256,8 @@ func (cm *ConfigManagerImpl) SetLevel(level LogLevel) {
 }
 
 func (cm *ConfigManagerImpl) SetFormat(format LogFormat) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 	if cm.config != nil {
 		cm.config.SetFormat(format)
 	} else {
@@ -271,6 +283,8 @@ func (cm *ConfigManagerImpl) GetFormatter() LogFormatter {
 
 // LoadConfig loads the configuration from the file and returns a Config instance.
 func (cm *ConfigManagerImpl) LoadConfig() (Config, error) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 	configPath := cm.GetConfigPath()
 	if err := ensureConfigExists(configPath); err != nil {
 		return nil, fmt.Errorf("failed to ensure config exists: %w", err)

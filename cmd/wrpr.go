@@ -2,7 +2,10 @@ package main
 
 import (
 	"github.com/faelmori/logz/cmd/cli"
+	"github.com/faelmori/logz/version"
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
 )
 
 // Logz represents the main structure for the logz command-line interface.
@@ -79,10 +82,17 @@ func (m *Logz) Command() *cobra.Command {
 	cmd.AddCommand(cli.ServiceCmd())
 	cmd.AddCommand(cli.MetricsCmd())
 
+	cmd.AddCommand(version.CliCommand())
+
 	// Set usage definitions for the command and its subcommands
 	setUsageDefinition(cmd)
 	for _, c := range cmd.Commands() {
 		setUsageDefinition(c)
+		if !strings.Contains(strings.Join(os.Args, " "), c.Use) {
+			if c.Short == "" {
+				c.Short = c.Annotations["description"]
+			}
+		}
 	}
 
 	return cmd
