@@ -16,6 +16,8 @@ import (
 func LogzCmds() []*cobra.Command {
 	return []*cobra.Command{
 		newLogCmd("debug", []string{"dbg"}),
+		newLogCmd("notice", []string{"not"}),
+		newLogCmd("success", []string{"suc"}),
 		newLogCmd("info", []string{"inf"}),
 		newLogCmd("warn", []string{"wrn"}),
 		newLogCmd("error", []string{"err"}),
@@ -77,8 +79,12 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			switch level {
 			case "debug":
 				logr.Debug(msg, ctxInterface)
+			case "notice":
+				logr.Notice(msg, ctxInterface)
 			case "info":
 				logr.Info(msg, ctxInterface)
+			case "success":
+				logr.Success(msg, ctxInterface)
 			case "warn":
 				logr.Warn(msg, ctxInterface)
 			case "error":
@@ -171,7 +177,9 @@ func checkLogSizeCmd() *cobra.Command {
 				return
 			}
 
-			fmt.Printf("The total log size in directory '%s' is: %d bytes\n", filepath.Dir(logDir), logSize)
+			sizeInMB := logSize / (1024 * 1024)
+
+			fmt.Printf("The total log size in directory '%s' is: %d MB\n", filepath.Dir(logDir), sizeInMB)
 		},
 	}
 }

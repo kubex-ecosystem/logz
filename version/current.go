@@ -14,7 +14,7 @@ import (
 const moduleAlias = "Logz"
 const moduleName = "logz"
 const gitModelUrl = "https://github.com/faelmori/" + moduleName + ".git"
-const currentVersionFallback = "v1.1.7" // First version with the version file
+const currentVersionFallback = "v1.1.8" // First version with the version file
 
 var (
 	l          = logger.NewLogger("Logz")

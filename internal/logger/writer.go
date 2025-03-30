@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -108,26 +109,48 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 	timestamp := ""
 	if len(entry.GetMetadata()) > 0 {
 		if sc, exist := entry.GetMetadata()["showContext"]; exist {
-			if sc.(bool) {
-				if c, exists := entry.GetMetadata()["context"]; exists {
-					context = c.(string)
+			tp := reflect.TypeOf(sc)
+			if tp.Kind() == reflect.Bool {
+				if sc.(bool) {
+					if c, exists := entry.GetMetadata()["context"]; exists {
+						context = c.(string)
+					}
+				}
+			} else if tp.Kind() == reflect.String {
+				if sc.(string) == "true" {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
 				}
 			}
+
 		} else if map[LogLevel]bool{DEBUG: true, INFO: true}[entry.GetLevel()] {
 			if c, exists := entry.GetMetadata()["context"]; exists {
 				context = c.(string)
 			}
 		}
 		if smd, exist := entry.GetMetadata()["showData"]; exist {
-			if smd.(bool) {
-				metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+			tp := reflect.TypeOf(smd)
+			if tp.Kind() == reflect.Bool {
+				if smd.(bool) {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+				}
+			} else if tp.Kind() == reflect.String {
+				if smd.(string) == "true" {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+				}
 			}
 		} else if entry.GetLevel() == DEBUG {
 			metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
 		}
 		if stp, exist := entry.GetMetadata()["showTimestamp"]; exist {
-			if stp.(bool) {
-				timestamp = fmt.Sprintf("[%s]", entry.GetTimestamp().Format(p.Sprintf("%d-%m-%Y %H:%M:%S")))
+			tp := reflect.TypeOf(stp)
+			if tp.Kind() == reflect.Bool {
+				if stp.(bool) {
+					timestamp = fmt.Sprintf("[%s]", entry.GetTimestamp().Format(p.Sprintf("%d-%m-%Y %H:%M:%S")))
+				}
+			} else if tp.Kind() == reflect.String {
+				if stp.(string) == "true" {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+				}
 			}
 		}
 	}

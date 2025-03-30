@@ -53,9 +53,10 @@ func (m *Logz) Execute() error {
 
 // Command creates and returns the main cobra.Command for the logz CLI.
 func (m *Logz) Command() *cobra.Command {
-	var logType, message, name, show, clearLogs, archive string
-	var filter []string
-	var follow, quiet bool
+	var logType, message, name string
+	//var show, clearLogs, archive string
+	//var filter []string
+	//var follow, quiet bool
 
 	cmd := &cobra.Command{
 		Use:         m.Module(),
@@ -70,12 +71,12 @@ func (m *Logz) Command() *cobra.Command {
 	cmd.Flags().StringVarP(&logType, "type", "t", "", "Log type")
 	cmd.Flags().StringVarP(&message, "message", "m", "", "Log message")
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Log module name")
-	cmd.Flags().StringVarP(&show, "show", "s", "", "Show logs")
-	cmd.Flags().BoolVarP(&follow, "follow", "f", false, "Follow logs")
-	cmd.Flags().StringVarP(&clearLogs, "clear", "c", "", "Clear logs")
-	cmd.Flags().StringVarP(&archive, "archive", "z", "", "Archive logs")
-	cmd.Flags().StringArrayVarP(&filter, "filter", "F", []string{}, "Filter logs")
-	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Quiet mode")
+	//cmd.Flags().StringVarP(&show, "show", "s", "", "Show logs")
+	//cmd.Flags().BoolVarP(&follow, "follow", "f", false, "Follow logs")
+	//cmd.Flags().StringVarP(&clearLogs, "clear", "c", "", "Clear logs")
+	//cmd.Flags().StringVarP(&archive, "archive", "z", "", "Archive logs")
+	//cmd.Flags().StringArrayVarP(&filter, "filter", "F", []string{}, "Filter logs")
+	//cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Quiet mode")
 
 	// Add subcommands to the logz command
 	cmd.AddCommand(cli.LogzCmds()...)

@@ -150,6 +150,12 @@ logz error \
 
 ---
 
+#### The image below shows the CLI in action, demonstrating how to log messages at different levels and formats:
+
+![img.png](assets/cli_print.png)
+
+---
+
 ### **Description of Commands and Flags**
 - **`--msg`**: Specifies the log message.
 - **`--output`**: Defines where to output the log (`stdout` for console or a file path).
