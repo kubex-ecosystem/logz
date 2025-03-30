@@ -1,24 +1,41 @@
 #!/usr/bin/env bash
 
-set -e
-
+# This variable are used to customize the script behavior, like repository url and owner
 _OWNER="faelmori"
-_APP_NAME="logz"
-_PROJECT_NAME="logz"
-_LICENSE="Apache License 2.0"
 
-# Function to customize the release URL logic
+# This function is used to get the release URL for the binary.
+# It can be customized to change the URL format or add additional parameters.
+# Actually im using the default logic to construct the URL with the release version, the platform and the architecture
+# with the format .tar.gz or .zip (for windows). Sweet yourself.
 get_release_url() {
-    local version=$1
-    local os=$2
-    local arch=$3
     # Default logic for constructing the release URL
-    echo "https://github.com/${_OWNER}/${_PROJECT_NAME}/releases/download/${version}/${_PROJECT_NAME}_${os}_${arch}.tar.gz"
+    local os="${_PLATFORM%%-*}"
+    local arch="${_PLATFORM##*-}"
+    # If os is windows, set the format to .zip, otherwise .tar.gz
+    local format="${os:zip=tar.gz}"
+
+    echo "https://github.com/${_OWNER}/${_PROJECT_NAME}/releases/download/${_VERSION}/${_PROJECT_NAME}_.${format}"
 }
 
+# The _REPO_ROOT variable is set to the root directory of the repository. One above the script directory.
+_REPO_ROOT="$(dirname "$(dirname "$(realpath "$0")")")"
+
+# The _APP_NAME variable is set to the name of the repository. It is used to identify the application.
+_APP_NAME="$(basename "$_REPO_ROOT")"
+
+# The _PROJECT_NAME variable is set to the name of the project. It is used for display purposes.
+_PROJECT_NAME="$_APP_NAME"
+
+# The _VERSION variable is set to the version of the project. It is used for display purposes.
+_VERSION=$(cat "$_REPO_ROOT/version/CLI_VERSION" 2>/dev/null || echo "v0.0.0")
+
+# The _VERSION variable is set to the version of the project. It is used for display purposes.
+_LICENSE="MIT"
+
+# The _ABOUT variable contains information about the script and its usage.
 _ABOUT="'
 ################################################################################
-  This Script is used to install logz project.
+  This Script is used to install ${_PROJECT_NAME} project, version ${_VERSION}.
 
   Supported OS: Linux, macOS ---> Windows(not supported)
   Supported Architecture: amd64, arm64
@@ -45,16 +62,133 @@ _ABOUT="'
 ################################################################################
 '"
 
+# Variable to store the current running shell
+_CURRENT_SHELL=""
+
+# The _CMD_PATH variable is set to the path of the cmd directory. It is used to
+# identify the location of the main application code.
 _CMD_PATH="$(dirname "$(realpath "$(dirname "$0")")")/cmd"
+
+# The _BUILD_PATH variable is set to the path of the build directory. It is used
+# to identify the location of the build artifacts.
 _BUILD_PATH="$(dirname "${_CMD_PATH}")"
+
+# The _BINARY variable is set to the path of the binary file. It is used to
+# identify the location of the binary file.
 _BINARY="${_BUILD_PATH}/${_APP_NAME}"
+
+# The _LOCAL_BIN variable is set to the path of the local bin directory. It is
+# used to identify the location of the local bin directory.
 _LOCAL_BIN="${HOME:-"~"}/.local/bin"
+
+# The _GLOBAL_BIN variable is set to the path of the global bin directory. It is
+# used to identify the location of the global bin directory.
 _GLOBAL_BIN="/usr/local/bin"
+
+# Color codes for logging
 _SUCCESS="\033[0;32m"
 _WARN="\033[0;33m"
 _ERROR="\033[0;31m"
 _INFO="\033[0;36m"
 _NC="\033[0m"
+
+# The _PLATFORM variable is set to the platform name. It is used to identify the
+# platform on which the script is running.
+_PLATFORM=""
+
+# Create a temporary directory for script cache
+_TEMP_DIR="$(mktemp -d)"
+
+# Diretório temporário para baixar o arquivo
+if test -d "${_TEMP_DIR}"; then
+    log "info" "Temporary directory created: ${_TEMP_DIR}"
+else
+    log "error" "Failed to create temporary directory."
+    return 1
+fi
+
+# Function to clear the script cache
+clear_script_cache() {
+  # Disable the trap for cleanup
+  trap - EXIT HUP INT QUIT ABRT ALRM TERM
+
+  # Check if the temporary directory exists, if not, return
+  if ! test -d "${_TEMP_DIR}"; then
+    return 0
+  fi
+
+  # Remove the temporary directory
+  rm -rf "${_TEMP_DIR}" || true
+  if test -d "${_TEMP_DIR}"; then
+    sudo rm -rf "${_TEMP_DIR}"
+    if test -d "${_TEMP_DIR}"; then
+      log "error" "Failed to remove temporary directory: ${_TEMP_DIR}"
+      return 1
+    else
+      log "success" "Temporary directory removed successfully."
+    fi
+  fi
+
+  return 0
+}
+
+# Function to get the current shell
+get_current_shell() {
+  _CURRENT_SHELL="$(cat /proc/$$/comm)"
+
+  case "${0##*/}" in
+    ${_CURRENT_SHELL}*)
+      shebang="$(head -1 "${0}")"
+      _CURRENT_SHELL="${shebang##*/}"
+      ;;
+  esac
+
+  echo "${_CURRENT_SHELL}"
+
+  return 0
+}
+
+# Set a trap to clean up the temporary directory on exit
+set_trap(){
+  # Get the current shell
+  get_current_shell
+
+  # Set the trap for the current shell and enable error handling, if applicable
+  case "${_CURRENT_SHELL}" in
+    *ksh|*zsh|*bash)
+
+      # Collect all arguments passed to the script into an array without modifying or running them
+      declare -a _FULL_SCRIPT_ARGS="$@"
+
+      # Check if the script is being run in debug mode, if so, enable debug mode on the script output
+      if [[ ${_FULL_SCRIPT_ARGS[*]} =~ ^.*-d.*$ ]]; then
+          set -x
+      fi
+
+      # Set for the current shell error handling and some other options
+      if test "${_CURRENT_SHELL}" = "bash"; then
+        set -o errexit
+        set -o pipefail
+        set -o errtrace
+        set -o functrace
+        shopt -s inherit_errexit
+      fi
+
+      # Set the trap to clear the script cache on exit.
+      # It will handle the following situations: command line exit, hangup, interrupt, quit, abort, alarm, and termination.
+      trap 'clear_script_cache' EXIT HUP INT QUIT ABRT ALRM TERM
+      ;;
+  esac
+
+  return 0
+}
+
+# Call the set_trap function to set up the trap
+set_trap "$@"
+
+# Clear the screen. If the script gets here, it means the script passed the
+# initial checks and the temporary directory was created successfully.
+clear
 
 # Log messages with different levels
 # Arguments:
@@ -86,26 +220,66 @@ log() {
   esac
 }
 
-# Detect the operating system
-# Returns:
-#   OS name (linux, darwin, unsupported)
-get_os() {
-    case "$(uname -s)" in
-        Linux*) echo "linux" ;;
-        Darwin*) echo "darwin" ;;
-        *) echo "unsupported" ;;
-    esac
-}
+# Detect the platform
+what_platform() {
+  local _os=""
+  _os="$(uname -s)"
 
-# Detect the architecture
-# Returns:
-#   Architecture name (amd64, arm64, unsupported)
-get_arch() {
-    case "$(uname -m)" in
-        x86_64) echo "amd64" ;;
-        arm*|aarch64) echo "arm64" ;;
-        *) echo "unsupported" ;;
+  local _arch=""
+  _arch="$(uname -m)"
+
+  case "${_os}" in
+  "Linux")
+    case "${_arch}" in
+    "x86_64")
+      arch=amd64
+      ;;
+    "armv6")
+      arch=armv6l
+      ;;
+    "armv8" | "aarch64")
+      arch=arm64
+      ;;
+    .*386.*)
+      arch=386
+      ;;
     esac
+    platform="linux-${arch}"
+    ;;
+  "Darwin")
+    case "${_arch}" in
+    "x86_64")
+      arch=amd64
+      ;;
+    "arm64")
+      arch=arm64
+      ;;
+    esac
+    platform="darwin-${_arch}"
+    ;;
+  "MINGW" | "MSYS" | "CYGWIN")
+    case "${_arch}" in
+    "x86_64")
+      arch=amd64
+      ;;
+    "arm64")
+      arch=arm64
+      ;;
+    esac
+    platform="windows-${arch}"
+    ;;
+  esac
+
+  if [ -z "${platform}" ]; then
+    log "error" "Unsupported platform: ${_os} ${_arch}"
+    log "error" "Please report this issue to the project maintainers."
+    return 1
+  fi
+
+  _PLATFORM="${platform}"
+
+  echo "${platform}"
+  return 0
 }
 
 # Detect the shell configuration file
@@ -252,13 +426,15 @@ check_path() {
 # Download the binary from the release URL
 download_binary() {
     # Obtem o sistema operacional e a arquitetura
-    os=$(get_os)
-    arch=$(get_arch)
+    if ! what_platform > /dev/null; then
+        log "error" "Failed to detect platform."
+        return 1
+    fi
 
     # Validação: Verificar se o sistema operacional ou a arquitetura são suportados
-    if [ "$os" = "unsupported" ] || [ "$arch" = "unsupported" ]; then
-        log "error" "Unsupported OS or architecture: OS=$os ARCH=$arch."
-        exit 1
+    if test -z "${_PLATFORM}"; then
+        log "error" "Unsupported platform: ${_PLATFORM}"
+        return 1
     fi
 
     # Obter a versão mais recente de forma robusta (fallback para "latest")
@@ -267,36 +443,33 @@ download_binary() {
 
     if [ -z "$version" ]; then
         log "error" "Failed to determine the latest version."
-        exit 1
+        return 1
     fi
 
     # Construir a URL de download usando a função customizável
-    release_url=$(get_release_url "$version" "$os" "$arch")
+    release_url=$(get_release_url)
     log "info" "Downloading ${_APP_NAME} binary for OS=$os, ARCH=$arch, Version=$version..."
-    log "info" "Release URL: $release_url"
+    log "info" "Release URL: ${release_url}"
 
-    # Diretório temporário para baixar o arquivo
-    temp_dir=$(mktemp -d || exit 1)
-    archive_path="${temp_dir}/${_APP_NAME}.tar.gz"
+    archive_path="${_TEMP_DIR}/${_APP_NAME}.tar.gz"
 
     # Realizar o download e validar sucesso
-    if ! curl -L -o "$archive_path" "$release_url"; then
-        log "error" "Failed to download the binary from: $release_url"
-        rm -rf "$temp_dir"
-        exit 1
+    if ! curl -L -o "${archive_path}" "${release_url}"; then
+        log "error" "Failed to download the binary from: ${release_url}"
+        return 1
     fi
     log "success" "Binary downloaded successfully."
 
     # Extração do arquivo para o diretório binário
-    log "info" "Extracting binary to: $(dirname "$_BINARY")"
-    if ! tar -xzf "$archive_path" -C "$(dirname "$_BINARY")"; then
-        log "error" "Failed to extract the binary from: $archive_path"
-        rm -rf "$temp_dir"
+    log "info" "Extracting binary to: $(dirname "${_BINARY}")"
+    if ! tar -xzf "${archive_path}" -C "$(dirname "${_BINARY}")"; then
+        log "error" "Failed to extract the binary from: ${archive_path}"
+        rm -rf "${_TEMP_DIR}"
         exit 1
     fi
 
     # Limpar artefatos temporários
-    rm -rf "$temp_dir"
+    rm -rf "${_TEMP_DIR}"
     log "success" "Binary extracted successfully."
 
     # Verificar se o binário foi extraído com sucesso
@@ -314,42 +487,51 @@ install_from_release() {
     install_binary
 }
 
-# Clear the screen before beginning
-clear
+# Show banner information
+show_banner() {
+    # Print the ABOUT message
+    printf '\n%s\n\n' "${_ABOUT}"
+}
 
-# Print the ABOUT message
-printf '\n%s\n\n' "${_ABOUT}"
+# Main function to handle command line arguments
+main() {
+  # Show the banner information
+  show_banner
 
-# Check if the user has provided a command
-case "$1" in
-    build|BUILD|"-b"|"-B")
-        log "info" "Executing build command..."
-        build_and_validate || exit 1
-        ;;
-    install|INSTALL|"-i"|"-I")
-        log "info" "Executing install command..."
-        read -r -p "Do you want to download the precompiled binary? [y/N] (No will build locally): " c </dev/tty
-        log "info" "User choice: ${c}"
+  # Check if the user has provided a command
+  case "$1" in
+      build|BUILD|"-b"|"-B")
+          log "info" "Executing build command..."
+          build_and_validate || exit 1
+          ;;
+      install|INSTALL|"-i"|"-I")
+          log "info" "Executing install command..."
+          read -r -p "Do you want to download the precompiled binary? [y/N] (No will build locally): " c </dev/tty
+          log "info" "User choice: ${c}"
 
-        if [ "$c" = "y" ] || [ "$c" = "Y" ]; then
-            log "info" "Downloading precompiled binary..."
-            install_from_release || exit 1
-        else
-            log "info" "Building locally..."
-            build_and_validate || exit 1
-            install_binary || exit 1
-        fi
-        summary
-        ;;
-    clean|CLEAN|"-c"|"-C")
-        log "info" "Executing clean command..."
-        clean || exit 1
-        ;;
-    *)
-        log "error" "Invalid command: $1"
-        echo "Usage: $0 {build|install|clean}"
-        exit 1
-        ;;
-esac
+          if [ "$c" = "y" ] || [ "$c" = "Y" ]; then
+              log "info" "Downloading precompiled binary..."
+              install_from_release || exit 1
+          else
+              log "info" "Building locally..."
+              build_and_validate || exit 1
+              install_binary || exit 1
+          fi
+          summary
+          ;;
+      clean|CLEAN|"-c"|"-C")
+          log "info" "Executing clean command..."
+          clean || exit 1
+          ;;
+      *)
+          log "error" "Invalid command: $1"
+          echo "Usage: $0 {build|install|clean}"
+          exit 1
+          ;;
+  esac
+}
+
+# Execute the main function with all script arguments
+main "$@"
 
 exit $?

@@ -1,4 +1,4 @@
-APP_NAME := logz
+APP_NAME := $(shell basename $(shell pwd))
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BINARY_NAME := $(ROOT_DIR)$(APP_NAME)
 CMD_DIR := $(ROOT_DIR)cmd
@@ -88,7 +88,9 @@ help:
 	$(call log, Example: )
 	$(call log,   make install ARGS='--prefix /usr/local')
 	$(call break, b )
+	$(call log, $(APP_NAME) is a tool for managing Kubernetes resources)
+	$(call break, b )
 	$(call log, For more information, visit: )
-	$(call log, 'https://github.com/faelmori/logz.git' )
+	$(call log, 'https://github.com/faelmori/'$(APP_NAME))
 	$(call break, b )
 	$(call success, End of help message)
