@@ -158,6 +158,33 @@ func SetMetadata(key string, value interface{}) {
 	}
 }
 
+// Trace logs a trace message with the given context.
+func Trace(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.Trace(msg, ctx)
+	}
+}
+
+// Notice logs a notice message with the given context.
+func Notice(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.Notice(msg, ctx)
+	}
+}
+
+// Success logs a success message with the given context.
+func Success(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.Success(msg, ctx)
+	}
+}
+
 // Debug logs a debug message with the given context.
 func Debug(msg string, ctx map[string]interface{}) {
 	//mu.RLock()

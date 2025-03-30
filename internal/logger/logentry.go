@@ -11,11 +11,15 @@ import (
 type LogLevel string
 
 const (
-	DEBUG LogLevel = "DEBUG"
-	INFO  LogLevel = "INFO"
-	WARN  LogLevel = "WARN"
-	ERROR LogLevel = "ERROR"
-	FATAL LogLevel = "FATAL"
+	DEBUG   LogLevel = "DEBUG"
+	TRACE   LogLevel = "TRACE"
+	NOTICE  LogLevel = "NOTICE"
+	INFO    LogLevel = "INFO"
+	SUCCESS LogLevel = "SUCCESS"
+	WARN    LogLevel = "WARN"
+	ERROR   LogLevel = "ERROR"
+	FATAL   LogLevel = "FATAL"
+	SILENT  LogLevel = "SILENT"
 )
 
 // LogzEntry represents a single log entry with various attributes.

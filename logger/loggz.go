@@ -28,6 +28,12 @@ type LogFormatter = logger.LogFormatter
 type LogzCore interface {
 	// SetMetadata sets a metadata key-value pair.
 	SetMetadata(key string, value interface{})
+	// Trace logs a trace message with context.
+	Trace(msg string, ctx map[string]interface{})
+	// Notice logs a notice message with context.
+	Notice(msg string, ctx map[string]interface{})
+	// Success logs a success message with context.
+	Success(msg string, ctx map[string]interface{})
 	// Debug logs a debug message with context.
 	Debug(msg string, ctx map[string]interface{})
 	// Info logs an informational message with context.
@@ -122,6 +128,21 @@ func (l *logzLogger) Panicf(format string, v ...interface{}) {
 // Panicln logs a message with a newline using the standard Go logger and panics.
 func (l *logzLogger) Panicln(v ...interface{}) {
 	l.logger.Panicln(v...)
+}
+
+// Trace logs a trace message with context.
+func (l *logzLogger) Trace(msg string, ctx map[string]interface{}) {
+	l.coreLogger.Trace(msg, ctx)
+}
+
+// Notice logs a notice message with context.
+func (l *logzLogger) Notice(msg string, ctx map[string]interface{}) {
+	l.coreLogger.Notice(msg, ctx)
+}
+
+// Success logs a success message with context.
+func (l *logzLogger) Success(msg string, ctx map[string]interface{}) {
+	l.coreLogger.Success(msg, ctx)
 }
 
 // Debug logs a debug message with context.

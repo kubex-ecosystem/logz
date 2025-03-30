@@ -26,11 +26,15 @@ const (
 )
 
 var logLevels = map[LogLevel]int{
-	DEBUG: 1,
-	INFO:  2,
-	WARN:  3,
-	ERROR: 4,
-	FATAL: 5,
+	DEBUG:   1,
+	TRACE:   2,
+	INFO:    3,
+	NOTICE:  4,
+	SUCCESS: 5,
+	WARN:    6,
+	ERROR:   7,
+	FATAL:   8,
+	SILENT:  9,
 }
 
 // LogzCoreImpl represents a logger with configuration and metadata.
@@ -152,9 +156,11 @@ func (l *LogzCoreImpl) log(level LogLevel, msg string, ctx map[string]interface{
 		entry.AddMetadata(k, v)
 	}
 
-	// Write the log using the configured writer
-	if err := l.writer.Write(entry); err != nil {
-		log.Printf("Error writing log: %v", err)
+	if level != SILENT {
+		// Write the log using the configured writer
+		if err := l.writer.Write(entry); err != nil {
+			log.Printf("Error writing log: %v", err)
+		}
 	}
 
 	// Only in service mode, notify via Notifiers
@@ -185,6 +191,15 @@ func (l *LogzCoreImpl) log(level LogLevel, msg string, ctx map[string]interface{
 		os.Exit(1)
 	}
 }
+
+// Trace logs a trace message with context.
+func (l *LogzCoreImpl) Trace(msg string, ctx map[string]interface{}) { l.log(TRACE, msg, ctx) }
+
+// Notice logs a notice message with context.
+func (l *LogzCoreImpl) Notice(msg string, ctx map[string]interface{}) { l.log(NOTICE, msg, ctx) }
+
+// Success logs a success message with context.
+func (l *LogzCoreImpl) Success(msg string, ctx map[string]interface{}) { l.log(SUCCESS, msg, ctx) }
 
 // Debug logs a debug message with context.
 func (l *LogzCoreImpl) Debug(msg string, ctx map[string]interface{}) { l.log(DEBUG, msg, ctx) }

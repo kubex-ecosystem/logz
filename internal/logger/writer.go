@@ -49,6 +49,12 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 
 	if !noIcon {
 		switch entry.GetLevel() {
+		case NOTICE:
+			icon = "\033[33m📝\033[0m "
+		case TRACE:
+			icon = "\033[36m🔍\033[0m "
+		case SUCCESS:
+			icon = "\033[32m✅\033[0m "
 		case DEBUG:
 			icon = "\033[34m🐛\033[0m "
 		case INFO:
@@ -69,6 +75,12 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 	// Configure colors and icons by level
 	if !noColor {
 		switch entry.GetLevel() {
+		case NOTICE:
+			levelStr = "\033[33mNOTICE\033[0m"
+		case TRACE:
+			levelStr = "\033[36mTRACE\033[0m"
+		case SUCCESS:
+			levelStr = "\033[32mSUCCESS\033[0m"
 		case DEBUG:
 			levelStr = "\033[34mDEBUG\033[0m"
 		case INFO:
@@ -156,6 +168,7 @@ func (w *DefaultWriter) Write(entry LogzEntry) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = fmt.Fprintln(w.out, formatted)
 	return err
 }
