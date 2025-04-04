@@ -14,7 +14,7 @@ type LogLevel = il.LogLevel
 type LogFormat = il.LogFormat
 
 // LogWriter represents the writer of the log entry.
-type LogWriter = il.LogWriter
+type LogWriter[T any] = il.LogWriter[T]
 
 // Config represents the configuration of the il.
 type Config = il.Config
@@ -50,9 +50,9 @@ type LogzCore interface {
 	// SetLevel sets the log level.
 	SetLevel(level LogLevel)
 	// GetWriter returns the current writer.
-	GetWriter() LogWriter
+	GetWriter() LogWriter[any]
 	// SetWriter sets the writer.
-	SetWriter(writer LogWriter)
+	SetWriter(writer LogWriter[any])
 	// GetConfig returns the current configuration.
 	GetConfig() Config
 	// SetConfig sets the configuration.
@@ -183,10 +183,10 @@ func (l *logzLogger) GetLevel() LogLevel { return l.coreLogger.GetLevel() }
 func (l *logzLogger) SetLevel(level LogLevel) { l.coreLogger.SetLevel(level) }
 
 // GetWriter returns the current writer.
-func (l *logzLogger) GetWriter() LogWriter { return l.coreLogger.GetWriter() }
+func (l *logzLogger) GetWriter() LogWriter[any] { return l.coreLogger.GetWriter() }
 
 // SetWriter sets the writer.
-func (l *logzLogger) SetWriter(writer LogWriter) { l.coreLogger.SetWriter(writer) }
+func (l *logzLogger) SetWriter(writer LogWriter[any]) { l.coreLogger.SetWriter(writer) }
 
 // GetConfig returns the current configuration.
 func (l *logzLogger) GetConfig() Config { return l.coreLogger.GetConfig() }
@@ -211,4 +211,8 @@ func NewLogger(prefix string) LogzLogger {
 		),
 		coreLogger: lgr,
 	}
+}
+
+func NewDefaultWriter[T any](out *os.File, formatter LogFormatter) *il.DefaultWriter[T] {
+	return il.NewDefaultWriter[T](out, formatter)
 }

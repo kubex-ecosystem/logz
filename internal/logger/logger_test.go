@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bytes"
+	"github.com/spf13/viper"
 	"os"
 	"sync"
 	"testing"
@@ -61,7 +62,7 @@ func TestLogMethods(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	logger.SetWriter(NewDefaultWriter(&buf, &TextFormatter{}))
+	logger.SetWriter(NewDefaultWriter[any](&buf, &TextFormatter{}))
 
 	logger.Debug("debug message", nil)
 	if !bytes.Contains(buf.Bytes(), []byte("DEBUG")) {

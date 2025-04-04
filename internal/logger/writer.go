@@ -8,12 +8,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"reflect"
 	"runtime"
-	"strconv"
-	"strings"
 )
 
 // LogFormatter defines the contract for formatting log entries.
@@ -164,64 +160,48 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 }
 
 // LogWriter defines the contract for writing logs.
-type LogWriter interface {
-	// Write writes a formatted log entry.
-	// Returns an error if writing fails.
-	Write(entry LogzEntry) error
-}
-
-// DefaultWriter implements LogWriter using an io.Writer and a LogFormatter.
-type DefaultWriter struct {
-	out       io.Writer
-	formatter LogFormatter
+type LogWriter[T any] interface {
+	Write(entry T) error
 }
 
 // NewDefaultWriter creates a new instance of DefaultWriter.
 // Takes an io.Writer and a LogFormatter as parameters.
-func NewDefaultWriter(out io.Writer, formatter LogFormatter) *DefaultWriter {
-	return &DefaultWriter{
+type DefaultWriter[T any] struct {
+	out       io.Writer
+	formatter LogFormatter
+}
+
+// NewDefaultWriter cria um novo writer usando generics.
+func NewDefaultWriter[T any](out io.Writer, formatter LogFormatter) *DefaultWriter[T] {
+	return &DefaultWriter[T]{
 		out:       out,
 		formatter: formatter,
 	}
 }
 
-// Write formats the entry and writes it to the configured destination.
-// Returns an error if formatting or writing fails.
-func (w *DefaultWriter) Write(entry LogzEntry) error {
-	formatted, err := w.formatter.Format(entry)
+// Write aceita qualquer tipo de entrada T e a processa.
+func (w *DefaultWriter[T]) Write(entry T) error {
+	var formatted string
+	var err error
+
+	// Verifique se a entrada é do tipo LogzEntry
+	switch v := any(entry).(type) {
+	case LogzEntry:
+		formatted, err = w.formatter.Format(v)
+	case []byte:
+		// Converta o []byte em LogzEntry antes de formatar (exemplo simplificado)
+		entry := NewLogEntry().WithMessage(string(v))
+		formatted, err = w.formatter.Format(entry)
+	default:
+		return fmt.Errorf("unsupported log entry type: %T", entry)
+	}
+
 	if err != nil {
 		return err
 	}
 
 	_, err = fmt.Fprintln(w.out, formatted)
 	return err
-}
-
-func Writer(module string) io.Writer {
-	currentPid := os.Getpid()
-	logFileName := strings.Join([]string{module, "logz_", strconv.Itoa(currentPid), ".log"}, "")
-	cacheDir, cacheDirErr := os.UserCacheDir()
-	if cacheDirErr != nil || cacheDir == "" {
-		cacheDir = os.TempDir()
-	}
-	logFilePath := filepath.Join(cacheDir, logFileName)
-	if logFileStatErr := os.Remove(logFilePath); logFileStatErr == nil {
-		cmdRm := fmt.Sprintf("rm -f %s", logFilePath)
-		if _, cmdRmErr := exec.Command("bash", "-c", cmdRm).Output(); cmdRmErr != nil {
-			fmt.Println(cmdRmErr)
-			return os.Stdout
-		}
-	}
-	if logFilePathErr := os.MkdirAll(filepath.Dir(logFilePath), 0777); logFilePathErr != nil {
-		fmt.Println(logFilePathErr)
-		return os.Stdout
-	}
-	logFile, logFileErr := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
-	if logFileErr != nil {
-		fmt.Println(logFileErr)
-		return os.Stdout
-	}
-	return logFile
 }
 
 // formatMetadata converts metadata to a JSON string.
@@ -239,4 +219,21 @@ func formatMetadata(entry LogzEntry) string {
 		prefix += fmt.Sprintf("  - %s: %v\n", k, v)
 	}
 	return prefix
+}
+
+type MultiWriter[T any] struct {
+	writers []LogWriter[T]
+}
+
+func (mw *MultiWriter[T]) AddWriter(w LogWriter[T]) {
+	mw.writers = append(mw.writers, w)
+}
+
+func (mw *MultiWriter[T]) Write(entry T) error {
+	for _, w := range mw.writers {
+		if err := w.Write(entry); err != nil {
+			return err
+		}
+	}
+	return nil
 }

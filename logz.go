@@ -1,6 +1,7 @@
 package logz
 
 import (
+	"encoding/json"
 	"fmt"
 	core "github.com/faelmori/logz/internal/logger"
 	logz "github.com/faelmori/logz/logger"
@@ -19,12 +20,66 @@ var (
 
 type LogLevel = core.LogLevel
 type LogFormat = core.LogFormat
+
 type Config = core.Config
 type ConfigManager = core.LogzConfigManager
 type NotifierManager = core.NotifierManager
 type Notifier = core.Notifier
 type Logger = logz.LogzLogger
-type Writer = core.LogWriter
+
+type JSONFormatter = core.JSONFormatter
+type TextFormatter = core.TextFormatter
+
+type Writer struct{ core.LogWriter[any] }
+
+func (w Writer) Write(p []byte) (n int, err error) {
+	var decodedMessage map[string]interface{}
+	if jsonErr := json.Unmarshal(p, &decodedMessage); jsonErr == nil {
+		entry := core.NewLogEntry().
+			WithMessage(decodedMessage["message"].(string)).
+			WithLevel(GetLogLevel()).
+			AddMetadata("original", decodedMessage)
+
+		writeErr := w.LogWriter.Write(entry)
+		if writeErr != nil {
+			return 0, writeErr
+		}
+	} else {
+		entry := core.NewLogEntry().
+			WithMessage(string(p)).
+			WithLevel(GetLogLevel())
+		writeErr := w.LogWriter.Write(entry)
+		if writeErr != nil {
+			return 0, writeErr
+		}
+	}
+
+	return len(p), nil
+}
+
+// SetLogWriter sets the log writer for the global logger.
+func SetLogWriter(writer Writer) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	if logger != nil {
+		nWriter := core.NewDefaultWriter[any](writer, &TextFormatter{})
+		logger.SetWriter(nWriter)
+	}
+}
+
+// GetLogWriter returns the log writer of the global logger.
+func GetLogWriter() *Writer {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger == nil {
+		return nil
+	}
+	return &Writer{LogWriter: logger.GetWriter()}
+}
+
+func NewWriter(out *os.File, formatter core.LogFormatter) Writer {
+	return Writer{LogWriter: logz.NewDefaultWriter[any](out, formatter)}
+}
 
 // initializeLogger initializes the global logger with the given prefix.
 func initializeLogger(prefix string) {
@@ -109,25 +164,6 @@ func GetLogLevel() LogLevel {
 		return core.DEBUG
 	}
 	return logger.GetLevel()
-}
-
-// SetLogWriter sets the log writer for the global logger.
-func SetLogWriter(writer Writer) {
-	//mu.Lock()
-	//defer mu.Unlock()
-	if logger != nil {
-		logger.SetWriter(writer)
-	}
-}
-
-// GetLogWriter returns the log writer of the global logger.
-func GetLogWriter() Writer {
-	//mu.RLock()
-	//defer mu.RUnlock()
-	if logger == nil {
-		return nil
-	}
-	return logger.GetWriter()
 }
 
 // SetLogConfig sets the configuration for the global logger.

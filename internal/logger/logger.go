@@ -40,7 +40,7 @@ var logLevels = map[LogLevel]int{
 // LogzCoreImpl represents a logger with configuration and metadata.
 type LogzCoreImpl struct {
 	level    LogLevel
-	writer   LogWriter
+	writer   LogWriter[any]
 	config   Config
 	metadata map[string]interface{}
 	mode     LogMode // Mode control: service or standalone
@@ -101,7 +101,7 @@ func NewLogger(config Config) *LogzCoreImpl {
 	} else {
 		formatter = &TextFormatter{}
 	}
-	writer := NewDefaultWriter(out, formatter)
+	writer := NewDefaultWriter[any](out, formatter)
 
 	// Read the mode from Config
 	mode := config.Mode()
@@ -219,8 +219,8 @@ func (l *LogzCoreImpl) FatalC(msg string, ctx map[string]interface{}) { l.log(FA
 func (l *LogzCoreImpl) SetLevel(level LogLevel) { l.level = level }
 func (l *LogzCoreImpl) GetLevel() LogLevel      { return l.level }
 
-func (l *LogzCoreImpl) SetWriter(writer LogWriter) { l.writer = writer }
-func (l *LogzCoreImpl) GetWriter() LogWriter       { return l.writer }
+func (l *LogzCoreImpl) SetWriter(writer LogWriter[any]) { l.writer = writer }
+func (l *LogzCoreImpl) GetWriter() LogWriter[any]       { return l.writer }
 
 func (l *LogzCoreImpl) GetMode() LogMode { return l.mode }
 
