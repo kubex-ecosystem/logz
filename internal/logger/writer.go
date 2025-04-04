@@ -1,10 +1,11 @@
 package logger
 
 import (
-	"encoding/json"
-	"fmt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"

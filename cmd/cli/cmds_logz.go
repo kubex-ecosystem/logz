@@ -1,9 +1,11 @@
 package cli
 
 import (
-	"fmt"
-	"github.com/faelmori/logz/internal/logger"
+	il "github.com/faelmori/logz/internal/logger"
+
 	"github.com/spf13/cobra"
+
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -45,7 +47,7 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
@@ -59,14 +61,14 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			}
 
 			if format != "" {
-				config.SetFormat(logger.LogFormat(format))
+				config.SetFormat(il.LogFormat(format))
 			}
 
 			if output != "" {
 				config.SetOutput(output)
 			}
 
-			logr := logger.NewLogger(config)
+			logr := il.NewLogger(config)
 			for k, v := range metaData {
 				logr.SetMetadata(k, v)
 			}
@@ -120,7 +122,7 @@ func rotateLogsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
@@ -133,7 +135,7 @@ func rotateLogsCmd() *cobra.Command {
 				return
 			}
 
-			err = logger.CheckLogSize(config)
+			err = il.CheckLogSize(config)
 			if err != nil {
 				fmt.Printf("Error rotating logs: %v\n", err)
 			} else {
@@ -157,7 +159,7 @@ func checkLogSizeCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
@@ -171,7 +173,7 @@ func checkLogSizeCmd() *cobra.Command {
 			}
 
 			logDir := config.Output()
-			logSize, err := logger.GetLogDirectorySize(filepath.Dir(logDir)) // Add this function to logger
+			logSize, err := il.GetLogDirectorySize(filepath.Dir(logDir)) // Add this function to logger
 			if err != nil {
 				fmt.Printf("Error calculating log size: %v\n", err)
 				return
@@ -198,7 +200,7 @@ func archiveLogsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			err := logger.ArchiveLogs(nil)
+			err := il.ArchiveLogs(nil)
 			if err != nil {
 				fmt.Printf("Error archiving logs: %v\n", err)
 			} else {
@@ -223,7 +225,7 @@ func watchLogsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
 				fmt.Println("Error initializing ConfigManager.")
 				return
@@ -237,7 +239,7 @@ func watchLogsCmd() *cobra.Command {
 			}
 
 			logFilePath := config.Output()
-			reader := logger.NewFileLogReader()
+			reader := il.NewFileLogReader()
 			stopChan := make(chan struct{})
 
 			// Capture signals for interruption

@@ -1,9 +1,10 @@
 package logger
 
 import (
-	"fmt"
 	"github.com/godbus/dbus/v5"
 	"github.com/spf13/viper"
+
+	"fmt"
 	"net/http"
 	"sync"
 )

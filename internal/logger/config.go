@@ -1,10 +1,11 @@
 package logger
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
+
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"

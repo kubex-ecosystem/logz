@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/faelmori/logz/cmd/cli"
-	"github.com/faelmori/logz/version"
+	cc "github.com/faelmori/logz/cmd/cli"
+	vs "github.com/faelmori/logz/version"
+
 	"github.com/spf13/cobra"
+
 	"os"
 	"strings"
 )
@@ -23,7 +25,7 @@ func (m *Logz) ShortDescription() string {
 
 // LongDescription provides a detailed description of the logz command.
 func (m *Logz) LongDescription() string {
-	return "The \"logz\" command-line interface (CLI) is an intuitive and user-friendly logger and log management module designed for developers. Integrated with Prometheus for monitoring, \"logz\" ensures comprehensive log management and is compatible with other plugins and the Go programming language making it a versatile tool for maintaining system health and performance."
+	return "The \"logz\" command-line interface (CLI) is an intuitive and user-friendly logger and log management module designed for developers.\nIntegrated with Prometheus for monitoring, \"logz\" ensures comprehensive log management and is compatible with other plugins and\nthe Go programming language making it a versatile tool for maintaining system health and performance."
 }
 
 // Usage returns the usage information for the logz command.
@@ -60,7 +62,8 @@ func (m *Logz) Command() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         m.Module(),
-		Annotations: cli.GetDescriptions([]string{m.LongDescription(), m.ShortDescription()}, false),
+		Annotations: cc.GetDescriptions([]string{m.LongDescription(), m.ShortDescription()}, false),
+		Version:     vs.GetVersion(),
 		Run: func(cmd *cobra.Command, args []string) {
 			// Placeholder for the command execution logic
 			// return logzCmd.NewLogger([]string{logType, message, name, strconv.FormatBool(quiet), show, strconv.FormatBool(follow), clearLogs, archive}...))
@@ -79,11 +82,11 @@ func (m *Logz) Command() *cobra.Command {
 	//cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Quiet mode")
 
 	// Add subcommands to the logz command
-	cmd.AddCommand(cli.LogzCmds()...)
-	cmd.AddCommand(cli.ServiceCmd())
-	cmd.AddCommand(cli.MetricsCmd())
+	cmd.AddCommand(cc.LogzCmds()...)
+	cmd.AddCommand(cc.ServiceCmd())
+	cmd.AddCommand(cc.MetricsCmd())
 
-	cmd.AddCommand(version.CliCommand())
+	cmd.AddCommand(vs.CliCommand())
 
 	// Set usage definitions for the command and its subcommands
 	setUsageDefinition(cmd)

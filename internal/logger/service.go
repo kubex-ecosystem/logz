@@ -1,13 +1,13 @@
 package logger
 
 import (
+	"github.com/godbus/dbus/v5"
+	"github.com/spf13/viper"
+
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/godbus/dbus/v5"
-
-	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"net/url"

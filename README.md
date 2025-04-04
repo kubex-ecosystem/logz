@@ -1,4 +1,4 @@
-![Logz Banner](./assets/top_banner.png)
+![Logz Banner](docs/assets/top_banner.png)
 
 ---
 
@@ -152,7 +152,7 @@ logz error \
 
 #### The image below shows the CLI in action, demonstrating how to log messages at different levels and formats:
 
-![img.png](assets/cli_print.png)
+![img.png](docs/assets/cli_print.png)
 
 ---
 
@@ -211,7 +211,7 @@ scrape_configs:
 ---
 
 ## **Contributing**
-Contributions are welcome! Feel free to open issues or submit pull requests. Check out the [Contributing Guide](CONTRIBUTING.md) for more details.
+Contributions are welcome! Feel free to open issues or submit pull requests. Check out the [Contributing Guide](docs/CONTRIBUTING.md) for more details.
 
 ---
 

@@ -3,7 +3,7 @@ ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 BINARY_NAME := $(ROOT_DIR)$(APP_NAME)
 CMD_DIR := $(ROOT_DIR)cmd
 INSTALL_SCRIPT=$(ROOT_DIR)scripts/install.sh
-ARGS :=
+ARGS :=s
 
 # Colors
 COLOR_RESET := \033[0m

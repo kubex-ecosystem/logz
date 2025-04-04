@@ -14,7 +14,7 @@ var (
 	logger Logger   // Global logger instance
 	//mu             sync.RWMutex // Mutex for concurrency control
 	once           sync.Once // Ensure single initialization
-	versionService vs.VersionService
+	versionService vs.Service
 )
 
 type LogLevel = core.LogLevel

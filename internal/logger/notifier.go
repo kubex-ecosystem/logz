@@ -1,12 +1,12 @@
 package logger
 
 import (
-	"fmt"
 	"github.com/godbus/dbus/v5"
+
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
-
 	"strings"
 )
 

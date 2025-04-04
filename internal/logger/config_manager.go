@@ -1,15 +1,15 @@
 package logger
 
 import (
+	c "github.com/faelmori/kubex-interfaces/config"
+
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
-
-	c "github.com/faelmori/kubex-interfaces/config"
 )
 
-// LogzConfig específica do Logz
+// LogzConfig specific to Logz
 type LogzConfig struct {
 	LogLevel     string
 	LogFormat    string
@@ -21,15 +21,15 @@ type LogzConfig struct {
 
 func (lc *LogzConfig) Validate() error {
 	if lc.LogLevel == "" {
-		return fmt.Errorf("LogLevel não pode estar vazio")
+		return fmt.Errorf("LogLevel cannot be empty")
 	}
 	if lc.LogFilePath == "" {
-		return fmt.Errorf("LogFilePath não pode estar vazio")
+		return fmt.Errorf("LogFilePath cannot be empty")
 	}
 	return nil
 }
 
-// LogzConfigManager com suporte a validação
+// LogzConfigManager with validation support
 type LogzConfigManager struct {
 	c.ConfigManager[LogzConfig]
 	config *LogzConfig
@@ -45,7 +45,7 @@ func (lcm *LogzConfigManager) ValidateConfig() error {
 	if config, ok := any(lcm).(c.Configurable); ok {
 		return config.Validate()
 	}
-	return fmt.Errorf("configuração não valida ou sem suporte a validação")
+	return fmt.Errorf("invalid configuration or validation not supported")
 }
 
 func (lcm *LogzConfigManager) GetConfig() *LogzConfig { return lcm.config }
@@ -142,23 +142,23 @@ func (lcm *LogzConfigManager) GetFormatter() LogFormatter {
 	}
 }
 
-//// LoadConfig loads the configuration from the file and returns a Config instance.
-//func (lcm *LogzConfigManager) LoadConfig() (*LogzConfig, error) {
-//	cfg, err := InitConfigManager()
-//	if err != nil {
-//		return nil, fmt.Errorf("falha ao inicializar o gerenciador de configuração: %w", err)
-//	}
-//
-//	// Load the configuration from the file
-//	cf := cfg.GetConfig()
-//
-//	// Validate the configuration
-//	if err := cf.Validate(); err != nil {
-//		return nil, fmt.Errorf("falha ao validar a configuração: %w", err)
-//	}
-//
-//	// Save the configuration
-//	lcm.config = &cf
-//
-//	return lcm.config, nil
-//}
+// LoadConfig loads the configuration from the file and returns a Config instance.
+// func (lcm *LogzConfigManager) LoadConfig() (*LogzConfig, error) {
+// 	cfg, err := InitConfigManager()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to initialize the configuration manager: %w", err)
+// 	}
+
+// 	// Load the configuration from the file
+// 	cf := cfg.GetConfig()
+
+// 	// Validate the configuration
+// 	if err := cf.Validate(); err != nil {
+// 		return nil, fmt.Errorf("failed to validate the configuration: %w", err)
+// 	}
+
+// 	// Save the configuration
+// 	lcm.config = &cf
+
+// 	return lcm.config, nil
+// }

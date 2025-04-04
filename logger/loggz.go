@@ -1,30 +1,31 @@
 package logger
 
 import (
-	"github.com/faelmori/logz/internal/logger"
+	il "github.com/faelmori/logz/internal/logger"
+
 	"log"
 	"os"
 )
 
 // LogLevel represents the level of the log entry.
-type LogLevel = logger.LogLevel
+type LogLevel = il.LogLevel
 
 // LogFormat represents the format of the log entry.
-type LogFormat = logger.LogFormat
+type LogFormat = il.LogFormat
 
 // LogWriter represents the writer of the log entry.
-type LogWriter = logger.LogWriter
+type LogWriter = il.LogWriter
 
-// Config represents the configuration of the logger.
-type Config = logger.Config
+// Config represents the configuration of the il.
+type Config = il.Config
 
 // LogzEntry represents a single log entry with various attributes.
-type LogzEntry = logger.LogzEntry
+type LogzEntry = il.LogzEntry
 
 // LogFormatter defines the contract for formatting log entries.
-type LogFormatter = logger.LogFormatter
+type LogFormatter = il.LogFormatter
 
-// LogzCore is the interface with the basic methods of the existing logger.
+// LogzCore is the interface with the basic methods of the existing il.
 type LogzCore interface {
 	// SetMetadata sets a metadata key-value pair.
 	SetMetadata(key string, value interface{})
@@ -82,7 +83,7 @@ type LogzLogger interface {
 // logzLogger is the implementation of the LoggerInterface, unifying the new LogzCoreImpl and the old one.
 type logzLogger struct {
 	logger     *log.Logger
-	coreLogger *logger.LogzCoreImpl
+	coreLogger *il.LogzCoreImpl
 }
 
 // Print logs a message using the standard Go logger.
@@ -201,13 +202,13 @@ func NewLogger(prefix string) LogzLogger {
 	//	fmt.Printf("Error loading configuration: %v\n", err)
 	//	return nil
 	//}
-	logr := logger.NewLogger(nil)
+	lgr := il.NewLogger(nil)
 	return &logzLogger{
 		logger: log.New(
 			os.Stdout,
 			prefix,
 			log.LstdFlags,
 		),
-		coreLogger: logr,
+		coreLogger: lgr,
 	}
 }
