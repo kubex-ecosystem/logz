@@ -1,6 +1,6 @@
-package logger
+package core
 
-import (
+/*import (
 	iKbxCfg "github.com/faelmori/kubex-interfaces/config"
 
 	"fmt"
@@ -68,3 +68,4 @@ func GetLoggerInstance(name string, config *iKbxCfg.ConfigManager[LogzConfig]) (
 	loggerRegistry[name] = newLogger
 	return newLogger, nil
 }
+*/

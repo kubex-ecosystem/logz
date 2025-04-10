@@ -13,7 +13,7 @@ const BinaryName = "logz"
 func installLogz() {
 	err := installBinary(BinaryName)
 	if err != nil {
-		fmt.Printf("Error during installation: %v\n", err)
+		fmt.Printf("ErrorCtx during installation: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("Installation complete!")

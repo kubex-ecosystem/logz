@@ -1,4 +1,4 @@
-package logger
+package core
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// LogLevel represents the severity level of a log entry.
+// LogLevel represents the severity VLevel of a log entry.
 type LogLevel string
 
 const (
@@ -24,7 +24,7 @@ const (
 
 // LogzEntry represents a single log entry with various attributes.
 type LogzEntry interface {
-	// WithLevel sets the log level for the LogEntry.
+	// WithLevel sets the log VLevel for the LogEntry.
 	WithLevel(level LogLevel) LogzEntry
 	// WithSource sets the source for the LogEntry.
 	WithSource(source string) LogzEntry
@@ -36,15 +36,15 @@ type LogzEntry interface {
 	WithProcessID(pid int) LogzEntry
 	// WithHostname sets the hostname for the LogEntry.
 	WithHostname(hostname string) LogzEntry
-	// WithSeverity sets the severity level for the LogEntry.
+	// WithSeverity sets the severity VLevel for the LogEntry.
 	WithSeverity(severity int) LogzEntry
 	// WithTraceID sets the trace ID for the LogEntry.
 	WithTraceID(traceID string) LogzEntry
 	// AddTag adds a tag to the LogEntry.
 	AddTag(key, value string) LogzEntry
-	// AddMetadata adds metadata to the LogEntry.
+	// AddMetadata adds VMetadata to the LogEntry.
 	AddMetadata(key string, value interface{}) LogzEntry
-	// GetMetadata returns the metadata of the LogEntry.
+	// GetMetadata returns the VMetadata of the LogEntry.
 	GetMetadata() map[string]interface{}
 	// GetContext returns the context of the LogEntry.
 	GetContext() string
@@ -52,7 +52,7 @@ type LogzEntry interface {
 	GetTimestamp() time.Time
 	// GetMessage returns the message of the LogEntry.
 	GetMessage() string
-	// GetLevel returns the log level of the LogEntry.
+	// GetLevel returns the log VLevel of the LogEntry.
 	GetLevel() LogLevel
 	// GetSource returns the source of the LogEntry.
 	GetSource() string
@@ -64,18 +64,18 @@ type LogzEntry interface {
 
 // LogEntry represents a single log entry with various attributes.
 type LogEntry struct {
-	Timestamp time.Time              `json:"timestamp"`          // The time when the log entry was created.
-	Level     LogLevel               `json:"level"`              // The severity level of the log entry.
-	Source    string                 `json:"source"`             // The source of the log entry.
-	Context   string                 `json:"context,omitempty"`  // Additional context for the log entry.
-	Message   string                 `json:"message"`            // The log message.
-	Tags      map[string]string      `json:"tags,omitempty"`     // Optional tags associated with the log entry.
-	Metadata  map[string]interface{} `json:"metadata,omitempty"` // Optional metadata associated with the log entry.
-	ProcessID int                    `json:"pid,omitempty"`      // The process ID associated with the log entry.
-	Hostname  string                 `json:"hostname,omitempty"` // The hostname where the log entry was created.
-	Severity  int                    `json:"severity"`           // The severity level as an integer.
-	TraceID   string                 `json:"trace_id,omitempty"` // Optional trace ID for tracing logs.
-	Caller    string                 `json:"caller,omitempty"`   // The caller of the log entry.
+	Timestamp time.Time              `json:"timestamp"`           // The time when the log entry was created.
+	Level     LogLevel               `json:"VLevel"`              // The severity VLevel of the log entry.
+	Source    string                 `json:"source"`              // The source of the log entry.
+	Context   string                 `json:"context,omitempty"`   // Additional context for the log entry.
+	Message   string                 `json:"message"`             // The log message.
+	Tags      map[string]string      `json:"tags,omitempty"`      // Optional tags associated with the log entry.
+	Metadata  map[string]interface{} `json:"VMetadata,omitempty"` // Optional VMetadata associated with the log entry.
+	ProcessID int                    `json:"pid,omitempty"`       // The process ID associated with the log entry.
+	Hostname  string                 `json:"hostname,omitempty"`  // The hostname where the log entry was created.
+	Severity  int                    `json:"severity"`            // The severity VLevel as an integer.
+	TraceID   string                 `json:"trace_id,omitempty"`  // Optional trace ID for tracing logs.
+	Caller    string                 `json:"caller,omitempty"`    // The caller of the log entry.
 }
 
 // NewLogEntry creates a new instance of LogEntry with the current timestamp and initialized maps.
@@ -89,7 +89,7 @@ func NewLogEntry() LogzEntry {
 	return &le
 }
 
-// WithLevel sets the log level for the LogEntry.
+// WithLevel sets the log VLevel for the LogEntry.
 func (le *LogEntry) WithLevel(level LogLevel) LogzEntry {
 	le.Level = level
 	return le
@@ -125,7 +125,7 @@ func (le *LogEntry) WithHostname(hostname string) LogzEntry {
 	return le
 }
 
-// WithSeverity sets the severity level for the LogEntry.
+// WithSeverity sets the severity VLevel for the LogEntry.
 func (le *LogEntry) WithSeverity(severity int) LogzEntry {
 	le.Severity = severity
 	return le
@@ -146,10 +146,10 @@ func (le *LogEntry) AddTag(key, value string) LogzEntry {
 	return le
 }
 
-// GetLevel returns the log level of the LogEntry.
+// GetLevel returns the log VLevel of the LogEntry.
 func (le *LogEntry) GetLevel() LogLevel { return le.Level }
 
-// AddMetadata adds metadata to the LogEntry.
+// AddMetadata adds VMetadata to the LogEntry.
 func (le *LogEntry) AddMetadata(key string, value interface{}) LogzEntry {
 	if le.Metadata == nil {
 		le.Metadata = make(map[string]interface{})
@@ -158,7 +158,7 @@ func (le *LogEntry) AddMetadata(key string, value interface{}) LogzEntry {
 	return le
 }
 
-// GetMetadata returns the metadata of the LogEntry.
+// GetMetadata returns the VMetadata of the LogEntry.
 func (le *LogEntry) GetMetadata() map[string]interface{} { return le.Metadata }
 
 // GetContext returns the context of the LogEntry.
@@ -179,7 +179,7 @@ func (le *LogEntry) Validate() error {
 		return errors.New("timestamp is required")
 	}
 	if le.Level == "" {
-		return errors.New("level is required")
+		return errors.New("VLevel is required")
 	}
 	if le.Message == "" {
 		return errors.New("message is required")

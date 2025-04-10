@@ -1,4 +1,4 @@
-package logger
+package core
 
 import (
 	"golang.org/x/text/language"
@@ -70,7 +70,7 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 		icon = ""
 	}
 
-	// Configure colors and icons by level
+	// Configure colors and icons by VLevel
 	if !noColor {
 		switch entry.GetLevel() {
 		case NOTICE:
@@ -171,7 +171,7 @@ type DefaultWriter[T any] struct {
 	formatter LogFormatter
 }
 
-// NewDefaultWriter cria um novo writer usando generics.
+// NewDefaultWriter cria um novo VWriter usando generics.
 func NewDefaultWriter[T any](out io.Writer, formatter LogFormatter) *DefaultWriter[T] {
 	return &DefaultWriter[T]{
 		out:       out,
@@ -204,7 +204,7 @@ func (w *DefaultWriter[T]) Write(entry T) error {
 	return err
 }
 
-// formatMetadata converts metadata to a JSON string.
+// formatMetadata converts VMetadata to a JSON string.
 // Returns the JSON string or an empty string if marshalling fails.
 func formatMetadata(entry LogzEntry) string {
 	metadata := entry.GetMetadata()
@@ -219,6 +219,12 @@ func formatMetadata(entry LogzEntry) string {
 		prefix += fmt.Sprintf("  - %s: %v\n", k, v)
 	}
 	return prefix
+}
+
+type LogMultiWriter[T any] interface {
+	Write(entry T) error
+	AddWriter(w LogWriter[T])
+	GetWriters() []LogWriter[T]
 }
 
 type MultiWriter[T any] struct {
@@ -237,3 +243,5 @@ func (mw *MultiWriter[T]) Write(entry T) error {
 	}
 	return nil
 }
+
+func (mw *MultiWriter[T]) GetWriters() []LogWriter[T] { return mw.writers }

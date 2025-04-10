@@ -90,7 +90,7 @@ func installCheck() {
 	usrEnvs = append(usrEnvs, fmt.Sprintf("PATH=%s", envPath))
 	appBinPath, appBinPathErr := exec.LookPath(AppName)
 	if appBinPathErr != nil {
-		fmt.Printf("Error: %v\n", appBinPathErr)
+		fmt.Printf("ErrorCtx: %v\n", appBinPathErr)
 		return
 	}
 	appBinPath = strings.Replace(appBinPath, AppName, "", 1)

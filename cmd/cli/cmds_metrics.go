@@ -1,7 +1,7 @@
 package cli
 
 import (
-	il "github.com/faelmori/logz/internal/logger"
+	il "github.com/faelmori/logz/internal/core"
 
 	"github.com/spf13/cobra"
 

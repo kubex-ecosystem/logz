@@ -1,17 +1,29 @@
-package logger
+package core
 
 import (
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
-
 	"encoding/json"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/viper"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
+
+	// "github.com/fsnotify/fsnotify"
+	// "github.com/spf13/viper"
+	//
+	// "encoding/json"
+	// "fmt"
+	// "log"
+	// "os"
+	// "path/filepath"
+	// "strconv"
+	// "strings"
+	// "sync"
+	// "time"
+	"strings"
 	"time"
 )
 
@@ -34,18 +46,21 @@ type Config interface {
 	IdleTimeout() time.Duration
 	Output() string
 	SetOutput(configPath string)
-	NotifierManager() NotifierManager
-	Mode() LogMode
+	NotifierManager() interface{}
+	Mode() interface{}
 	Level() string
-	SetLevel(level LogLevel)
+	SetLevel(VLevel interface{})
 	Format() string
-	SetFormat(LogFormat LogFormat)
+	SetFormat(LogFormat interface{})
 	GetInt(key string, value int) int
-	GetFormatter() LogFormatter
+	GetFormatter() interface{}
 }
 
 // ConfigImpl implements the Config interface and holds the configuration values.
 type ConfigImpl struct {
+	// Config is a constraint to implement Config interface
+	Config
+
 	VlLevel           LogLevel
 	VlFormat          LogFormat
 	VlPort            string
@@ -60,7 +75,7 @@ type ConfigImpl struct {
 	VlMode            LogMode
 }
 
-func (c *ConfigImpl) GetFormatter() LogFormatter {
+func (c *ConfigImpl) GetFormatter() interface{} {
 	switch c.Format() {
 	case "json":
 		return &JSONFormatter{}
@@ -68,19 +83,19 @@ func (c *ConfigImpl) GetFormatter() LogFormatter {
 		return &TextFormatter{}
 	}
 }
-func (c *ConfigImpl) Port() string                     { return c.VlPort }
-func (c *ConfigImpl) BindAddress() string              { return c.VlBindAddress }
-func (c *ConfigImpl) Address() string                  { return c.VlAddress }
-func (c *ConfigImpl) PidFile() string                  { return c.VlPidFile }
-func (c *ConfigImpl) ReadTimeout() time.Duration       { return c.VlReadTimeout }
-func (c *ConfigImpl) WriteTimeout() time.Duration      { return c.VlWriteTimeout }
-func (c *ConfigImpl) IdleTimeout() time.Duration       { return c.VlIdleTimeout }
-func (c *ConfigImpl) NotifierManager() NotifierManager { return c.VlNotifierManager }
-func (c *ConfigImpl) Mode() LogMode                    { return c.VlMode }
-func (c *ConfigImpl) Level() string                    { return strings.ToUpper(string(c.VlLevel)) }
-func (c *ConfigImpl) SetLevel(level LogLevel)          { c.VlLevel = level }
-func (c *ConfigImpl) Format() string                   { return strings.ToLower(string(c.VlFormat)) }
-func (c *ConfigImpl) SetFormat(format LogFormat)       { c.VlFormat = format }
+func (c *ConfigImpl) Port() string                 { return c.VlPort }
+func (c *ConfigImpl) BindAddress() string          { return c.VlBindAddress }
+func (c *ConfigImpl) Address() string              { return c.VlAddress }
+func (c *ConfigImpl) PidFile() string              { return c.VlPidFile }
+func (c *ConfigImpl) ReadTimeout() time.Duration   { return c.VlReadTimeout }
+func (c *ConfigImpl) WriteTimeout() time.Duration  { return c.VlWriteTimeout }
+func (c *ConfigImpl) IdleTimeout() time.Duration   { return c.VlIdleTimeout }
+func (c *ConfigImpl) NotifierManager() interface{} { return c.VlNotifierManager }
+func (c *ConfigImpl) Mode() interface{}            { return c.VlMode }
+func (c *ConfigImpl) Level() string                { return strings.ToUpper(string(c.VlLevel)) }
+func (c *ConfigImpl) SetLevel(VLevel interface{})  { c.VlLevel = LogLevel(VLevel.(string)) }
+func (c *ConfigImpl) Format() string               { return strings.ToLower(string(c.VlFormat)) }
+func (c *ConfigImpl) SetFormat(format interface{}) { c.VlFormat = LogFormat(format.(string)) }
 func (c *ConfigImpl) Output() string {
 	if c.VlOutput != "" {
 		return c.VlOutput
@@ -127,6 +142,21 @@ func (c *ConfigImpl) GetInt(key string, defaultValue int) int {
 	// Caso não encontre ou a conversão falhe, retorna o valor padrão
 	return defaultValue
 }
+func (c *ConfigImpl) GetString(key string, defaultValue string) string {
+	viperInstance := viper.GetViper()
+
+	// Primeiro tenta buscar via Viper, se disponível
+	if viperInstance != nil {
+		// Obtém o valor como string para lidar com chaves configuradas em diferentes formatos
+		rawValue := viperInstance.GetString(key)
+		if rawValue != "" {
+			return rawValue
+		}
+	}
+
+	// Caso não encontre ou a conversão falhe, retorna o valor padrão
+	return defaultValue
+}
 
 // ConfigManager interface defines methods to manage configuration.
 type ConfigManager interface {
@@ -140,14 +170,160 @@ type ConfigManager interface {
 
 // ConfigManagerImpl implements the ConfigManager interface.
 type ConfigManagerImpl struct {
-	config Config
-	mu     sync.RWMutex
+	VConfig Config
+	Mu      sync.RWMutex
+}
+
+func (cm *ConfigManagerImpl) checkConfig() {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig == nil {
+		cm.VConfig = &ConfigImpl{}
+	}
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		home, homeErr = os.UserConfigDir()
+		if homeErr != nil {
+			home, homeErr = os.UserCacheDir()
+			if homeErr != nil {
+				home = "/tmp"
+			}
+		}
+	}
+	configPath := filepath.Join(home, ".kubex", "logz", "VConfig.json")
+	if mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return
+	}
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		if _, createErr := os.Create(configPath); createErr != nil {
+			return
+		}
+	}
+}
+
+func (cm *ConfigManagerImpl) Port() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+
+	cm.checkConfig()
+	if cm.VConfig != nil {
+		return cm.VConfig.Port()
+	}
+	return defaultPort
+}
+
+func (cm *ConfigManagerImpl) BindAddress() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+
+	cm.checkConfig()
+	if cm.VConfig != nil {
+		return cm.VConfig.BindAddress()
+	}
+	return defaultBindAddress
+}
+
+func (cm *ConfigManagerImpl) Address() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Address()
+	}
+	return fmt.Sprintf("%s:%s", defaultBindAddress, defaultPort)
+}
+
+func (cm *ConfigManagerImpl) PidFile() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.PidFile()
+	}
+	return "logz_srv.pid"
+}
+
+func (cm *ConfigManagerImpl) ReadTimeout() time.Duration {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.ReadTimeout()
+	}
+	return time.Duration(15 * time.Second)
+}
+
+func (cm *ConfigManagerImpl) WriteTimeout() time.Duration {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.WriteTimeout()
+	}
+	return time.Duration(15 * time.Second)
+}
+
+func (cm *ConfigManagerImpl) IdleTimeout() time.Duration {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.IdleTimeout()
+	}
+	return time.Duration(60 * time.Second)
+}
+
+func (cm *ConfigManagerImpl) NotifierManager() interface{} {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.NotifierManager()
+	}
+	return nil
+}
+
+func (cm *ConfigManagerImpl) Mode() interface{} {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Mode()
+	}
+	return defaultMode
+}
+
+func (cm *ConfigManagerImpl) Level() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Level()
+	}
+	return strings.ToUpper(string(cm.VConfig.Level()))
+}
+
+func (cm *ConfigManagerImpl) Format() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Format()
+	}
+	return strings.ToLower(string(cm.VConfig.Format()))
+}
+
+func (cm *ConfigManagerImpl) GetInt(key string, value int) int {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	viperInstance := viper.GetViper()
+	if viperInstance != nil {
+		rawValue := viperInstance.GetString(key)
+		if rawValue != "" {
+			parsedVal, err := strconv.Atoi(rawValue)
+			if err == nil {
+				return parsedVal
+			}
+		}
+	}
+	return value
 }
 
 func (cm *ConfigManagerImpl) GetConfig() Config {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
-	return cm.config
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	return cm.VConfig
 }
 
 // GetPidPath returns the path to the PID file.
@@ -156,7 +332,7 @@ func (cm *ConfigManagerImpl) GetPidPath() string {
 	if cacheDirErr != nil {
 		cacheDir = "/tmp"
 	}
-	cacheDir = filepath.Join(cacheDir, "logz", cm.config.PidFile())
+	cacheDir = filepath.Join(cacheDir, "logz", cm.VConfig.PidFile())
 	if mkdirErr := os.MkdirAll(filepath.Dir(cacheDir), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
 		return ""
 	}
@@ -165,9 +341,9 @@ func (cm *ConfigManagerImpl) GetPidPath() string {
 
 // GetConfigPath returns the path to the configuration file.
 func (cm *ConfigManagerImpl) GetConfigPath() string {
-	if cm.config != nil {
-		if cm.config.Output() != "" && cm.config.Mode() == ModeService {
-			return cm.config.Output()
+	if cm.VConfig != nil {
+		if cm.VConfig.Output() != "" && cm.VConfig.Mode() == ModeService {
+			return cm.VConfig.Output()
 		}
 	}
 
@@ -181,7 +357,7 @@ func (cm *ConfigManagerImpl) GetConfigPath() string {
 			}
 		}
 	}
-	configPath := filepath.Join(home, ".kubex", "logz", "config.json")
+	configPath := filepath.Join(home, ".kubex", "logz", "VConfig.json")
 	if mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
 		return ""
 	}
@@ -190,22 +366,22 @@ func (cm *ConfigManagerImpl) GetConfigPath() string {
 
 // SetOutput sets the path to the default log file.
 func (cm *ConfigManagerImpl) SetOutput(output string) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	if cm.config != nil {
-		cm.config.SetOutput(output)
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig != nil {
+		cm.VConfig.SetOutput(output)
 	} else {
 
-		if cm.config.Mode() == ModeService {
-			config, configErr := cm.LoadConfig()
+		if cm.VConfig.Mode() == ModeService {
+			VConfig, configErr := cm.LoadConfig()
 			if configErr != nil {
-				log.Printf("Error loading configuration: %v\n", configErr)
+				log.Printf("ErrorCtx loading configuration: %v\n", configErr)
 				return
 			}
-			config.SetOutput(output)
-			cm.config = config
+			VConfig.SetOutput(output)
+			cm.VConfig = VConfig
 		} else {
-			log.Printf("Cannot set output in standalone mode\n")
+			log.Printf("Cannot set output in standalone VMode\n")
 		}
 
 	}
@@ -213,9 +389,9 @@ func (cm *ConfigManagerImpl) SetOutput(output string) {
 
 // Output returns the path to the configuration file.
 func (cm *ConfigManagerImpl) Output() string {
-	if cm.config != nil {
-		if cm.config.Output() != "" {
-			return cm.config.Output()
+	if cm.VConfig != nil {
+		if cm.VConfig.Output() != "" {
+			return cm.VConfig.Output()
 		}
 	}
 	home, homeErr := os.UserHomeDir()
@@ -240,41 +416,41 @@ func (cm *ConfigManagerImpl) Output() string {
 	return logPath
 }
 
-func (cm *ConfigManagerImpl) SetLevel(level LogLevel) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	if cm.config != nil {
-		cm.config.SetLevel(level)
+func (cm *ConfigManagerImpl) SetLevel(VLevel interface{}) {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig != nil {
+		cm.VConfig.SetLevel(VLevel)
 	} else {
-		config, configErr := cm.LoadConfig()
+		VConfig, configErr := cm.LoadConfig()
 		if configErr != nil {
-			log.Printf("Error loading configuration: %v\n", configErr)
+			log.Printf("ErrorCtx loading configuration: %v\n", configErr)
 			return
 		}
-		config.SetLevel(level)
-		cm.config = config
+		VConfig.SetLevel(VLevel)
+		cm.VConfig = VConfig
 	}
 }
 
-func (cm *ConfigManagerImpl) SetFormat(format LogFormat) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	if cm.config != nil {
-		cm.config.SetFormat(format)
+func (cm *ConfigManagerImpl) SetFormat(format interface{}) {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig != nil {
+		cm.VConfig.SetFormat(format)
 	} else {
-		config, configErr := cm.LoadConfig()
+		VConfig, configErr := cm.LoadConfig()
 		if configErr != nil {
-			log.Printf("Error loading configuration: %v\n", configErr)
+			log.Printf("ErrorCtx loading configuration: %v\n", configErr)
 			return
 		}
-		config.SetFormat(format)
-		cm.config = config
+		VConfig.SetFormat(format)
+		cm.VConfig = VConfig
 	}
 }
 
-// GetFormatter returns the formatter for the logger.
-func (cm *ConfigManagerImpl) GetFormatter() LogFormatter {
-	switch cm.config.Format() {
+// GetFormatter returns the formatter for the core.
+func (cm *ConfigManagerImpl) GetFormatter() interface{} {
+	switch cm.VConfig.Format() {
 	case "text":
 		return &TextFormatter{}
 	default:
@@ -284,11 +460,11 @@ func (cm *ConfigManagerImpl) GetFormatter() LogFormatter {
 
 // LoadConfig loads the configuration from the file and returns a Config instance.
 func (cm *ConfigManagerImpl) LoadConfig() (Config, error) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
 	configPath := cm.GetConfigPath()
 	if err := ensureConfigExists(configPath); err != nil {
-		return nil, fmt.Errorf("failed to ensure config exists: %w", err)
+		return nil, fmt.Errorf("failed to ensure VConfig exists: %w", err)
 	}
 
 	viperObj := viper.New()
@@ -296,7 +472,7 @@ func (cm *ConfigManagerImpl) LoadConfig() (Config, error) {
 	viperObj.SetConfigType(getConfigType(configPath))
 
 	if readErr := viperObj.ReadInConfig(); readErr != nil {
-		return nil, fmt.Errorf("failed to read config: %w", readErr)
+		return nil, fmt.Errorf("failed to read VConfig: %w", readErr)
 	}
 
 	notifierManager := NewNotifierManager(nil)
@@ -304,12 +480,12 @@ func (cm *ConfigManagerImpl) LoadConfig() (Config, error) {
 		return nil, fmt.Errorf("failed to create notifier manager")
 	}
 
-	mode := LogMode(viperObj.GetString("mode"))
-	if mode != ModeService && mode != ModeStandalone {
-		mode = defaultMode
+	VMode := LogMode(viperObj.GetString("VMode"))
+	if VMode != ModeService && VMode != ModeStandalone {
+		VMode = defaultMode
 	}
 
-	config := ConfigImpl{
+	VConfig := ConfigImpl{
 		VlPort:            getOrDefault(viperObj.GetString("port"), defaultPort),
 		VlBindAddress:     getOrDefault(viperObj.GetString("bindAddress"), defaultBindAddress),
 		VlAddress:         fmt.Sprintf("%s:%s", defaultBindAddress, defaultPort),
@@ -319,10 +495,10 @@ func (cm *ConfigManagerImpl) LoadConfig() (Config, error) {
 		VlIdleTimeout:     viperObj.GetDuration("idleTimeout"),
 		VlOutput:          getOrDefault(viperObj.GetString("defaultLogPath"), defaultLogPath),
 		VlNotifierManager: notifierManager,
-		VlMode:            mode,
+		VlMode:            VMode,
 	}
 
-	cm.config = &config
+	cm.VConfig = &VConfig
 
 	viperObj.WatchConfig()
 	viperObj.OnConfigChange(func(e fsnotify.Event) {
@@ -330,7 +506,7 @@ func (cm *ConfigManagerImpl) LoadConfig() (Config, error) {
 		// Update Config dynamically, if necessary
 	})
 
-	return cm.config, nil
+	return cm.VConfig, nil
 }
 
 // NewConfigManager creates a new instance of ConfigManager.
@@ -338,7 +514,7 @@ func NewConfigManager() *ConfigManager {
 	cfgMgr := &ConfigManagerImpl{}
 
 	if cfg, err := cfgMgr.LoadConfig(); err != nil || cfg == nil {
-		log.Printf("Error loading configuration: %v\n", err)
+		log.Printf("ErrorCtx loading configuration: %v\n", err)
 		return nil
 	}
 
@@ -365,7 +541,7 @@ func ensureConfigExists(configPath string) error {
 		}
 		data, _ := json.MarshalIndent(defaultConfig, "", "  ")
 		if writeErr := os.WriteFile(configPath, data, 0644); writeErr != nil {
-			return fmt.Errorf("failed to create default config: %w", writeErr)
+			return fmt.Errorf("failed to create default VConfig: %w", writeErr)
 		}
 	}
 	return nil

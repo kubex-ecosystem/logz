@@ -14,6 +14,11 @@ import (
 type Logz struct{}
 
 // Alias returns the alias for the logz command.
+func (m *Logz) alias() string {
+	return "logs"
+}
+
+// Alias returns the alias for the logz command.
 func (m *Logz) Alias() string {
 	return "logs"
 }
@@ -25,7 +30,7 @@ func (m *Logz) ShortDescription() string {
 
 // LongDescription provides a detailed description of the logz command.
 func (m *Logz) LongDescription() string {
-	return "The \"logz\" command-line interface (CLI) is an intuitive and user-friendly logger and log management module designed for developers.\nIntegrated with Prometheus for monitoring, \"logz\" ensures comprehensive log management and is compatible with other plugins and\nthe Go programming language making it a versatile tool for maintaining system health and performance."
+	return "The \"logz\" command-line interface (CLI) is an intuitive and user-friendly core and log management module designed for developers.\nIntegrated with Prometheus for monitoring, \"logz\" ensures comprehensive log management and is compatible with other plugins and\nthe Go programming language making it a versatile tool for maintaining system health and performance."
 }
 
 // Usage returns the usage information for the logz command.

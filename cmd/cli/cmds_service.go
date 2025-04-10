@@ -1,7 +1,7 @@
 package cli
 
 import (
-	il "github.com/faelmori/logz/internal/logger"
+	il "github.com/faelmori/logz/internal/core"
 
 	"github.com/spf13/cobra"
 
@@ -33,19 +33,19 @@ func startServiceCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			configManager := il.NewConfigManager()
 			if configManager == nil {
-				fmt.Println("Error initializing ConfigManager.")
+				fmt.Println("ErrorCtx initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
 			_, err := cfgMgr.LoadConfig()
 			if err != nil {
-				fmt.Printf("Error loading configuration: %v\n", err)
+				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
 				return
 			}
 
 			if err := il.Start("9999"); err != nil {
-				fmt.Printf("Error starting service: %v\n", err)
+				fmt.Printf("ErrorCtx starting service: %v\n", err)
 			} else {
 				fmt.Println("Service started successfully.")
 			}
@@ -61,7 +61,7 @@ func stopServiceCmd() *cobra.Command {
 		Short:  "Stop the web service",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := il.Stop(); err != nil {
-				fmt.Printf("Error stopping service: %v\n", err)
+				fmt.Printf("ErrorCtx stopping service: %v\n", err)
 			} else {
 				fmt.Println("Service stopped successfully.")
 			}
