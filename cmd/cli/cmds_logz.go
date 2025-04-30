@@ -1,9 +1,11 @@
 package cli
 
 import (
-	"fmt"
-	"github.com/faelmori/logz/internal/logger"
+	il "github.com/faelmori/logz/internal/core"
+
 	"github.com/spf13/cobra"
+
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -45,28 +47,27 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
-				fmt.Println("Error initializing ConfigManager.")
+				fmt.Println("ErrorCtx initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
 			config, err := cfgMgr.LoadConfig()
 			if err != nil {
-				fmt.Printf("Error loading configuration: %v\n", err)
+				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
 				return
 			}
 
 			if format != "" {
-				config.SetFormat(logger.LogFormat(format))
+				config.SetFormat(il.LogFormat(format))
 			}
 
 			if output != "" {
 				config.SetOutput(output)
 			}
-
-			logr := logger.NewLogger(config)
+			logr := il.NewLogger("logz")
 			for k, v := range metaData {
 				logr.SetMetadata(k, v)
 			}
@@ -78,21 +79,21 @@ func newLogCmd(level string, aliases []string) *cobra.Command {
 			}
 			switch level {
 			case "debug":
-				logr.Debug(msg, ctxInterface)
+				logr.DebugCtx(msg, ctxInterface)
 			case "notice":
-				logr.Notice(msg, ctxInterface)
+				logr.NoticeCtx(msg, ctxInterface)
 			case "info":
-				logr.Info(msg, ctxInterface)
+				logr.InfoCtx(msg, ctxInterface)
 			case "success":
-				logr.Success(msg, ctxInterface)
+				logr.SuccessCtx(msg, ctxInterface)
 			case "warn":
-				logr.Warn(msg, ctxInterface)
+				logr.WarnCtx(msg, ctxInterface)
 			case "error":
-				logr.Error(msg, ctxInterface)
+				logr.ErrorCtx(msg, ctxInterface)
 			case "fatal":
-				logr.FatalC(msg, ctxInterface)
+				logr.FatalCtx(msg, ctxInterface)
 			default:
-				logr.Info(msg, ctxInterface)
+				logr.InfoCtx(msg, ctxInterface)
 			}
 		},
 	}
@@ -120,22 +121,22 @@ func rotateLogsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
-				fmt.Println("Error initializing ConfigManager.")
+				fmt.Println("ErrorCtx initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
 			config, err := cfgMgr.LoadConfig()
 			if err != nil {
-				fmt.Printf("Error loading configuration: %v\n", err)
+				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
 				return
 			}
 
-			err = logger.CheckLogSize(config)
+			err = il.CheckLogSize(config)
 			if err != nil {
-				fmt.Printf("Error rotating logs: %v\n", err)
+				fmt.Printf("ErrorCtx rotating logs: %v\n", err)
 			} else {
 				fmt.Println("Logs rotated successfully!")
 			}
@@ -157,23 +158,23 @@ func checkLogSizeCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
-				fmt.Println("Error initializing ConfigManager.")
+				fmt.Println("ErrorCtx initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
 			config, err := cfgMgr.LoadConfig()
 			if err != nil {
-				fmt.Printf("Error loading configuration: %v\n", err)
+				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
 				return
 			}
 
 			logDir := config.Output()
-			logSize, err := logger.GetLogDirectorySize(filepath.Dir(logDir)) // Add this function to logger
+			logSize, err := il.GetLogDirectorySize(filepath.Dir(logDir)) // Add this function to core
 			if err != nil {
-				fmt.Printf("Error calculating log size: %v\n", err)
+				fmt.Printf("ErrorCtx calculating log size: %v\n", err)
 				return
 			}
 
@@ -198,9 +199,9 @@ func archiveLogsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			err := logger.ArchiveLogs(nil)
+			err := il.ArchiveLogs(nil)
 			if err != nil {
-				fmt.Printf("Error archiving logs: %v\n", err)
+				fmt.Printf("ErrorCtx archiving logs: %v\n", err)
 			} else {
 				fmt.Println("Logs archived successfully!")
 			}
@@ -223,21 +224,21 @@ func watchLogsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
-				fmt.Println("Error initializing ConfigManager.")
+				fmt.Println("ErrorCtx initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
 			config, err := cfgMgr.LoadConfig()
 			if err != nil {
-				fmt.Printf("Error loading configuration: %v\n", err)
+				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
 				return
 			}
 
 			logFilePath := config.Output()
-			reader := logger.NewFileLogReader()
+			reader := il.NewFileLogReader()
 			stopChan := make(chan struct{})
 
 			// Capture signals for interruption
@@ -250,7 +251,7 @@ func watchLogsCmd() *cobra.Command {
 
 			fmt.Println("Monitoring started (Ctrl+C to exit):")
 			if err := reader.Tail(logFilePath, stopChan); err != nil {
-				fmt.Printf("Error monitoring logs: %v\n", err)
+				fmt.Printf("ErrorCtx monitoring logs: %v\n", err)
 			}
 
 			// Wait a small delay to finish

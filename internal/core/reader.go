@@ -1,4 +1,4 @@
-package logger
+package core
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ import (
 // LogReader defines the contract for reading logs.
 type LogReader interface {
 	// Tail reads the log file in real-time and sends the new lines to the
-	// provided writer or prints them to the terminal. The operation can be interrupted
+	// provided VWriter or prints them to the terminal. The operation can be interrupted
 	// by sending a signal through the stopChan channel.
 	Tail(filePath string, stopChan <-chan struct{}) error
 }

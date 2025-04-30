@@ -1,4 +1,4 @@
-package logger
+package core
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/godbus/dbus/v5"
-
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
@@ -34,7 +33,7 @@ var (
 	// Uncomment and ensure the required libraries are installed if needed in the future
 	//lSocket      *zmq4.Socket
 	lDBus        *dbus.Conn
-	globalLogger *LogzCoreImpl // Global logger for the service
+	globalLogger LogzLogger // Global core for the service
 	startTime    = time.Now()
 	mu           sync.RWMutex
 )
@@ -54,16 +53,16 @@ func Run() error {
 	// Initialize the ConfigManager and load the configuration
 	configManager := NewConfigManager()
 	if configManager == nil {
-		return errors.New("failed to initialize config manager")
+		return errors.New("failed to initialize VConfig manager")
 	}
 	cfgMgr := *configManager
 
 	config, err := cfgMgr.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return fmt.Errorf("failed to load VConfig: %w", err)
 	}
 
-	// Initialize the global logger with the configuration
+	// Initialize the global core with the configuration
 	initializeGlobalLogger(config)
 
 	// Set up the HTTP server
@@ -84,9 +83,9 @@ func Run() error {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		globalLogger.Info(fmt.Sprintf("Service running on %s", config.Address()), nil)
+		globalLogger.InfoCtx(fmt.Sprintf("Service running on %s", config.Address()), nil)
 		if err := lSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			globalLogger.Error(fmt.Sprintf("Service encountered an error: %v", err), nil)
+			globalLogger.ErrorCtx(fmt.Sprintf("Service encountered an error: %v", err), nil)
 		}
 	}()
 
@@ -121,11 +120,15 @@ func Start(port string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open PID file: %w", err)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		return errors.New("another process is writing to the PID file")
-	}
+	//if runtime.GOOS != "windows" {
+	//	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	//		return errors.New("another process is writing to the PID file")
+	//	}
+	//}
 
 	pid := cmd.Process.Pid
 	pidData := fmt.Sprintf("%d\n%s", pid, port)
@@ -133,7 +136,7 @@ func Start(port string) error {
 		return fmt.Errorf("failed to write PID data: %w", writeErr)
 	}
 
-	globalLogger.Info(fmt.Sprintf("Service started with pid %d", pid), nil)
+	globalLogger.InfoCtx(fmt.Sprintf("Service started with pid %d", pid), nil)
 	return nil
 }
 
@@ -161,7 +164,7 @@ func Stop() error {
 		return err
 	}
 
-	globalLogger.Info(fmt.Sprintf("Service with pid %d and port %s stopped", pid, port), nil)
+	globalLogger.InfoCtx(fmt.Sprintf("Service with pid %d and port %s stopped", pid, port), nil)
 	return nil
 }
 
@@ -286,7 +289,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	globalLogger.Info(fmt.Sprintf("Callback received: %v", payload), nil)
+	globalLogger.InfoCtx(fmt.Sprintf("Callback received: %v", payload), nil)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status":"success","message":"Callback processed"}`))
 }
@@ -316,7 +319,7 @@ func metricsHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 	for name, value := range metrics {
 		if _, err := fmt.Fprintf(w, "# HELP %s Custom metric from Logz\n# TYPE %s gauge\n%s %f\n", name, name, name, value); err != nil {
-			fmt.Println(fmt.Sprintf("Error writing metric '%s': %v", name, err))
+			fmt.Println(fmt.Sprintf("ErrorCtx writing metric '%s': %v", name, err))
 		}
 	}
 }
@@ -331,25 +334,25 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 // shutdown gracefully shuts down the service.
 func shutdown() error {
-	globalLogger.Info("Shutting down service gracefully...", nil)
+	globalLogger.InfoCtx("Shutting down service gracefully...", nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := lSrv.Shutdown(ctx); err != nil {
-		globalLogger.Error(fmt.Sprintf("Service shutdown failed: %v", err), nil)
+		globalLogger.ErrorCtx(fmt.Sprintf("Service shutdown failed: %v", err), nil)
 		return fmt.Errorf("shutdown process failed: %w", err)
 	}
 
-	globalLogger.Info("Service stopped gracefully.", nil)
+	globalLogger.InfoCtx("Service stopped gracefully.", nil)
 	return nil
 }
 
-// initializeGlobalLogger initializes the global logger with the provided configuration.
+// initializeGlobalLogger initializes the global core with the provided configuration.
 func initializeGlobalLogger(config Config) {
 	mu.Lock()
 	defer mu.Unlock()
 
 	if globalLogger == nil {
-		globalLogger = NewLogger(config)
+		globalLogger = NewLogger("Logz")
 	}
 }

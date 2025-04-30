@@ -5,25 +5,6 @@ import (
 	"strings"
 )
 
-//var (
-//	outputType   string
-//	outputTarget string
-//)
-//
-//func RunWithLoader(task func(chan tea.Msg) error) error {
-//	messages := make(chan tea.Msg)
-//
-//	go func() {
-//		defer close(messages)
-//		if err := task(messages); err != nil {
-//			messages <- KbdzLoaderMsg{Message: "Error: " + err.Error()}
-//		}
-//		messages <- KbdzLoaderCloseMsg{}
-//	}()
-//
-//	return StartLoader(messages)
-//}
-
 func GetDescriptions(descriptionArg []string, hideBanner bool) map[string]string {
 	var description, banner string
 
@@ -38,12 +19,14 @@ func GetDescriptions(descriptionArg []string, hideBanner bool) map[string]string
 	}
 
 	if !hideBanner {
-		banner = ` _                    
- | |    ___   __ _ ____
- | |   / _ \ / _\ |_  /
- | |__| (_) | (_| |/ / 
- |_____\___/ \__, /___|
-             |___/     
+		banner = `
+ ___           ________      ________      ________     
+|\  \         |\   __  \    |\   ____\    |\_____  \    
+\ \  \        \ \  \|\  \   \ \  \___|     \|___/  /|   
+ \ \  \        \ \  \\\  \   \ \  \  ___       /  / /   
+  \ \  \____    \ \  \\\  \   \ \  \|\  \     /  /_/__  
+   \ \_______\   \ \_______\   \ \_______\   |\________\
+    \|_______|    \|_______|    \|_______|    \|_______|
 `
 	} else {
 		banner = ""

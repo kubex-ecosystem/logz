@@ -1,9 +1,11 @@
 package cli
 
 import (
-	"fmt"
-	"github.com/faelmori/logz/internal/logger"
+	il "github.com/faelmori/logz/internal/core"
+
 	"github.com/spf13/cobra"
+
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -42,7 +44,7 @@ func enableMetricsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			pm := logger.GetPrometheusManager()
+			pm := il.GetPrometheusManager()
 			pm.Enable(port)
 		},
 	}
@@ -62,7 +64,7 @@ func disableMetricsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			pm := logger.GetPrometheusManager()
+			pm := il.GetPrometheusManager()
 			pm.Disable()
 		},
 	}
@@ -87,7 +89,7 @@ func addMetricCmd() *cobra.Command {
 				fmt.Printf("Invalid metric value: %v\n", valueErr)
 				return
 			}
-			pm := logger.GetPrometheusManager()
+			pm := il.GetPrometheusManager()
 			pm.AddMetric(name, value, nil)
 		},
 	}
@@ -107,7 +109,7 @@ func removeMetricCmd() *cobra.Command {
 			defer mu.Unlock()
 
 			name := args[0]
-			pm := logger.GetPrometheusManager()
+			pm := il.GetPrometheusManager()
 			pm.RemoveMetric(name)
 		},
 	}
@@ -125,7 +127,7 @@ func listMetricsCmd() *cobra.Command {
 			mu.RLock()
 			defer mu.RUnlock()
 
-			pm := logger.GetPrometheusManager()
+			pm := il.GetPrometheusManager()
 			metrics := pm.GetMetrics()
 			if len(metrics) == 0 {
 				fmt.Println("No metrics registered.")
@@ -152,7 +154,7 @@ func watchMetricsCmd() *cobra.Command {
 			for {
 				select {
 				case <-ticker.C:
-					metrics := logger.GetPrometheusManager().GetMetrics()
+					metrics := il.GetPrometheusManager().GetMetrics()
 					fmt.Println("Current Metrics:")
 					if len(metrics) == 0 {
 						fmt.Println("  No metrics registered.")

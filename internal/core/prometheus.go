@@ -1,4 +1,4 @@
-package logger
+package core
 
 import (
 	"encoding/json"
@@ -23,10 +23,10 @@ func validateMetricName(name string) error {
 	return nil
 }
 
-// Metric represents a single Prometheus metric with a value and optional metadata.
+// Metric represents a single Prometheus metric with a value and optional VMetadata.
 type Metric struct {
 	Value    float64           `json:"value"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	Metadata map[string]string `json:"VMetadata,omitempty"`
 }
 
 // PrometheusManager manages Prometheus metrics, including enabling/disabling the HTTP server,
@@ -133,7 +133,7 @@ func (pm *PrometheusManager) Enable(port string) {
 	}
 	go func() {
 		if err := pm.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("Error starting Prometheus metrics server: %v\n", err)
+			fmt.Printf("ErrorCtx starting Prometheus metrics server: %v\n", err)
 		}
 	}()
 	fmt.Println("Prometheus metrics enabled.")
@@ -187,10 +187,10 @@ func (pm *PrometheusManager) IsEnabled() bool {
 	return pm.enabled
 }
 
-// AddMetric adds or updates a metric with the given name, value, and metadata.
+// AddMetric adds or updates a metric with the given name, value, and VMetadata.
 func (pm *PrometheusManager) AddMetric(name string, value float64, metadata map[string]string) {
 	if err := validateMetricName(name); err != nil {
-		fmt.Printf("Error adding metric: %v\n", err)
+		fmt.Printf("ErrorCtx adding metric: %v\n", err)
 		return
 	}
 	pm.mutex.Lock()
@@ -201,7 +201,7 @@ func (pm *PrometheusManager) AddMetric(name string, value float64, metadata map[
 	}
 	fmt.Printf("Metric '%s' added/updated with value: %f\n", name, value)
 	if err := pm.saveMetrics(); err != nil {
-		fmt.Printf("Error saving metrics: %v\n", err)
+		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
 	}
 }
 
@@ -212,14 +212,14 @@ func (pm *PrometheusManager) RemoveMetric(name string) {
 	delete(pm.metrics, name)
 	fmt.Printf("Metric '%s' removed.\n", name)
 	if err := pm.saveMetrics(); err != nil {
-		fmt.Printf("Error saving metrics: %v\n", err)
+		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
 	}
 }
 
 // IncrementMetric increments the value of a metric by the given delta.
 func (pm *PrometheusManager) IncrementMetric(name string, delta float64) {
 	if err := validateMetricName(name); err != nil {
-		fmt.Printf("Error incrementing metric: %v\n", err)
+		fmt.Printf("ErrorCtx incrementing metric: %v\n", err)
 		return
 	}
 	pm.mutex.Lock()
@@ -232,7 +232,7 @@ func (pm *PrometheusManager) IncrementMetric(name string, delta float64) {
 	pm.metrics[name] = metric
 	fmt.Printf("Metric '%s' incremented by %f, new value: %f\n", name, delta, metric.Value)
 	if err := pm.saveMetrics(); err != nil {
-		fmt.Printf("Error saving metrics: %v\n", err)
+		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
 	}
 }
 
@@ -249,7 +249,7 @@ func (pm *PrometheusManager) ListMetrics() {
 		fmt.Printf("- %s: %f", name, metric.Value)
 		if len(metric.Metadata) > 0 {
 			metadataJSON, _ := json.Marshal(metric.Metadata)
-			fmt.Printf(" (metadata: %s)", string(metadataJSON))
+			fmt.Printf(" (VMetadata: %s)", string(metadataJSON))
 		}
 		fmt.Println()
 	}
@@ -315,10 +315,10 @@ func (pm *PrometheusManager) initPrometheus() error {
 	defaultMetrics := []string{"infoCount", "warnCount", "errorCount", "debugCount", "successCount"}
 	for _, metric := range defaultMetrics {
 		if err := validateMetricName(metric); err != nil {
-			fmt.Printf("Error initializing metric '%s': %v\n", metric, err)
+			fmt.Printf("ErrorCtx initializing metric '%s': %v\n", metric, err)
 			continue
 		}
-		pm.AddMetric(metric, 0, nil) // Initialize with value 0 and no metadata
+		pm.AddMetric(metric, 0, nil) // Initialize with value 0 and no VMetadata
 	}
 
 	if err := pm.setPrometheusSysConfig(); err != nil {

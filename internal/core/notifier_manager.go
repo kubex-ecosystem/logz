@@ -1,9 +1,10 @@
-package logger
+package core
 
 import (
-	"fmt"
 	"github.com/godbus/dbus/v5"
 	"github.com/spf13/viper"
+
+	"fmt"
 	"net/http"
 	"sync"
 )
@@ -96,7 +97,7 @@ func (nm *NotifierManagerImpl) ListNotifiers() []string {
 func (nm *NotifierManagerImpl) UpdateFromConfig() error {
 	var configNotifiers map[string]map[string]interface{}
 	if err := viper.UnmarshalKey("notifiers", &configNotifiers); err != nil {
-		return fmt.Errorf("failed to parse notifiers config: %w", err)
+		return fmt.Errorf("failed to parse notifiers VConfig: %w", err)
 	}
 
 	// Update or recreate notifiers dynamically

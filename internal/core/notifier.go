@@ -1,12 +1,12 @@
-package logger
+package core
 
 import (
-	"fmt"
 	"github.com/godbus/dbus/v5"
+
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
-
 	"strings"
 )
 
@@ -42,7 +42,7 @@ type NotifierImpl struct {
 	WebhookURL      string          // URL for webhook notifications.
 	HttpMethod      string          // HTTP method for webhook notifications.
 	AuthToken       string          // Authentication token for notifications.
-	LogLevel        string          // Log level for filtering notifications.
+	LogLevel        string          // Log VLevel for filtering notifications.
 	WsEndpoint      string          // WebSocket endpoint for notifications.
 	Whitelist       []string        // Whitelist of sources for notifications.
 }
@@ -70,7 +70,7 @@ func (n *NotifierImpl) Notify(entry LogzEntry) error {
 		return nil
 	}
 
-	// Validate log level
+	// Validate log VLevel
 	if n.LogLevel != "" && n.LogLevel != string(entry.GetLevel()) {
 		return nil
 	}
@@ -291,7 +291,7 @@ func GetLogPath() string {
 			}
 		}
 	}
-	configPath := filepath.Join(home, ".kubex", "logz", "config.json")
+	configPath := filepath.Join(home, ".kubex", "logz", "VConfig.json")
 	if mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
 		return ""
 	}

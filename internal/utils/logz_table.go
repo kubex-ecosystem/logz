@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/olekukonko/tablewriter"
+
 	"os"
 	"path/filepath"
 )

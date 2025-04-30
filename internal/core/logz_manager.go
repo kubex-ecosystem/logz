@@ -1,13 +1,14 @@
-package logger
+package core
 
-import (
+/*import (
+	iKbxCfg "github.com/faelmori/kubex-interfaces/config"
+
 	"fmt"
-	c "github.com/faelmori/kubex-interfaces/config"
 	"sync"
 )
 
 type LogInterface interface {
-	Initialize(config c.ConfigManager[c.Configurable]) error
+	Initialize(config iKbxCfg.ConfigManager[iKbxCfg.Configurable]) error
 	Log(message string)
 	Stop()
 }
@@ -20,7 +21,7 @@ var (
 type LoggerInstance struct {
 	LogChannel  chan string
 	DoneChannel chan bool
-	Config      *c.ConfigManager[LogzConfig]
+	Config      *iKbxCfg.ConfigManager[LogzConfig]
 }
 
 func (li *LoggerInstance) Start() {
@@ -37,7 +38,7 @@ func (li *LoggerInstance) Start() {
 	}()
 }
 
-func GetLoggerInstance(name string, config *c.ConfigManager[LogzConfig]) (*LoggerInstance, error) {
+func GetLoggerInstance(name string, config *iKbxCfg.ConfigManager[LogzConfig]) (*LoggerInstance, error) {
 	// Validate the configuration
 	if config == nil {
 		return nil, fmt.Errorf("configuração inválida")
@@ -67,3 +68,4 @@ func GetLoggerInstance(name string, config *c.ConfigManager[LogzConfig]) (*Logge
 	loggerRegistry[name] = newLogger
 	return newLogger, nil
 }
+*/

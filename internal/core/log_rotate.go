@@ -1,4 +1,4 @@
-package logger
+package core
 
 import (
 	"archive/tar"
@@ -17,7 +17,7 @@ func CheckLogSize(config Config) error {
 	logDir := config.Output()
 	files, err := os.ReadDir(logDir)
 	if err != nil {
-		fmt.Println("Error reading the log directory:", err)
+		fmt.Println("ErrorCtx reading the log directory:", err)
 		return err
 	}
 
@@ -32,7 +32,7 @@ func CheckLogSize(config Config) error {
 		if strings.HasSuffix(file.Name(), ".log") {
 			fileInfo, err := file.Info()
 			if err != nil {
-				fmt.Println("Error getting file information:", err)
+				fmt.Println("ErrorCtx getting file information:", err)
 				continue
 			}
 			totalSize += fileInfo.Size()
@@ -46,7 +46,7 @@ func CheckLogSize(config Config) error {
 	if totalSize > int64(maxLogSize) {
 		fmt.Println("Archiving logs due to excessive size...")
 		if err := ArchiveLogs(filesToRotate); err != nil {
-			fmt.Println("Error archiving logs:", err)
+			fmt.Println("ErrorCtx archiving logs:", err)
 			return err
 		}
 	}
@@ -55,7 +55,7 @@ func CheckLogSize(config Config) error {
 	if len(filesToRotate) > 0 {
 		fmt.Println("Rotating large log files...")
 		if err := RotateLogFiles(filesToRotate); err != nil {
-			fmt.Println("Error rotating log files:", err)
+			fmt.Println("ErrorCtx rotating log files:", err)
 			return err
 		}
 	}
@@ -67,7 +67,7 @@ func CheckLogSize(config Config) error {
 func RotateLogFiles(files []string) error {
 	for _, logFile := range files {
 		if err := RotateLogFile(logFile); err != nil {
-			fmt.Println("Error rotating the log file:", err)
+			fmt.Println("ErrorCtx rotating the log file:", err)
 			continue
 		}
 		fmt.Println("Log file rotated successfully:", logFile)

@@ -1,9 +1,11 @@
 package cli
 
 import (
-	"fmt"
-	"github.com/faelmori/logz/internal/logger"
+	il "github.com/faelmori/logz/internal/core"
+
 	"github.com/spf13/cobra"
+
+	"fmt"
 )
 
 // ServiceCmd creates the main command for managing the web service.
@@ -29,21 +31,21 @@ func startServiceCmd() *cobra.Command {
 		Short:  "Start the web service",
 		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := logger.NewConfigManager()
+			configManager := il.NewConfigManager()
 			if configManager == nil {
-				fmt.Println("Error initializing ConfigManager.")
+				fmt.Println("ErrorCtx initializing ConfigManager.")
 				return
 			}
 			cfgMgr := *configManager
 
 			_, err := cfgMgr.LoadConfig()
 			if err != nil {
-				fmt.Printf("Error loading configuration: %v\n", err)
+				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
 				return
 			}
 
-			if err := logger.Start("9999"); err != nil {
-				fmt.Printf("Error starting service: %v\n", err)
+			if err := il.Start("9999"); err != nil {
+				fmt.Printf("ErrorCtx starting service: %v\n", err)
 			} else {
 				fmt.Println("Service started successfully.")
 			}
@@ -58,8 +60,8 @@ func stopServiceCmd() *cobra.Command {
 		Hidden: true,
 		Short:  "Stop the web service",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.Stop(); err != nil {
-				fmt.Printf("Error stopping service: %v\n", err)
+			if err := il.Stop(); err != nil {
+				fmt.Printf("ErrorCtx stopping service: %v\n", err)
 			} else {
 				fmt.Println("Service stopped successfully.")
 			}
@@ -73,7 +75,7 @@ func getServiceCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Get information about the running service",
 		Run: func(cmd *cobra.Command, args []string) {
-			pid, port, pidPath, err := logger.GetServiceInfo()
+			pid, port, pidPath, err := il.GetServiceInfo()
 			if err != nil {
 				fmt.Println("Service is not running")
 			} else {
@@ -91,7 +93,7 @@ func spawnServiceCmd() *cobra.Command {
 		Use:    "spawn",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := logger.Run(); err != nil {
+			if err := il.Run(); err != nil {
 				return err
 			}
 			return nil
