@@ -1,13 +1,12 @@
 package core
 
 import (
-	"github.com/godbus/dbus/v5"
-	"github.com/spf13/viper"
-
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/godbus/dbus/v5"
+	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"net/url"
@@ -121,11 +120,15 @@ func Start(port string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open PID file: %w", err)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		return errors.New("another process is writing to the PID file")
-	}
+	//if runtime.GOOS != "windows" {
+	//	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	//		return errors.New("another process is writing to the PID file")
+	//	}
+	//}
 
 	pid := cmd.Process.Pid
 	pidData := fmt.Sprintf("%d\n%s", pid, port)

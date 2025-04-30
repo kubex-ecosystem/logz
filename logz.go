@@ -3,7 +3,7 @@ package logz
 import (
 	"encoding/json"
 	"fmt"
-	core "github.com/faelmori/logz/internal/core"
+	"github.com/faelmori/logz/internal/core"
 	logz "github.com/faelmori/logz/logger"
 	vs "github.com/faelmori/logz/version"
 	"os"
@@ -387,4 +387,76 @@ func Version() string {
 		versionService = vs.NewVersionService()
 	}
 	return versionService.GetCurrentVersion()
+}
+
+// Info returns the log output of the global core.
+func Info(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.InfoCtx(fmt.Sprint(args...), nil)
+}
+
+// Debug returns the log output of the global core.
+func Debug(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.DebugCtx(fmt.Sprint(args...), nil)
+}
+
+// Warn returns the log output of the global core.
+func Warn(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.WarnCtx(fmt.Sprint(args...), nil)
+}
+
+// Error returns the log output of the global core.
+func Error(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.ErrorCtx(fmt.Sprint(args...), nil)
+}
+
+// Fatal returns the log output of the global core.
+func Fatal(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.FatalCtx(fmt.Sprint(args...), nil)
+}
+
+// Trace returns the log output of the global core.
+func Trace(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.TraceCtx(fmt.Sprint(args...), nil)
+}
+
+// Notice returns the log output of the global core.
+func Notice(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.NoticeCtx(fmt.Sprint(args...), nil)
+}
+
+// Success returns the log output of the global core.
+func Success(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.SuccessCtx(fmt.Sprint(args...), nil)
+}
+
+// Panic returns the log output of the global core.
+func Panic(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.FatalCtx(fmt.Sprint(args...), nil)
 }

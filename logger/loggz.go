@@ -30,34 +30,35 @@ type LogzLogger interface{ il.LogzLogger }
 
 type Logger struct {
 	// il.LogzCoreImpl is the logz core logger
-	il.LogzCoreImpl
+	log.Logger
 	// il.LogzLogger is the logz logger
-	il.LogzLogger
+	LogzLogger
 }
 
 // logzLogger is the implementation of the LoggerInterface, unifying the new LogzCoreImpl and the old one.
 type logzLogger struct {
-	il.LogzLogger
-
-	// log.Logger is the standard Go logger.
-	log.Logger
-
 	// logger is the logz logger.
 	//logger LogzLogger
+	*Logger
+
+	//il.LogzLogger
 
 	// coreLogger is the LogzCore logger.
-	//coreLogger LogzCore
+	//LogzCore
 }
 
 // NewLogger creates a new instance of logzLogger with an optional prefix.
 func NewLogger(prefix string) LogzLogger {
-	lgz := &logzLogger{
-		il.NewLogger(prefix),
+	lgzR := &Logger{
 		*log.New(
 			os.Stdout,
 			prefix,
 			log.LstdFlags,
 		),
+		il.NewLogger(prefix),
+	}
+	lgz := &logzLogger{
+		lgzR,
 	}
 	lgz.SetPrefix(prefix)
 	lgz.SetFlags(log.LstdFlags)
