@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 
+# This script is used to install the project binary and manage its dependencies.
+set -euo pipefail
+set -o errtrace
+set -o functrace
+set -o posix
+
+IFS=$'\n\t'
+
+_DEBUG=${DEBUG:-false}
+
+_HIDE_ABOUT=${HIDE_ABOUT:-false}
+
 # This variable are used to customize the script behavior, like repository url and owner
 _OWNER="faelmori"
 
@@ -18,10 +30,10 @@ get_release_url() {
 }
 
 # The _REPO_ROOT variable is set to the root directory of the repository. One above the script directory.
-_REPO_ROOT="$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")"
+_REPO_ROOT="${ROOT_DIR:-$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")}"
 
 # The _APP_NAME variable is set to the name of the repository. It is used to identify the application.
-_APP_NAME="$(basename "$_REPO_ROOT")"
+_APP_NAME="${APP_NAME:-$(basename "$_REPO_ROOT")}"
 
 # The _PROJECT_NAME variable is set to the name of the project. It is used for display purposes.
 _PROJECT_NAME="$_APP_NAME"
@@ -111,16 +123,58 @@ _PLATFORM_WITH_ARCH=""
 _PLATFORM=""
 _ARCH=""
 
+
+# Log messages with different levels
+# Arguments:
+#   $1 - log level (info, warn, error, success)
+#   $2 - message to log
+log() {
+  local type=
+  type=${1:-info}
+  local message=
+  message=${2:-}
+  local debug=${3:-${_DEBUG:-false}}
+
+  # With colors
+  case $type in
+    info|_INFO|-i|-I)
+      if [[ "$debug" == true ]]; then
+        printf '%b[_INFO]%b ℹ️  %s\n' "$_INFO" "$_NC" "$message"
+      fi
+      ;;
+    warn|_WARN|-w|-W)
+      if [[ "$debug" == true ]]; then
+        printf '%b[_WARN]%b ⚠️  %s\n' "$_WARN" "$_NC" "$message"
+      fi
+      ;;
+    error|_ERROR|-e|-E)
+      printf '%b[_ERROR]%b ❌  %s\n' "$_ERROR" "$_NC" "$message"
+      ;;
+    success|_SUCCESS|-s|-S)
+      printf '%b[_SUCCESS]%b ✅  %s\n' "$_SUCCESS" "$_NC" "$message"
+      ;;
+    *)
+      if [[ "$debug" == true ]]; then
+        log "info" "$message"
+      fi
+      ;;
+  esac
+}
+
 # Create a temporary directory for script cache
 _TEMP_DIR="$(mktemp -d)"
 
 # Diretório temporário para baixar o arquivo
-if test -d "${_TEMP_DIR}"; then
+if [[ -d "${_TEMP_DIR}" ]]; then
     log "info" "Temporary directory created: ${_TEMP_DIR}"
 else
     log "error" "Failed to create temporary directory."
-    return 1
 fi
+
+clear_screen() {
+  printf "\033[H\033[2J" || return 1
+  return 0
+}
 
 # Function to clear the script cache
 clear_script_cache() {
@@ -128,23 +182,21 @@ clear_script_cache() {
   trap - EXIT HUP INT QUIT ABRT ALRM TERM
 
   # Check if the temporary directory exists, if not, return
-  if ! test -d "${_TEMP_DIR}"; then
-    return 0
+  if [[ ! -d "${_TEMP_DIR}" ]]; then
+    exit 0
   fi
 
   # Remove the temporary directory
   rm -rf "${_TEMP_DIR}" || true
-  if test -d "${_TEMP_DIR}"; then
+  if [[ -d "${_TEMP_DIR}" && $(sudo -v 2>/dev/null) ]]; then
     sudo rm -rf "${_TEMP_DIR}"
-    if test -d "${_TEMP_DIR}"; then
-      log "error" "Failed to remove temporary directory: ${_TEMP_DIR}"
-      return 1
+    if [[ -d "${_TEMP_DIR}" ]]; then
+      printf '%b[_ERROR]%b ❌  %s\n' "$_ERROR" "$_NC" "Failed to remove temporary directory: ${_TEMP_DIR}"
     else
-      log "success" "Temporary directory removed successfully."
+      printf '%b[_SUCCESS]%b ✅  %s\n' "$_SUCCESS" "$_NC" "Temporary directory removed: ${_TEMP_DIR}"
     fi
   fi
-
-  return 0
+  exit 0
 }
 
 # Function to get the current shell
@@ -157,8 +209,6 @@ get_current_shell() {
       _CURRENT_SHELL="${shebang##*/}"
       ;;
   esac
-
-  echo "${_CURRENT_SHELL}"
 
   return 0
 }
@@ -182,7 +232,7 @@ set_trap(){
       fi
 
       # Set for the current shell error handling and some other options
-      if test "${_CURRENT_SHELL}" = "bash"; then
+      if [[ "${_CURRENT_SHELL}" == "bash" ]]; then
         set -o errexit
         set -o pipefail
         set -o errtrace
@@ -204,44 +254,7 @@ set_trap "$@"
 
 # Clear the screen. If the script gets here, it means the script passed the
 # initial checks and the temporary directory was created successfully.
-clear
-
-# Log messages with different levels
-# Arguments:
-#   $1 - log level (info, warn, error, success)
-#   $2 - message to log
-log() {
-  local type=
-  type=${1:-info}
-  local message=
-  message=${2:-}
-  local debug=${3:-${DEBUG:-false}}
-
-  # With colors
-  case $type in
-    info|_INFO|-i|-I)
-      if test "$debug" = true; then
-        printf '%b[_INFO]%b ℹ️  %s\n' "$_INFO" "$_NC" "$message"
-      fi
-      ;;
-    warn|_WARN|-w|-W)
-      if test "$debug" = true; then
-        printf '%b[_WARN]%b ⚠️  %s\n' "$_WARN" "$_NC" "$message"
-      fi
-      ;;
-    error|_ERROR|-e|-E)
-      printf '%b[_ERROR]%b ❌  %s\n' "$_ERROR" "$_NC" "$message"
-      ;;
-    success|_SUCCESS|-s|-S)
-      printf '%b[_SUCCESS]%b ✅  %s\n' "$_SUCCESS" "$_NC" "$message"
-      ;;
-    *)
-      if test "$debug" = true; then
-        log "info" "$message"
-      fi
-      ;;
-  esac
-}
+clear_screen
 
 # Detect the platform
 what_platform() {
@@ -305,7 +318,7 @@ what_platform() {
     ;;
   esac
 
-  if [ -z "${_platform}" ]; then
+  if [[ -z "${_platform}" ]]; then
     log "error" "Unsupported platform: ${_os} ${_arch}"
     log "error" "Please report this issue to the project maintainers."
     return 1
@@ -313,48 +326,85 @@ what_platform() {
 
   # Normalize the platform string
   _PLATFORM_WITH_ARCH="${_platform//\-/\_}"
-  _PLATFORM="${_os}"
-  _ARCH="${_arch}"
+  _PLATFORM="${_os//\ /}"
+  _ARCH="${_arch//\ /}"
 
   return 0
 }
 
-# Get the platform and architecture variables
-_get_platform_arch_vars() {
-  what_platform || return 1
+_get_os_arr_from_args() {
+  local _PLATFORM_ARG=$1
+  local _PLATFORM_ARR=()
 
-  local _platform="${1:-"${_PLATFORM:-"${_PLATFORM_WITH_ARCH%_*}"}"}"
-  local _arch="${2:-"${_ARCH:-"${_PLATFORM_WITH_ARCH#*\_}"}"}"
-
-  if [ "${_platform}" != "all" ]; then
-      _platforms=( "${_platform}" )
-      if [[ "${_platform}" != "darwin" ]]; then
-        _archS=( "amd64" "386" )
-        if [[ "${_arch}" != "all" && "${_arch}" != "arm64" ]]; then
-          _archS=( "${_arch}" )
-        fi
-      else
-        _archS=( "amd64" "arm64" )
-        if [[ "${_arch}" != "all" && "${_arch}" != "386" ]]; then
-          _archS=( "${_arch}" )
-        fi
-      fi
+  if [[ "${_PLATFORM_ARG}" == "all" ]]; then
+    _PLATFORM_ARR=( "${__PLATFORMS[@]}" )
   else
-      _platforms=( "${__PLATFORMS[@]}" )
-      _archS=( "${__ARCHs[@]}" )
+    _PLATFORM_ARR=( "${_PLATFORM_ARG}" )
   fi
-  # Print the platform and architecture variables
-  echo "("
-  for _platform_pos in "${_platforms[@]}"; do
+
+  for _platform_pos in "${_PLATFORM_ARR[@]}"; do
     echo "${_platform_pos} "
   done
-  echo ")"
-  echo ","
-  echo "("
-  for _arch_pos in "${_archS[@]}"; do
-    echo "${_arch_pos} "
-  done
-  echo ")"
+
+  return 0
+}
+_get_arch_arr_from_args() {
+  local _ARCH_ARG=$1
+  local _ARCH_ARR=()
+
+  if [[ "${_ARCH_ARG}" == "all" ]]; then
+    _ARCH_ARR=( "${__ARCHs[@]}" )
+  else
+    _ARCH_ARR=( "${_ARCH_ARG}" )
+  fi
+
+  echo "${_ARCH_ARR[@]}"
+
+  return 0
+}
+_get_os_from_args() {
+  local _PLATFORM_ARG=$1
+  case "${_PLATFORM_ARG}" in
+    all|ALL|a|A|-a|-A)
+      echo "all"
+      ;;
+    win|WIN|windows|WINDOWS|w|W|-w|-W)
+      echo "windows"
+      ;;
+    linux|LINUX|l|L|-l|-L)
+      echo "linux"
+      ;;
+    darwin|DARWIN|macOS|MACOS|m|M|-m|-M)
+      echo "darwin"
+      ;;
+    *)
+      log "error" "build_and_validate: Unsupported platform: '${_PLATFORM_ARG}'."
+      log "error" "Please specify a valid platform (windows, linux, darwin, all)."
+      exit 1
+      ;;
+  esac
+  return 0
+}
+_get_arch_from_args() {
+  local _ARCH_ARG=$1
+  case "${_ARCH_ARG}" in
+    all|ALL|a|A|-a|-A)
+      echo "all"
+      ;;
+    amd64|AMD64|x86_64|X86_64|x64|X64)
+      echo "amd64"
+      ;;
+    arm64|ARM64|aarch64|AARCH64)
+      echo "arm64"
+      ;;
+    386|i386|I386)
+      echo "386"
+      ;;
+    *)
+      log "error" "build_and_validate: Unsupported architecture: '${_ARCH_ARG}'. Please specify a valid architecture (amd64, arm64, 386)."
+      exit 1
+      ;;
+  esac
   return 0
 }
 
@@ -496,60 +546,60 @@ check_dependencies() {
 # Build the binary
 # shellcheck disable=SC2207,SC2116,SC2091,SC2155,SC2005
 build_binary() {
-  # Get the platform and architecture variables
-  local __ARGS=( "${1:-}" "${2:-}" )
-  local __vars_arrays=$(_get_platform_arch_vars "${__ARGS[@]}")
-  # __platforms
-  local _platforms=( )
-  eval _platforms="$(echo "$(printf '%s\n' "${__vars_arrays%%\,*}")")"
-  #echo "${_platforms[@]}"
-  local _archS=( "$(echo "$(printf '%s\n' "${__vars_arrays#*,}" | tr -d '(' | tr -d ')' | tr -d '\n')")" )
-  eval _archS="( "$(echo "$(printf '%s' "${_archS[@]}")")" )"
-  #echo "${_archS[@]}"
+  declare -a __platform_arr="$(echo $(_get_os_arr_from_args "$1"))"
+  declare -a _platform_arr=()
+  eval _platform_arr="( $(echo "${__platform_arr[@]}") )"
+  log "info" "Qty OS's: ${#_platform_arr[@]}"
 
-  for _platform_pos in "${_platforms[@]}"; do
-    if test -z "$_platform_pos"; then
+  declare -a __arch_arr="$(echo $(_get_arch_arr_from_args "$2"))"
+  declare -a _arch_arr=()
+  eval _arch_arr="( $(echo "${__arch_arr[@]}") )"
+  log "info" "Qty Arch's: ${#_arch_arr[@]}"
+
+  for _platform_pos in "${_platform_arr[@]}"; do
+    if test -z "${_platform_pos}"; then
       continue
     fi
-    for _arch_pos in "${_archS[@]}"; do
-      if test -z "$_arch_pos"; then
+    for _arch_pos in "${_arch_arr[@]}"; do
+      if test -z "${_arch_pos}"; then
         continue
       fi
-      if [[ "$_platform_pos" != "darwin" && "$_arch_pos" == "arm64" ]]; then
+      if [[ "${_platform_pos}" != "darwin" && "${_arch_pos}" == "arm64" ]]; then
         continue
       fi
-      if [[ "$_platform_pos" != "windows" && "$_arch_pos" == "386" ]]; then
+      if [[ "${_platform_pos}" != "windows" && "${_arch_pos}" == "386" ]]; then
         continue
       fi
-      local _OUTPUT_NAME="$(printf '%s_%s_%s' "${_BINARY}" "$_platform_pos" "$_arch_pos")"
-      if [[ "$_platform_pos" == "windows" ]]; then
+      local _OUTPUT_NAME="$(printf '%s_%s_%s' "${_BINARY}" "${_platform_pos}" "${_arch_pos}")"
+      if [[ "${_platform_pos}" == "windows" ]]; then
         _OUTPUT_NAME="$(printf '%s.exe' "${_OUTPUT_NAME}")"
       fi
 
       local _build_env=(
-        "export GOOS='$_platform_pos' &&"
-        "export GOARCH='$_arch_pos' &&"
+        "GOOS=${_platform_pos}"
+        "GOARCH=${_arch_pos}"
       )
       local _build_args=(
-        "-ldflags '-s -w -X main.version=$(git describe --tags) -X main.commit=$(git rev-parse HEAD) -X main.date=$(date +%Y-%m-%d)'"
-        "-trimpath -o '${_OUTPUT_NAME}' '${_CMD_PATH}'"
+        "-ldflags '-s -w -X main.version=$(git describe --tags) -X main.commit=$(git rev-parse HEAD) -X main.date=$(date +%Y-%m-%d)' "
+        "-trimpath -o \"${_OUTPUT_NAME}\" \"${_CMD_PATH}\""
       )
-      local _build_cmd=(
-        "${_build_env[*]}"
-        "go build"
-        "${_build_args[*]}"
-      )
-      local _build_cmd_str="${_build_cmd[*]}"
-      log "info" "$(printf '%s %s/%s\n' "Building the binary for" "${_platform_pos}" "${_arch_pos}")"
+
+      local _build_cmd=( "${_build_env[@]}" "go build " "${_build_args[*]}" )
+      local _build_cmd_str=$(echo $(printf "%s" "${_build_cmd[*]//\ / }"))
+      _build_cmd_str="$(printf '%s\n' "${_build_cmd_str//\ _/_}")"
+      log "info" "$(printf '%s %s/%s' "Building the binary for" "${_platform_pos}" "${_arch_pos}")"
       log "info" "Command: ${_build_cmd_str}"
+
+      local _cmdExec=$(bash -c "${_build_cmd_str}" 2>&1 && echo "true" || echo "false")
+
       # Build the binary using the environment variables and arguments
-      if ! bash -c "$_build_cmd_str"; then
+      if [[ "${_cmdExec}" == "false" ]]; then
         log "error" "Failed to build the binary for ${_platform_pos} ${_arch_pos}"
         log "error" "Command: ${_build_cmd_str}"
         return 1
       else
         # If the build was successful, check if UPX is installed and compress the binary (if not Windows)
-        if [[ "$_platform_pos" != "windows" ]]; then
+        if [[ "${_platform_pos}" != "windows" ]]; then
             install_upx
             log "info" "Packing/compressing the binary with UPX..."
             upx "${_OUTPUT_NAME}" --force-overwrite --lzma --no-progress --no-color -qqq || true
@@ -561,7 +611,7 @@ build_binary() {
           log "error" "Command: ${_build_cmd_str}"
           return 1
         else
-          local compress_vars=( "$_platform_pos" "$_arch_pos" )
+          local compress_vars=( "${_platform_pos}" "${_arch_pos}" )
           compress_binary "${compress_vars[@]}" || return 1
           log "success" "Binary created successfully: ${_OUTPUT_NAME}"
         fi
@@ -572,29 +622,29 @@ build_binary() {
   echo ""
   log "success" "All builds completed successfully!"
   echo ""
+
   return 0
 }
 
 # Compress the binary into a single tar.gz/zip file
 # shellcheck disable=SC2207,SC2116,SC2091,SC2155,SC2005
 compress_binary() {
-  # Get the platform and architecture variables
-  local __ARGS=( "${1:-}" "${2:-}" )
-  local __vars_arrays=$(_get_platform_arch_vars "${__ARGS[@]}")
-  # __platforms
-  local _platforms=( )
-  eval _platforms="$(echo "$(printf '%s\n' "${__vars_arrays%%\,*}")")"
-  #echo "${_platforms[@]}"
-  local _archS=( "$(echo "$(printf '%s\n' "${__vars_arrays#*,}" | tr -d '(' | tr -d ')' | tr -d '\n')")" )
-  eval _archS="( "$(echo "$(printf '%s' "${_archS[@]}")")" )"
-  #echo "${_archS[@]}"
+  declare -a __platform_arr="$(echo $(_get_os_arr_from_args "$1"))"
+  declare -a _platform_arr=()
+  eval _platform_arr="( $(echo "${__platform_arr[@]}") )"
+  log "info" "Qty OS's: ${#_platform_arr[@]}"
 
-  for _platform_pos in "${_platforms[@]}"; do
-    if test -z "${_platform_pos}"; then
+  declare -a __arch_arr="$(echo $(_get_arch_arr_from_args "$2"))"
+  declare -a _arch_arr=()
+  eval _arch_arr="( $(echo "${__arch_arr[@]}") )"
+  log "info" "Qty Arch's: ${#_arch_arr[@]}"
+
+  for _platform_pos in "${_platform_arr[@]}"; do
+    if [[ -z "${_platform_pos}" ]]; then
       continue
     fi
-    for _arch_pos in "${_archS[@]}"; do
-      if test -z "${_arch_pos}"; then
+    for _arch_pos in "${_arch_arr[@]}"; do
+      if [[ -z "${_arch_pos}" ]]; then
         continue
       fi
       if [[ "${_platform_pos}" != "darwin" && "${_arch_pos}" == "arm64" ]]; then
@@ -603,20 +653,29 @@ compress_binary() {
       if [[ "${_platform_pos}" == "linux" && "${_arch_pos}" == "386" ]]; then
         continue
       fi
-      local _BINARY_NAME="${_BINARY}_${_platform_pos}_${_arch_pos}"
-      local _OUTPUT_NAME=""
-      log "info" "Compressing the binary for ${_platform_pos} ${_arch_pos} into ${_OUTPUT_NAME}..."
-      if [ "${_platform_pos}" != "windows" ]; then
-        _OUTPUT_NAME="${_BINARY_NAME}.tar.gz"
-        tar -czf "${_OUTPUT_NAME}" "${_BINARY_NAME}" || return 1
-      else
-        _OUTPUT_NAME="${_BINARY_NAME}.zip"
-        log "info" "Compressing the binary for ${_platform_pos} ${_arch_pos} into ${_OUTPUT_NAME}..."
-        zip -r -9 "${_OUTPUT_NAME}" "${_BINARY_NAME}.exe" || return 1
+
+      local _BINARY_NAME="$(printf '%s_%s_%s' "${_BINARY}" "${_platform_pos}" "${_arch_pos}")"
+      if [[ "${_platform_pos}" == "windows" ]]; then
+        _BINARY_NAME="$(printf '%s.exe' "${_BINARY_NAME}")"
       fi
-      if [ ! -f "${_OUTPUT_NAME}" ]; then
-        log "error" "Failed to create tar.gz file: ${_OUTPUT_NAME}"
+
+      local _OUTPUT_NAME="${_BINARY_NAME//\.exe/}"
+      local _compress_cmd_exec=""
+      if [[ "${_platform_pos}" != "windows" ]]; then
+        _OUTPUT_NAME="${_OUTPUT_NAME}.tar.gz"
+        log "info" "Compressing the binary for ${_platform_pos} ${_arch_pos} into ${_OUTPUT_NAME}..."
+        _compress_cmd_exec=$(tar -czf "${_OUTPUT_NAME}" "${_BINARY_NAME}" 2>&1 && echo "true" || echo "false")
+      else
+        _OUTPUT_NAME="${_OUTPUT_NAME}.zip"
+        log "info" "Compressing the binary for ${_platform_pos} ${_arch_pos} into ${_OUTPUT_NAME}..."
+        _compress_cmd_exec=$(zip -r -9 "${_OUTPUT_NAME}" "${_BINARY_NAME}" 2>&1 && echo "true" || echo "false")
+      fi
+      if [[ "${_compress_cmd_exec}" == "false" ]]; then
+        log "error" "Failed to compress the binary for ${_platform_pos} ${_arch_pos}"
+        log "error" "Command: ${_compress_cmd_exec}"
         return 1
+      else
+        log "success" "Binary compressed successfully: ${_OUTPUT_NAME}"
       fi
     done
   done
@@ -630,7 +689,7 @@ compress_binary() {
 validate_versions() {
     REQUIRED_GO_VERSION="${_VERSION_GO:-1.20.0}"
     GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
-    if [ "$(printf '%s\n' "$REQUIRED_GO_VERSION" "$GO_VERSION" | sort -V | head -n1)" != "$REQUIRED_GO_VERSION" ]; then
+    if [[ "$(printf '%s\n' "$REQUIRED_GO_VERSION" "$GO_VERSION" | sort -V | head -n1)" != "$REQUIRED_GO_VERSION" ]]; then
         log "error" "Go version must be >= $REQUIRED_GO_VERSION. Detected: $GO_VERSION"
         exit 1
     fi
@@ -649,70 +708,19 @@ summary() {
 
 # Build the binary and validate the Go version
 build_and_validate() {
-    # Check if the platform and architecture are set
-    what_platform || return 1
-
     # Check if the Go version is valid
     validate_versions
 
-    local _PLATFORM_ARG="${1:-${_PLATFORM}}"
-    local _ARCH_ARG="${2:-${_ARCH}}"
+    local _PLATFORM_ARG="$1"
+    # _PLATFORM_ARG="$(_get_os_from_args "${1:-${_PLATFORM}}")"
+    local _ARCH_ARG="$2"
+    # _ARCH_ARG="$(_get_arch_from_args "${2:-${_ARCH}}")"
 
-    local _WHICH_COMPILE_ARG=( )
-    case "${_PLATFORM_ARG}" in
-        all|ALL|a|A|-a|-A)
-            log "info" "Building for all platforms..."
-            _WHICH_COMPILE_ARG+=( "all" )
-            ;;
-        *)
-            case "${_PLATFORM_ARG}" in
-                win|WIN|windows|WINDOWS|w|W|-w|-W)
-                  log "info" "Building for Windows..."
-                  _WHICH_COMPILE_ARG+=( "windows" )
-                  ;;
-                linux|LINUX|l|L|-l|-L)
-                  log "info" "Building for Linux..."
-                  _WHICH_COMPILE_ARG+=( "linux" )
-                  ;;
-                darwin|DARWIN|macOS|MACOS|m|M|-m|-M)
-                  log "info" "Building for MacOS..."
-                  _WHICH_COMPILE_ARG+=( "darwin" )
-                  ;;
-                *)
-                  log "error" "build_and_validate: Unsupported platform: '$(printf '%s' "${_WHICH_COMPILE_ARG[*]}")'."
-                  log "error" "Please specify a valid platform (windows, linux, darwin)."
-                  return 1
-                  ;;
-            esac
-    esac
-    case "${_ARCH_ARG}" in
-        all|ALL|a|A|-a|-A)
-            log "info" "Building for all architectures..."
-            _WHICH_COMPILE_ARG+=( "all" )
-            ;;
-        *)
-            case "${_ARCH_ARG}" in
-                amd64|AMD64|x86_64|X86_64|x64|X64)
-                  log "info" "Building for AMD64..."
-                  _WHICH_COMPILE_ARG+=( "amd64" )
-                  ;;
-                arm64|ARM64|aarch64|AARCH64)
-                  log "info" "Building for ARM64..."
-                  _WHICH_COMPILE_ARG+=( "arm64" )
-                  ;;
-                386|i386|I386)
-                  log "info" "Building for 386..."
-                  _WHICH_COMPILE_ARG+=( "386" )
-                  ;;
-                *)
-                  log "error" "build_and_validate: Unsupported architecture: '${__ARCH}'. Please specify a valid architecture (amd64, arm64, 386)."
-                  return 1
-                  ;;
-            esac
-    esac
+    log "info" "Building for platform: ${_PLATFORM_ARG}, architecture: ${_ARCH_ARG}" true
+    local _WHICH_COMPILE_ARG=( "${_PLATFORM_ARG}" "${_ARCH_ARG}" )
 
-    # Call the build_binary function with the platform and architecture arguments
-    build_binary "${_WHICH_COMPILE_ARG[@]}" || return 1
+    # Call the build function with the platform and architecture arguments
+    build_binary "${_WHICH_COMPILE_ARG[@]}" || exit 1
 
     return 0
 }
@@ -740,7 +748,7 @@ download_binary() {
     fi
 
     # Validação: Verificar se o sistema operacional ou a arquitetura são suportados
-    if test -z "${_PLATFORM}"; then
+    if [[ -z "${_PLATFORM}" ]]; then
         log "error" "Unsupported platform: ${_PLATFORM}"
         return 1
     fi
@@ -816,72 +824,66 @@ show_headers() {
 }
 
 # Main function to handle command line arguments
+# shellcheck disable=SC2155
 main() {
   # Detect the platform if not provided, will be used in the build command
   what_platform || exit 1
 
-  local _WHICH_COMPILE_ARG=( "${_PLATFORM}" "${_ARCH}" )
-
   # Show the banner information
-  if test "$debug" != true; then
+  if [[ "$_DEBUG" != true ]]; then
     show_headers
   else
     log "info" "Debug mode enabled. Skipping banner..."
-    if test -z "${HIDE_ABOUT}"; then
+    if [[ -z "${_HIDE_ABOUT}" ]]; then
       show_about
     fi
   fi
 
+  _ARGS=( "$@" )
+  local _default_label='Auto detect'
+  local _arrArgs=( "${_ARGS[@]:0:$#}" )
+  local _PLATFORM_ARG=$(_get_os_from_args "${_arrArgs[1]:-${_PLATFORM}}")
+  local _ARCH_ARG=$(_get_arch_from_args "${_arrArgs[2]:-${_ARCH}}")
+
   # Check if the user has provided a command
-  case "${1:-}" in
-      build|BUILD|"-b"|"-B")
-        _ARGS=( "$@" )
-        local _default_label='Auto detect'
-        log "info" "$(printf '%s%s' "Executing build command for platform: " "${_ARGS[1]:-${_default_label}}'")"
-        # shellcheck disable=SC2124
-        local _arrArgs=( "${_ARGS[1]:1:-1}" )
-        if [[ $# -gt 2 ]]; then
-            # If the user provided a platform argument, use it
-            _WHICH_COMPILE_ARG=( "${_arrArgs[1]}" "${_arrArgs[2]}" )
-        elif [[ $# -gt 1 ]]; then
-            # If the user provided a platform argument, use it
-            _WHICH_COMPILE_ARG=( "${_arrArgs[1]}" "${_ARCH}" )
-        else
-            # Otherwise, use the default platform and architecture
-            _WHICH_COMPILE_ARG=( "${_PLATFORM}" "${_ARCH}" )
-        fi
-        # Call the build function with the detected platform
-        build_and_validate "${_WHICH_COMPILE_ARG[@]}" || exit 1
-        ;;
-      install|INSTALL|"-i"|"-I")
-          log "info" "Executing install command..."
-          read -r -p "Do you want to download the precompiled binary? [y/N] (No will build locally): " c </dev/tty
-          log "info" "User choice: ${c}"
+  log "info" "Command: ${_arrArgs[0]:-}" true
+  log "info" "Platform: ${_PLATFORM_ARG:-$_default_label}" true
+  log "info" "Architecture: ${_ARCH_ARG:-$_default_label}" true
 
-          if [ "$c" = "y" ] || [ "$c" = "Y" ]; then
-              log "info" "Downloading precompiled binary..." true
-              install_from_release "${_WHICH_COMPILE_ARG[@]}" || exit 1
-          else
-              log "info" "Building locally..." true
-              build_and_validate "${_WHICH_COMPILE_ARG[@]}" || exit 1
-              install_binary "${_WHICH_COMPILE_ARG[@]}" || exit 1
-          fi
+  case "${_arrArgs[0]:-}" in
+    build|BUILD|-b|-B)
+      # Call the build function with the detected platform
+      build_and_validate "$_PLATFORM_ARG" "$_ARCH_ARG" || exit 1
+      ;;
+    install|INSTALL|-i|-I)
+      log "info" "Executing install command..."
+      read -r -p "Do you want to download the precompiled binary? [y/N] (No will build locally): " c </dev/tty
+      log "info" "User choice: ${c}"
 
-          summary
-          ;;
-      clean|CLEAN|"-c"|"-C")
-        log "info" "Executing clean command..."
-        clean || exit 1
-        ;;
-      *)
-        log "error" "Invalid command: $1"
-        echo "Usage: $0 {build|install|clean}"
-        exit 1
-        ;;
+      if [ "$c" = "y" ] || [ "$c" = "Y" ]; then
+          log "info" "Downloading precompiled binary..." true
+          install_from_release "$_PLATFORM_ARG" "$_ARCH_ARG" || exit 1
+      else
+          log "info" "Building locally..." true
+          build_and_validate "$_PLATFORM_ARG" "$_ARCH_ARG" || exit 1
+          install_binary "$_PLATFORM_ARG" "$_ARCH_ARG" || exit 1
+      fi
+
+      summary
+      ;;
+    clear|clean|CLEAN|-c|-C)
+      log "info" "Executing clean command..."
+      clean || exit 1
+      log "success" "Clean command executed successfully."
+      ;;
+    *)
+      log "error" "Invalid command: $1"
+      echo "Usage: $0 {build|install|clean}"
+      ;;
   esac
 }
 
+echo "MAKE ARGS: ${ARGS[*]:-}"
+
 # Execute the main function with all script arguments
 main "$@"
-
-exit $?
