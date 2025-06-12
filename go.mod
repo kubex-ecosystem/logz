@@ -7,11 +7,6 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/olekukonko/tablewriter v0.0.5
-
-	// Temporarily disabled due to external dependency on zmq4
-	// Uncomment and ensure the required libraries are installed if needed in the future
-	// github.com/pebbe/zmq4 v1.2.11
-
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	golang.org/x/text v0.24.0
@@ -37,5 +32,3 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// replace github.com/faelmori/kubex-interfaces => ../kubex-interfaces
