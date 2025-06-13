@@ -14,6 +14,8 @@ build_binary() {
   local platforms=( "$(_get_os_arr_from_args "$_PLATFORM_ARG")" )
   local archs=( "$(_get_arch_arr_from_args "$_ARCH_ARG")" )
 
+  local _go_mod_tidy='go mod tidy -v'
+
   for platform_pos in "${platforms[@]}"; do
     [[ -z "$platform_pos" ]] && continue
     for arch_pos in "${archs[@]}"; do
@@ -40,6 +42,10 @@ build_binary() {
 
       log info "Compilando para ${platform_pos}/${arch_pos}"
 
+      if ! bash -c "${_go_mod_tidy}"; then
+        log error "Falha ao executar 'go mod tidy' para ${platform_pos} ${arch_pos}"
+        return 1
+      fi
       if ! bash -c "${build_cmd}"; then
         log error "Falha ao compilar para ${platform_pos} ${arch_pos}"
         return 1
