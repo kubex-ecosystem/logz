@@ -1,4 +1,4 @@
-module github.com/faelmori/logz
+module github.com/rafa-mori/logz
 
 go 1.24.4
 

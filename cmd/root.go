@@ -1,8 +1,8 @@
 package main
 
 import (
-	cc "github.com/faelmori/logz/cmd/cli"
-	vs "github.com/faelmori/logz/version"
+	cc "github.com/rafa-mori/logz/cmd/cli"
+	vs "github.com/rafa-mori/logz/version"
 
 	"github.com/spf13/cobra"
 

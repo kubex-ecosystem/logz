@@ -2,9 +2,9 @@ package core
 
 import (
 	//"fmt"
-	//c "github.com/faelmori/kubex-interfaces/config"
+	//c "github.com/rafa-mori/kubex-interfaces/config"
 
-	//c "github.com/faelmori/kubex-interfaces/config"
+	//c "github.com/rafa-mori/kubex-interfaces/config"
 	//"os"
 	//"path/filepath"
 	"time"

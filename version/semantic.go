@@ -1,7 +1,7 @@
 package version
 
 import (
-	lgr "github.com/faelmori/logz/logger"
+	lgr "github.com/rafa-mori/logz/logger"
 
 	"github.com/spf13/cobra"
 
@@ -17,7 +17,7 @@ import (
 
 const moduleAlias = "Logz"
 const moduleName = "logz"
-const gitModelUrl = "https://github.com/faelmori/" + moduleName + ".git"
+const gitModelUrl = "https://github.com/rafa-mori/" + moduleName + ".git"
 const currentVersionFallback = "v1.2.0" // First version with the version file
 
 type Service interface {

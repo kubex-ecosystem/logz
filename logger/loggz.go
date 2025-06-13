@@ -1,7 +1,7 @@
 package logger
 
 import (
-	il "github.com/faelmori/logz/internal/core"
+	il "github.com/rafa-mori/logz/internal/core"
 	"log"
 	"os"
 )
