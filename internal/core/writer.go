@@ -241,6 +241,20 @@ func (mw *MultiWriter[T]) Write(entry T) error {
 			return err
 		}
 	}
+
+	/* structTest := json.Marshal(entry)
+	if structTest != nil {
+		if strEntry, ok := entry.(string); ok {
+			for _, w := range mw.writers {
+				if err := w.Write(strEntry); err != nil {
+					return err
+				}
+			}
+		}
+	} */
+
+	json.NewEncoder(os.Stdout).Encode(entry)
+
 	return nil
 }
 
