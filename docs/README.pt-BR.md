@@ -58,7 +58,7 @@ Requisitos:
 
 ```bash
 # Clone este repositório
-git clone https://github.com/faelmori/logz.git
+git clone https://github.com/rafa-mori/logz.git
 
 # Navegue até o diretório do projeto
 cd logz

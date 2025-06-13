@@ -3,9 +3,9 @@ package logz
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/faelmori/logz/internal/core"
-	logz "github.com/faelmori/logz/logger"
-	vs "github.com/faelmori/logz/version"
+	"github.com/rafa-mori/logz/internal/core"
+	logz "github.com/rafa-mori/logz/logger"
+	vs "github.com/rafa-mori/logz/version"
 	"os"
 	"sync"
 )

@@ -58,7 +58,7 @@ Requirements:
 
 ```bash
 # Clone this repository
-git clone https://github.com/faelmori/logz.git
+git clone https://github.com/rafa-mori/logz.git
 
 # Navigate to the project directory
 cd logz
@@ -218,5 +218,5 @@ Contributions are welcome! Feel free to open issues or submit pull requests. Che
 ## **Contact**
 💌 **Developer**:  
 [Rafael Mori](mailto:faelmori@gmail.com)
-💼 [Follow me on GitHub](https://github.com/faelmori)
+💼 [Follow me on GitHub](https://github.com/rafa-mori)
 I'm open to new work opportunities and collaborations. If you find this project interesting, don’t hesitate to reach out!
