@@ -1,5 +1,10 @@
 ![Logz Banner](docs/assets/top_banner.png)
 
+[![Build](https://github.com/rafa-mori/logz/actions/workflows/release.yml/badge.svg)](https://github.com/rafa-mori/logz/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Go Version](https://img.shields.io/badge/go-%3E=1.21-blue)](go.mod)
+[![Releases](https://img.shields.io/github/v/release/rafa-mori/logz?include_prereleases)](https://github.com/rafa-mori/logz/releases)
+
 ---
 
 **An advanced logging and metrics management tool with native support for Prometheus integration, dynamic notifications, and a powerful CLI.**
