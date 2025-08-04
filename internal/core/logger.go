@@ -180,18 +180,18 @@ func (l *LogzCoreImpl) log(level LogLevel, msg string, ctx map[string]interface{
 	}
 
 	// Only in service VMode, notify via Notifiers
-	if l.VMode == ModeService && l.VConfig != nil {
-		//for _, name := range l.VConfig.NotifierManager().ListNotifiers() {
-		//	if notifier, ok := l.VConfig.NotifierManager().GetNotifier(name); ok {
-		//		if notifier != nil {
-		//			ntf := notifier
-		//			if ntfErr := ntf.Notify(entry); ntfErr != nil {
-		//				log.Printf("ErrorCtx notifying %s: %v", name, ntfErr)
-		//			}
-		//		}
-		//	}
-		//}
-	}
+	//if l.VMode == ModeService && l.VConfig != nil {
+	// for _, name := range l.VConfig.NotifierManager().ListNotifiers() {
+	//	if notifier, ok := l.VConfig.NotifierManager().GetNotifier(name); ok {
+	//		if notifier != nil {
+	//			ntf := notifier
+	//			if ntfErr := ntf.Notify(entry); ntfErr != nil {
+	//				log.Printf("ErrorCtx notifying %s: %v", name, ntfErr)
+	//			}
+	//		}
+	//	}
+	// }
+	//}
 
 	// Update metrics in PrometheusManager, if enabled
 	if l.VMode == ModeService {

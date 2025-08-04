@@ -1,9 +1,11 @@
+// Package logger provides a unified interface for logging with various configurations and formats.
 package logger
 
 import (
-	il "github.com/rafa-mori/logz/internal/core"
 	"log"
 	"os"
+
+	il "github.com/rafa-mori/logz/internal/core"
 )
 
 // LogLevel represents the level of the log entry.

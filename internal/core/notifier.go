@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/godbus/dbus/v5"
+	"github.com/gorilla/websocket"
 
 	"fmt"
 	"net/http"
@@ -14,20 +15,21 @@ import (
 type Notifier interface {
 	// Notify sends a log entry notification.
 	Notify(entry LogzEntry) error
+
 	// Enable activates the notifier.
 	Enable()
+
 	// Disable deactivates the notifier.
 	Disable()
+
 	// Enabled checks if the notifier is active.
 	Enabled() bool
 
 	// WebServer returns the HTTP server instance.
 	WebServer() *http.Server
 
-	// Temporarily disabled due to external dependency on zmq4
-	// Uncomment and ensure the required libraries are installed if needed in the future
 	// Websocket returns the WebSocket instance.
-	//Websocket() *zmq4.Socket
+	Websocket() *websocket.Conn
 
 	// WebClient returns the HTTP client instance.
 	WebClient() *http.Client
@@ -40,7 +42,7 @@ type NotifierImpl struct {
 	NotifierManager NotifierManager // Manager for notifier instances.
 	EnabledFlag     bool            // Flag indicating if the notifier is enabled.
 	WebhookURL      string          // URL for webhook notifications.
-	HttpMethod      string          // HTTP method for webhook notifications.
+	HTTPMethod      string          // HTTP method for webhook notifications.
 	AuthToken       string          // Authentication token for notifications.
 	LogLevel        string          // Log VLevel for filtering notifications.
 	WsEndpoint      string          // WebSocket endpoint for notifications.
@@ -48,7 +50,7 @@ type NotifierImpl struct {
 }
 
 // NewNotifier creates a new NotifierImpl instance.
-func NewNotifier(manager NotifierManager, enabled bool, webhookURL, httpMethod, authToken, logLevel, wsEndpoint string, whitelist []string) Notifier {
+func NewNotifier(manager NotifierManager, enabled bool, webhookURL, HTTPMethod, authToken, logLevel, wsEndpoint string, whitelist []string) Notifier {
 	if whitelist == nil {
 		whitelist = []string{}
 	}
@@ -56,7 +58,7 @@ func NewNotifier(manager NotifierManager, enabled bool, webhookURL, httpMethod, 
 		NotifierManager: manager,
 		EnabledFlag:     enabled,
 		WebhookURL:      webhookURL,
-		HttpMethod:      httpMethod,
+		HTTPMethod:      HTTPMethod,
 		AuthToken:       authToken,
 		LogLevel:        logLevel,
 		WsEndpoint:      wsEndpoint,
@@ -106,7 +108,7 @@ func (n *NotifierImpl) Notify(entry LogzEntry) error {
 
 // httpNotify sends an HTTP notification.
 func (n *NotifierImpl) httpNotify(entry LogzEntry) error {
-	if n.HttpMethod == "POST" {
+	if n.HTTPMethod == "POST" {
 		req, err := http.NewRequest("POST", n.WebhookURL, strings.NewReader(entry.GetMessage()))
 		if err != nil {
 			return fmt.Errorf("HTTP request creation error: %w", err)
@@ -124,7 +126,7 @@ func (n *NotifierImpl) httpNotify(entry LogzEntry) error {
 			return fmt.Errorf("HTTP request failed: %s", resp.Status)
 		}
 	} else {
-		return fmt.Errorf("unsupported HTTP method: %s", n.HttpMethod)
+		return fmt.Errorf("unsupported HTTP method: %s", n.HTTPMethod)
 	}
 	return nil
 }
@@ -132,12 +134,31 @@ func (n *NotifierImpl) httpNotify(entry LogzEntry) error {
 // wsNotify sends a WebSocket notification.
 func (n *NotifierImpl) wsNotify(entry LogzEntry) error {
 	_ = n.AuthToken + "|" + entry.GetMessage()
-	// message := n.AuthToken + "|" + entry.GetMessage()
-	// Temporarily disabled due to external dependency on zmq4
-	// Uncomment and ensure the required libraries are installed if needed in the future
-	//if _, err := n.Websocket().Send(message, 0); err != nil {
-	//	return fmt.Errorf("WebSocket error: %w", err)
-	//}
+	ws, _, err := websocket.DefaultDialer.Dial(n.WsEndpoint, nil)
+	if err != nil {
+		return fmt.Errorf("WebSocket connection error: %w", err)
+	}
+	defer ws.Close()
+	if err := ws.WriteJSON(entry); err != nil {
+		return fmt.Errorf("WebSocket write error: %w", err)
+	}
+
+	// Optionally, you can read a message from the WebSocket server to confirm the connection.
+	// msg, _, err := ws.ReadMessage()
+	if _, _, err := ws.ReadMessage(); err != nil {
+		return fmt.Errorf("WebSocket read error: %w", err)
+	}
+
+	// Optionally, you can handle the response from the WebSocket server here.
+	// For now, we just read a message to confirm the connection is working.
+	if _, _, err := ws.ReadMessage(); err != nil {
+		return fmt.Errorf("WebSocket read error: %w", err)
+	}
+
+	// Print the response message for debugging purposes.
+	// You can uncomment or remove this line in production code.
+	// This is just an example; you might want to handle the response differently.
+	// fmt.Printf("WebSocket response: %s\n", msg)
 	return nil
 }
 
@@ -163,10 +184,8 @@ func (n *NotifierImpl) Enabled() bool { return n.EnabledFlag }
 // WebServer returns the HTTP server instance.
 func (n *NotifierImpl) WebServer() *http.Server { return n.NotifierManager.WebServer() }
 
-// Temporarily disabled due to external dependency on zmq4
-// Uncomment and ensure the required libraries are installed if needed in the future
-// Websocket returns the WebSocket instance.
-//func (n *NotifierImpl) Websocket() *zmq4.Socket { return n.NotifierManager.Websocket() }
+// Websocket returns the Gorilla WebSocket connection instance.
+func (n *NotifierImpl) Websocket() *websocket.Conn { return n.NotifierManager.Websocket() }
 
 // WebClient returns the HTTP client instance.
 func (n *NotifierImpl) WebClient() *http.Client { return n.NotifierManager.WebClient() }
@@ -195,7 +214,7 @@ func NewHTTPNotifier(webhookURL, authToken string) *HTTPNotifier {
 		NotifierImpl: NotifierImpl{
 			WebhookURL: webhookURL,
 			AuthToken:  authToken,
-			HttpMethod: "POST",
+			HTTPMethod: "POST",
 		},
 	}
 }
@@ -205,7 +224,7 @@ func (n *HTTPNotifier) Notify(entry LogzEntry) error {
 	if !n.EnabledFlag {
 		return nil
 	}
-	req, err := http.NewRequest(n.HttpMethod, n.WebhookURL, strings.NewReader(entry.GetMessage()))
+	req, err := http.NewRequest(n.HTTPMethod, n.WebhookURL, strings.NewReader(entry.GetMessage()))
 	if err != nil {
 		return fmt.Errorf("HTTPNotifier request creation error: %w", err)
 	}
@@ -226,32 +245,33 @@ func (n *HTTPNotifier) Notify(entry LogzEntry) error {
 	return nil
 }
 
-// ZMQNotifier is a notifier that sends WebSocket notifications.
-type ZMQNotifier struct {
+// WebSocketNotifier is a notifier that sends WebSocket notifications.
+type WebSocketNotifier struct {
 	NotifierImpl
 }
 
-// NewZMQNotifier creates a new ZMQNotifier instance.
-func NewZMQNotifier(endpoint string) *ZMQNotifier {
-	return &ZMQNotifier{
+// NewWebSocketNotifier creates a new WebSocketNotifier instance.
+func NewWebSocketNotifier(endpoint string) *WebSocketNotifier {
+	return &WebSocketNotifier{
 		NotifierImpl: NotifierImpl{
 			WsEndpoint: endpoint,
 		},
 	}
 }
 
-// Temporarily disabled due to external dependency on zmq4
-// Uncomment and ensure the required libraries are installed if needed in the future
 // Notify sends a WebSocket notification.
-func (n *ZMQNotifier) Notify(entry LogzEntry) error {
+func (n *WebSocketNotifier) Notify(entry LogzEntry) error {
 	if !n.EnabledFlag {
 		return nil
 	}
-	_ = n.AuthToken + "|" + entry.GetMessage()
-	//message := n.AuthToken + "|" + entry.GetMessage()
-	//if _, err := n.Websocket().Send(message, 0); err != nil {
-	//	return fmt.Errorf("ZMQNotifier error: %w", err)
-	//}
+	if n.WsEndpoint == "" {
+		return nil
+	}
+	ws, _, err := websocket.DefaultDialer.Dial(n.WsEndpoint, nil)
+	if err != nil {
+		return fmt.Errorf("WebSocketNotifier error: %w", err)
+	}
+	defer ws.Close()
 	return nil
 }
 

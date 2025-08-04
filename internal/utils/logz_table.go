@@ -1,3 +1,4 @@
+// Package utils provides utility functions for handling tables.
 package utils
 
 import (

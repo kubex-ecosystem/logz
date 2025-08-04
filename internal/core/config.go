@@ -3,13 +3,14 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/viper"
 
 	// "github.com/fsnotify/fsnotify"
 	// "github.com/spf13/viper"
@@ -518,8 +519,7 @@ func NewConfigManager() *ConfigManager {
 		return nil
 	}
 
-	var cfgM ConfigManager
-	cfgM = cfgMgr
+	var cfgM ConfigManager = cfgMgr
 
 	return &cfgM
 }

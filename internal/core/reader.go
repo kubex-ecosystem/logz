@@ -1,3 +1,4 @@
+// Package core provides the core functionality for reading logs from files.
 package core
 
 import (

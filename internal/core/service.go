@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/godbus/dbus/v5"
-	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"net/url"
@@ -19,6 +17,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/godbus/dbus/v5"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -319,7 +320,7 @@ func metricsHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 	for name, value := range metrics {
 		if _, err := fmt.Fprintf(w, "# HELP %s Custom metric from Logz\n# TYPE %s gauge\n%s %f\n", name, name, name, value); err != nil {
-			fmt.Println(fmt.Sprintf("ErrorCtx writing metric '%s': %v", name, err))
+			fmt.Println(fmt.Printf("ErrorCtx writing metric '%s': %v", name, err))
 		}
 	}
 }

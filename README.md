@@ -1,4 +1,4 @@
-![Logz Banner](docs/assets/top_banner.png)
+# ![Logz Banner](docs/assets/top_banner.png)
 
 ---
 
@@ -7,6 +7,7 @@
 ---
 
 ## **Table of Contents**
+
 1. [About the Project](#about-the-project)
 2. [Features](#features)
 3. [Installation](#installation)
@@ -21,11 +22,13 @@
 ---
 
 ## **About the Project**
+
 Logz is a flexible and powerful solution for managing logs and metrics in modern systems. Built in **Go**, it provides extensive support for multiple notification methods such as **HTTP Webhooks**, **ZeroMQ**, and **DBus**, alongside seamless integration with **Prometheus** for advanced monitoring.
 
 Logz is designed to be robust, highly configurable, and scalable, catering to developers, DevOps teams, and software architects who need a centralized approach to logging, metrics and many other aspects of their systems.
 
 **Why Logz?**
+
 - 💡 **Ease of Use**: Configure and manage logs effortlessly.
 - 🌐 **Seamless Integration**: Easily integrates with Prometheus and other systems.
 - 🔧 **Extensibility**: Add new notifiers and services as needed.
@@ -33,26 +36,33 @@ Logz is designed to be robust, highly configurable, and scalable, catering to de
 ---
 
 ## **Features**
+
 ✨ **Dynamic Notifiers**:
+
 - Support for multiple notifiers simultaneously.
 - Centralized and flexible configuration via JSON or YAML.
 
 📊 **Monitoring and Metrics**:
+
 - Exposes Prometheus-compatible metrics.
 - Dynamic management of metrics with persistence support.
 
 💻 **Powerful CLI**:
+
 - Straightforward commands to manage logs and services.
 - Extensible for additional workflows.
 
 🔒 **Resilient and Secure**:
+
 - Validates against Prometheus naming conventions.
 - Distinct modes for standalone and service execution.
 
 ---
 
 ## **Installation**
+
 Requirements:
+
 - **Go** version 1.19 or later.
 - Prometheus (optional for advanced monitoring).
 
@@ -78,6 +88,7 @@ export PATH=$PATH:$(pwd)
 ## **Usage**
 
 ### CLI
+
 Here are some examples of commands you can execute with Logz’s CLI:
 
 ```bash
@@ -150,13 +161,14 @@ logz error \
 
 ---
 
-#### The image below shows the CLI in action, demonstrating how to log messages at different levels and formats:
+#### The image below shows the CLI in action, demonstrating how to log messages at different levels and formats
 
 ![img.png](docs/assets/cli_print.png)
 
 ---
 
 ### **Description of Commands and Flags**
+
 - **`--msg`**: Specifies the log message.
 - **`--output`**: Defines where to output the log (`stdout` for console or a file path).
 - **`--format`**: Sets the format of the log (e.g., `text` or `json`).
@@ -165,10 +177,12 @@ logz error \
 ---
 
 ### Configuration
+
 Logz uses a JSON or YAML configuration file to centralize its setup. The file is automatically generated on first use or can be manually configured at:  
 `~/.kubex/logz/config.json`.
 
 **Example Configuration**:
+
 ```json
 {
   "port": "2112",
@@ -187,12 +201,15 @@ Logz uses a JSON or YAML configuration file to centralize its setup. The file is
 ---
 
 ## **Prometheus Integration**
+
 Once started, Logz exposes metrics at the endpoint:
-```
+
+```plaintext
 http://localhost:2112/metrics
 ```
 
 **Example Prometheus Configuration**:
+
 ```yaml
 scrape_configs:
   - job_name: 'logz'
@@ -203,7 +220,9 @@ scrape_configs:
 ---
 
 ## **Roadmap**
+
 🔜 **Upcoming Features**:
+
 - Support for additional notifier types (e.g., Slack, Discord, and email).
 - Integrated monitoring dashboard.
 - Advanced configuration with automated validation.
@@ -211,12 +230,24 @@ scrape_configs:
 ---
 
 ## **Contributing**
+
 Contributions are welcome! Feel free to open issues or submit pull requests. Check out the [Contributing Guide](docs/CONTRIBUTING.md) for more details.
 
 ---
 
 ## **Contact**
+
 💌 **Developer**:  
-[Rafael Mori](mailto:faelmori@gmail.com)
-💼 [Follow me on GitHub](https://github.com/rafa-mori)
-I'm open to new work opportunities and collaborations. If you find this project interesting, don’t hesitate to reach out!
+
+Rafael Mori
+
+- 🌐 [Portfolio](https://rafa-mori.dev)
+- 🔗 [LinkedIn](https://www.linkedin.com/in/rafa-mori/)
+- 📧 [Email](mailto:faelmori@gmail.com)
+- 💼 Follow me on GitHub:
+  - [faelmori](https://github.com/faelmori)
+  - [rafa-mori](https://github.com/rafa-mori)
+
+---
+
+***I'm open to new work opportunities and collaborations. If you find this project interesting, don’t hesitate to reach out!***

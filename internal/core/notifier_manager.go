@@ -1,34 +1,61 @@
 package core
 
 import (
+	"context"
+	"crypto/tls"
+	"net"
+	"time"
+
 	"github.com/godbus/dbus/v5"
+	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 )
+
+type NotifierWebSocketConfig struct {
+	TLSClientConfig  *tls.Config
+	HandshakeTimeout time.Duration
+	Jar              http.CookieJar
+
+	WriteBufferPool                 websocket.BufferPool
+	ReadBufferSize, WriteBufferSize int
+	Subprotocols                    []string
+
+	EnableCompression bool
+
+	NetDial           func(network, addr string) (net.Conn, error)
+	NetDialContext    func(ctx context.Context, network, addr string) (net.Conn, error)
+	NetDialTLSContext func(ctx context.Context, network, addr string) (net.Conn, error)
+	Proxy             func(*http.Request) (*url.URL, error)
+}
 
 // NotifierManager defines the interface for managing notifiers.
 type NotifierManager interface {
 	// WebServer returns the HTTP server instance.
 	WebServer() *http.Server
-	// Temporarily disabled due to external dependency on zmq4
-	// Uncomment and ensure the required libraries are installed if needed in the future
-	// Websocket returns the ZMQ socket instance.
-	// Websocket() *zmq4.Socket
+
+	// Websocket returns the Gorilla WebSocket connection instance.
+	Websocket() *websocket.Conn
 
 	// WebClient returns the HTTP client instance.
 	WebClient() *http.Client
+
 	// DBusClient returns the DBus connection instance.
 	DBusClient() *dbus.Conn
 
 	// AddNotifier adds or updates a notifier with the given name.
 	AddNotifier(name string, notifier Notifier)
+
 	// RemoveNotifier removes the notifier with the given name.
 	RemoveNotifier(name string)
+
 	// GetNotifier retrieves the notifier with the given name.
 	GetNotifier(name string) (Notifier, bool)
+
 	// ListNotifiers lists all registered notifier names.
 	ListNotifiers() []string
 
@@ -38,10 +65,8 @@ type NotifierManager interface {
 
 // NotifierManagerImpl is the implementation of the NotifierManager interface.
 type NotifierManagerImpl struct {
-	webServer *http.Server
-	// Temporarily disabled due to external dependency on zmq4
-	// Uncomment and ensure the required libraries are installed if needed in the future
-	// websocket  *zmq4.Socket
+	webServer  *http.Server
+	websocket  *websocket.Conn
 	webClient  *http.Client
 	dbusClient *dbus.Conn
 	notifiers  map[string]Notifier
@@ -114,9 +139,9 @@ func (nm *NotifierManagerImpl) UpdateFromConfig() error {
 			authToken, _ := conf["authToken"].(string)
 			notifier := NewHTTPNotifier(webhookURL, authToken)
 			nm.AddNotifier(name, notifier)
-		case "zmq":
+		case "websocket":
 			endpoint, _ := conf["endpoint"].(string)
-			notifier := NewZMQNotifier(endpoint)
+			notifier := NewWebSocketNotifier(endpoint)
 			nm.AddNotifier(name, notifier)
 		case "dbus":
 			notifier := NewDBusNotifier()
@@ -136,15 +161,24 @@ func (nm *NotifierManagerImpl) WebServer() *http.Server {
 	return nm.webServer
 }
 
-// Temporarily disabled due to external dependency on zmq4
-// Uncomment and ensure the required libraries are installed if needed in the future
-// Websocket returns the ZMQ socket instance.
-//func (nm *NotifierManagerImpl) Websocket() *zmq4.Socket {
-//	if nm.websocket == nil {
-//		nm.websocket = Socket()
-//	}
-//	return nm.websocket
-//}
+// Websocket returns the Gorilla WebSocket connection instance.
+// If the WebSocket connection is not initialized, it will create a new one.
+// If the connection fails, it will return nil and log the error.
+// This is useful for lazy initialization of the WebSocket connection.
+func (nm *NotifierManagerImpl) Websocket() *websocket.Conn {
+	if nm.websocket == nil {
+		var err error
+		dialer := websocket.Dialer{
+			// Configure the WebSocket dialer if needed
+		}
+		nm.websocket, _, err = dialer.Dial("ws://localhost:8080/ws", nil)
+		if err != nil {
+			fmt.Printf("Failed to initialize WebSocket: %v\n", err)
+			return nil
+		}
+	}
+	return nm.websocket
+}
 
 // WebClient returns the HTTP client instance.
 func (nm *NotifierManagerImpl) WebClient() *http.Client {
