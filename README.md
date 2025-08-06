@@ -4,7 +4,7 @@
 
 **An advanced logging and metrics management tool with native support for Prometheus integration, dynamic notifications, and a powerful CLI.**
 
----
+--- 
 
 ## **Table of Contents**
 
