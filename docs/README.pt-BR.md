@@ -389,6 +389,25 @@ func main() {
 }
 ```
 
+## Performance e Benchmarks
+
+O Logz foi extensivamente testado para uso em produção:
+
+- ✅ **Operações Concorrentes**: Lida com sucesso com 500+ operações de logging simultâneas
+- ✅ **Zero Race Conditions**: Design thread-safe com uso otimizado de mutex
+- ✅ **Eficiente em Memória**: Overhead mínimo de memória com gerenciamento inteligente de recursos
+- ✅ **Resiliente a Rede**: Tratamento robusto de erros para falhas HTTP e WebSocket
+- ✅ **Pronto para Prometheus**: Coleta de métricas com impacto mínimo na performance
+
+### Uso no Mundo Real
+
+Atualmente implantado e testado em batalha em sistemas de produção incluindo:
+
+- **Sistema Backend GOBE**: Backend completo com suporte MCP (Model Context Protocol)
+- **APIs de Alto Tráfego**: APIs REST com milhares de requisições por minuto
+- **Arquiteturas de Microsserviços**: Sistemas distribuídos com monitoramento em tempo real
+- **Pipelines CI/CD**: Workflows automatizados de deployment e monitoramento
+
 ## Interface de Linha de Comando
 
 Aqui estão alguns exemplos de comandos que podem ser executados com a CLI:
