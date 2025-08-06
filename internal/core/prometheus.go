@@ -194,11 +194,12 @@ func (pm *PrometheusManager) AddMetric(name string, value float64, metadata map[
 		return
 	}
 	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
 	pm.Metrics[name] = Metric{
 		Value:    value,
 		Metadata: metadata,
 	}
+	pm.mutex.Unlock()
+
 	fmt.Printf("Metric '%s' added/updated with value: %f\n", name, value)
 	if err := pm.SaveMetrics(); err != nil {
 		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
@@ -208,8 +209,9 @@ func (pm *PrometheusManager) AddMetric(name string, value float64, metadata map[
 // RemoveMetric removes a metric with the given name.
 func (pm *PrometheusManager) RemoveMetric(name string) {
 	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
 	delete(pm.Metrics, name)
+	pm.mutex.Unlock()
+
 	fmt.Printf("Metric '%s' removed.\n", name)
 	if err := pm.SaveMetrics(); err != nil {
 		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
@@ -223,13 +225,14 @@ func (pm *PrometheusManager) IncrementMetric(name string, delta float64) {
 		return
 	}
 	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
 	metric, exists := pm.Metrics[name]
 	if !exists {
 		metric = Metric{Value: 0, Metadata: nil}
 	}
 	metric.Value += delta
 	pm.Metrics[name] = metric
+	pm.mutex.Unlock()
+
 	fmt.Printf("Metric '%s' incremented by %f, new value: %f\n", name, delta, metric.Value)
 	if err := pm.SaveMetrics(); err != nil {
 		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
