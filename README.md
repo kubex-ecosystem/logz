@@ -12,50 +12,80 @@
 2. [Features](#features)
 3. [Installation](#installation)
 4. [Usage](#usage)
-    - [CLI](#cli)
+    - [Basic Logging Examples](#basic-logging-examples)
+    - [Advanced Features](#advanced-features)
+    - [Production Usage Examples](#production-usage-examples)
+    - [Command Line Interface](#command-line-interface)
     - [Configuration](#configuration)
-5. [Prometheus Integration](#prometheus-integration)
-6. [Roadmap](#roadmap)
-7. [Contributing](#contributing)
-8. [Contact](#contact)
+5. [Performance and Benchmarks](#performance-and-benchmarks)
+6. [Prometheus Integration](#prometheus-integration)
+7. [Roadmap](#roadmap)
+8. [Contributing](#contributing)
+9. [Contact](#contact)
 
 ---
 
 ## **About the Project**
 
-Logz is a flexible and powerful solution for managing logs and metrics in modern systems. Built in **Go**, it provides extensive support for multiple notification methods such as **HTTP Webhooks**, **ZeroMQ**, and **DBus**, alongside seamless integration with **Prometheus** for advanced monitoring.
+Logz is a flexible and powerful solution for managing logs and metrics in modern systems. Built in **Go**, it provides extensive support for multiple notification methods such as **HTTP Webhooks**, **WebSocket real-time streaming**, and **native Prometheus integration**, alongside seamless integration with monitoring systems for advanced observability.
 
 Logz is designed to be robust, highly configurable, and scalable, catering to developers, DevOps teams, and software architects who need a centralized approach to logging, metrics and many other aspects of their systems.
 
+**What makes Logz special?**
+
+- 🚀 **Production Tested**: Successfully handles 500+ concurrent logging operations
+- 🌊 **Real-time Streaming**: WebSocket support for live log monitoring
+- 📊 **Native Prometheus**: Built-in metrics collection and HTTP endpoint exposure
+- 🎯 **Zero Mocking**: All tests use real HTTP servers and WebSocket connections
+- 🧪 **Comprehensive Testing**: 11+ integration tests covering all features
+- 🔗 **Easy Integration**: Simple API that works with existing Go applications
+
 **Why Logz?**
 
-- 💡 **Ease of Use**: Configure and manage logs effortlessly.
-- 🌐 **Seamless Integration**: Easily integrates with Prometheus and other systems.
-- 🔧 **Extensibility**: Add new notifiers and services as needed.
+- 💡 **Ease of Use**: Configure and manage logs effortlessly with intuitive APIs
+- 🌐 **Seamless Integration**: Drop-in replacement for standard logging with advanced features
+- 🔧 **Extensibility**: Add new notifiers and services as needed
+- 🏭 **Enterprise Ready**: Thread-safe, high-performance logging for production workloads
 
 ---
 
 ## **Features**
 
-✨ **Dynamic Notifiers**:
+✨ **Advanced Logging System**:
 
-- Support for multiple notifiers simultaneously.
-- Centralized and flexible configuration via JSON or YAML.
+- **Multiple Log Levels**: DEBUG, INFO, WARN, ERROR with beautiful emoji formatting
+- **Thread-Safe Concurrent Logging**: Handle thousands of simultaneous log operations
+- **LogEntry Builder Pattern**: Flexible and intuitive log entry construction
+- **Multiple Formatters**: JSON structured logs and colorful text output
 
-📊 **Monitoring and Metrics**:
+🌐 **Real-Time Notifications**:
 
-- Exposes Prometheus-compatible metrics.
-- Dynamic management of metrics with persistence support.
+- **HTTP Webhooks**: Send logs to external services via HTTP POST
+- **WebSocket Integration**: Real-time log streaming to connected clients
+- **Dynamic Notifier Management**: Add/remove notifiers on the fly
+- **Authentication Support**: Secure webhook delivery with token-based auth
 
-💻 **Powerful CLI**:
+📊 **Prometheus Integration**:
 
-- Straightforward commands to manage logs and services.
-- Extensible for additional workflows.
+- **Native Metrics Support**: Counter, Gauge, and custom metric types
+- **HTTP Metrics Endpoint**: Standard `/metrics` endpoint for Prometheus scraping
+- **Metric Persistence**: Automatic saving/loading of metrics to/from disk
+- **Metric Validation**: Enforces Prometheus naming conventions
+- **Whitelist Support**: Control which metrics are exported
 
-🔒 **Resilient and Secure**:
+🔧 **Developer Experience**:
 
-- Validates against Prometheus naming conventions.
-- Distinct modes for standalone and service execution.
+- **Zero Mocking Required**: All tests use real HTTP servers and WebSocket connections
+- **Comprehensive Test Suite**: 11+ integration tests covering all features
+- **Simple API**: Easy-to-use interfaces for quick integration
+- **Context-Aware Logging**: Rich metadata support for better debugging
+
+🚀 **Production Ready**:
+
+- **High Performance**: Tested with 500+ concurrent operations
+- **Memory Efficient**: Optimized mutex usage and resource management
+- **Error Handling**: Robust error handling and recovery mechanisms
+- **Configurable**: Flexible configuration options for different environments
 
 ---
 
@@ -87,65 +117,212 @@ export PATH=$PATH:$(pwd)
 
 ## **Usage**
 
-### Basic Logging Examples
-
-Here are some practical examples of how to use `logz` to log messages and enhance your application's logging capabilities:
-
-#### **1. Log a Debug Message with Metadata**
-
-```bash
-logz debug \
---msg 'Just an example for how it works and show logs with this app.. AMAZING!! Dont you think?' \
---output "stdout" \
---metadata requestId=12345,user=admin
-```
-
-**Output:**
-
-```plaintext
-[2025-03-02T04:09:16Z] 🐛 DEBUG - Just an example for how it works and show logs with this app.. AMAZING!! Dont you think?
-                     {"requestId":"12345","user":"admin"}
-```
-
-#### **2. Log an Info Message to a File**
-
-```bash
-logz info \
---msg "This is an information log entry!" \
---output "/path/to/logfile.log" \
---metadata sessionId=98765,location=server01
-```
-
-#### **3. Log an Error Message in JSON Format**
-
-```bash
-logz error \
---msg "An error occurred while processing the request" \
---output "stdout" \
---format "json" \
---metadata errorCode=500,details="Internal Server Error"
-```
-
-**Output (JSON):**
-
-```json
-{
-  "timestamp": "2025-03-02T04:10:52Z",
-  "level": "ERROR",
-  "message": "An error occurred while processing the request",
-  "metadata": {
-    "errorCode": 500,
-    "details": "Internal Server Error"
-  }
-}
-```
+## Basic Logging Examples
 
 ### Simple Logging
 
 ```go
 package main
 
-import "github.com/rafa-mo}
+import "github.com/rafa-mori/logz/logger"
+
+func main() {
+    // Create a new logger instance
+    log := logger.NewLogger("my-app")
+    
+    // Basic logging with emoji formatting
+    log.InfoCtx("Application started successfully", nil)
+    log.WarnCtx("This is a warning message", nil)
+    log.ErrorCtx("Something went wrong", nil)
+}
+```
+
+**Output:**
+
+```plaintext
+ [INFO]  ℹ️  - Application started successfully
+ [WARN]  ⚠️  - This is a warning message
+ [ERROR] ❌  - Something went wrong
+```
+
+### Logging with Metadata
+
+```go
+package main
+
+import "github.com/rafa-mori/logz/logger"
+
+func main() {
+    log := logger.NewLogger("my-service")
+    
+    // Set global metadata
+    log.SetMetadata("service", "user-api")
+    log.SetMetadata("version", "1.2.3")
+    
+    // Log with additional context
+    log.InfoCtx("User login successful", map[string]interface{}{
+        "user_id":    12345,
+        "ip_address": "192.168.1.100",
+        "duration":   "250ms",
+    })
+}
+```
+
+### Using LogEntry Builder Pattern
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/rafa-mori/logz/internal/core"
+)
+
+func main() {
+    // Create structured log entries
+    entry := core.NewLogEntry().
+        WithLevel(core.INFO).
+        WithMessage("Payment processed successfully").
+        AddMetadata("transaction_id", "txn_123456").
+        AddMetadata("amount", 99.99).
+        AddMetadata("currency", "USD").
+        SetSeverity(1)
+        
+    // Use the entry with formatters
+    formatter := core.NewJSONFormatter()
+    output := formatter.Format(entry)
+    fmt.Println(output)
+}
+```
+
+## Advanced Features
+
+### HTTP Webhook Notifications
+
+```go
+package main
+
+import (
+    "github.com/rafa-mori/logz/logger"
+    "github.com/rafa-mori/logz/internal/core"
+)
+
+func main() {
+    // Create logger with HTTP notifier
+    log := logger.NewLogger("webhook-app")
+    
+    // Add HTTP webhook notifier
+    httpNotifier := core.NewHTTPNotifier(
+        "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+        "your-auth-token",
+    )
+    
+    // Create log entry
+    entry := core.NewLogEntry().
+        WithLevel(core.ERROR).
+        WithMessage("Critical system error detected").
+        AddMetadata("severity", "high").
+        AddMetadata("component", "database")
+    
+    // Send notification
+    err := httpNotifier.Notify(entry)
+    if err != nil {
+        log.ErrorCtx("Failed to send webhook", map[string]interface{}{
+            "error": err.Error(),
+        })
+    }
+}
+```
+
+### WebSocket Real-Time Logging
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+    "github.com/rafa-mori/logz/internal/core"
+)
+
+func main() {
+    // Create WebSocket notifier
+    wsNotifier := core.NewWebSocketNotifier("ws://localhost:8080/logs", nil)
+    
+    // Create and send log entry
+    entry := core.NewLogEntry().
+        WithLevel(core.INFO).
+        WithMessage("Real-time log update").
+        AddMetadata("timestamp", time.Now().Unix()).
+        AddMetadata("event", "user_action")
+    
+    err := wsNotifier.Notify(entry)
+    if err != nil {
+        fmt.Printf("WebSocket notification failed: %v\n", err)
+    }
+}
+```
+
+### Prometheus Metrics Integration
+
+```go
+package main
+
+import "github.com/rafa-mori/logz/internal/core"
+
+func main() {
+    // Get Prometheus manager instance
+    prometheus := core.GetPrometheusManager()
+    
+    // Add various metrics
+    prometheus.AddMetric("http_requests_total", 100, map[string]string{
+        "method": "GET",
+        "status": "200",
+    })
+    
+    prometheus.AddMetric("response_time_seconds", 0.045, map[string]string{
+        "endpoint": "/api/users",
+    })
+    
+    // Increment counter
+    prometheus.IncrementMetric("api_calls_total", 1)
+    
+    // Start HTTP server to expose /metrics endpoint
+    prometheus.StartHTTPServer(":2112")
+}
+```
+
+### Concurrent Logging (Production Ready)
+
+```go
+package main
+
+import (
+    "sync"
+    "github.com/rafa-mori/logz/logger"
+)
+
+func main() {
+    log := logger.NewLogger("concurrent-app")
+    var wg sync.WaitGroup
+    
+    // Simulate high-traffic logging
+    for i := 0; i < 1000; i++ {
+        wg.Add(1)
+        go func(id int) {
+            defer wg.Done()
+            
+            log.InfoCtx("Processing request", map[string]interface{}{
+                "request_id": id,
+                "worker":     "goroutine",
+                "status":     "processing",
+            })
+        }(i)
+    }
+    
+    wg.Wait()
+    log.InfoCtx("All requests processed", nil)
+}
 ```
 
 ## Production Usage Examples
@@ -156,6 +333,7 @@ import "github.com/rafa-mo}
 package main
 
 import (
+    "fmt"
     "net/http"
     "time"
     "github.com/gin-gonic/gin"
@@ -235,6 +413,16 @@ func getUserHandler(log logger.LogzLogger) gin.HandlerFunc {
         c.JSON(http.StatusOK, user)
     }
 }
+
+func createUserHandler(log logger.LogzLogger) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        log.InfoCtx("Creating new user", map[string]interface{}{
+            "action": "create_user",
+        })
+        
+        c.JSON(http.StatusCreated, gin.H{"status": "created"})
+    }
+}
 ```
 
 ### Microservice with WebSocket Notifications
@@ -244,7 +432,7 @@ package main
 
 import (
     "context"
-    "encoding/json"
+    "fmt"
     "time"
     "github.com/rafa-mori/logz/logger"
     "github.com/rafa-mori/logz/internal/core"
@@ -373,226 +561,7 @@ func (s *PaymentService) ProcessPayment(amount float64, cardToken string) error 
 }
 ```
 
-## Performance and Benchmarks
-
-Logz has been thoroughly tested for production use:
-
-- ✅ **Concurrent Operations**: Successfully handles 500+ simultaneous logging operations
-- ✅ **Zero Race Conditions**: Thread-safe design with optimized mutex usage
-- ✅ **Memory Efficient**: Minimal memory overhead with smart resource management
-- ✅ **Network Resilient**: Robust error handling for HTTP and WebSocket failures
-- ✅ **Prometheus Ready**: Metrics collection with minimal performance impact
-
-### Real-World Usage
-
-Currently deployed and battle-tested in production systems including:
-
-- **GOBE Backend System**: Full-featured backend with MCP (Model Context Protocol) support
-- **High-Traffic APIs**: REST APIs with thousands of requests per minute
-- **Microservice Architectures**: Distributed systems with real-time monitoring
-- **CI/CD Pipelines**: Automated deployment and monitoring workflows
-
-### Command Line Interface
-
-```go
-func main() {
-    // Create a new logger instance
-    log := logger.NewLogger("my-app")
-    // Basic logging with emoji formatting
-    log.InfoCtx("Application started successfully", nil)
-    log.WarnCtx("This is a warning message", nil)
-    log.ErrorCtx("Something went wrong", nil)
-}
-```
-
-**Output:**
-
-```plaintext
- [INFO]  ℹ️  - Application started successfully
- [WARN]  ⚠️  - This is a warning message
- [ERROR] ❌  - Something went wrong
-```
-
-### Logging with Metadata
-
-```go
-package main
-
-import "github.com/rafa-mori/logz/logger"
-
-func main() {
-    log := logger.NewLogger("my-service")
-    
-    // Set global metadata
-    log.SetMetadata("service", "user-api")
-    log.SetMetadata("version", "1.2.3")
-    
-    // Log with additional context
-    log.InfoCtx("User login successful", map[string]interface{}{
-        "user_id":    12345,
-        "ip_address": "192.168.1.100",
-        "duration":   "250ms",
-    })
-}
-```
-
-### Using LogEntry Builder Pattern
-
-```go
-package main
-
-import (
-    "github.com/rafa-mori/logz/internal/core"
-)
-
-func main() {
-    // Create structured log entries
-    entry := core.NewLogEntry().
-        WithLevel(core.INFO).
-        WithMessage("Payment processed successfully").
-        AddMetadata("transaction_id", "txn_123456").
-        AddMetadata("amount", 99.99).
-        AddMetadata("currency", "USD").
-        SetSeverity(1)
-        
-    // Use the entry with formatters
-    formatter := core.NewJSONFormatter()
-    output := formatter.Format(entry)
-    fmt.Println(output)
-}
-```
-
-## Advanced Features
-
-### HTTP Webhook Notifications
-
-```go
-package main
-
-import (
-    "github.com/rafa-mori/logz/logger"
-    "github.com/rafa-mori/logz/internal/core"
-)
-
-func main() {
-    // Create logger with HTTP notifier
-    log := logger.NewLogger("webhook-app")
-    
-    // Add HTTP webhook notifier
-    httpNotifier := core.NewHTTPNotifier(
-        "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
-        "your-auth-token",
-    )
-    
-    // Create log entry
-    entry := core.NewLogEntry().
-        WithLevel(core.ERROR).
-        WithMessage("Critical system error detected").
-        AddMetadata("severity", "high").
-        AddMetadata("component", "database")
-    
-    // Send notification
-    err := httpNotifier.Notify(entry)
-    if err != nil {
-        log.ErrorCtx("Failed to send webhook", map[string]interface{}{
-            "error": err.Error(),
-        })
-    }
-}
-```
-
-### WebSocket Real-Time Logging
-
-```go
-package main
-
-import (
-    "net/http"
-    "github.com/rafa-mori/logz/internal/core"
-    "github.com/gorilla/websocket"
-)
-
-func main() {
-    // Create WebSocket notifier
-    wsNotifier := core.NewWebSocketNotifier("ws://localhost:8080/logs", nil)
-    
-    // Create and send log entry
-    entry := core.NewLogEntry().
-        WithLevel(core.INFO).
-        WithMessage("Real-time log update").
-        AddMetadata("timestamp", time.Now().Unix()).
-        AddMetadata("event", "user_action")
-    
-    err := wsNotifier.Notify(entry)
-    if err != nil {
-        fmt.Printf("WebSocket notification failed: %v\n", err)
-    }
-}
-```
-
-### Prometheus Metrics Integration
-
-```go
-package main
-
-import "github.com/rafa-mori/logz/internal/core"
-
-func main() {
-    // Get Prometheus manager instance
-    prometheus := core.GetPrometheusManager()
-    
-    // Add various metrics
-    prometheus.AddMetric("http_requests_total", 100, map[string]string{
-        "method": "GET",
-        "status": "200",
-    })
-    
-    prometheus.AddMetric("response_time_seconds", 0.045, map[string]string{
-        "endpoint": "/api/users",
-    })
-    
-    // Increment counter
-    prometheus.IncrementMetric("api_calls_total", 1)
-    
-    // Start HTTP server to expose /metrics endpoint
-    prometheus.StartHTTPServer(":2112")
-}
-```
-
-### Concurrent Logging (Production Ready)
-
-```go
-package main
-
-import (
-    "sync"
-    "github.com/rafa-mori/logz/logger"
-)
-
-func main() {
-    log := logger.NewLogger("concurrent-app")
-    var wg sync.WaitGroup
-    
-    // Simulate high-traffic logging
-    for i := 0; i < 1000; i++ {
-        wg.Add(1)
-        go func(id int) {
-            defer wg.Done()
-            
-            log.InfoCtx("Processing request", map[string]interface{}{
-                "request_id": id,
-                "worker":     "goroutine",
-                "status":     "processing",
-            })
-        }(i)
-    }
-    
-    wg.Wait()
-    log.InfoCtx("All requests processed", nil)
-}
-```
-
-### Command Line Interface
+## Command Line Interface
 
 Here are some examples of commands you can execute with Logz's CLI:
 
@@ -609,141 +578,13 @@ logz stop
 
 # Watch logs in real-time
 logz watch
-```r Prometheus integration, dynamic notifications, and a powerful CLI.**
-
---- 
-
-## **Table of Contents**
-
-1. [About the Project](#about-the-project)
-2. [Features](#features)
-3. [Installation](#installation)
-4. [Usage](#usage)
-    - [CLI](#cli)
-    - [Configuration](#configuration)
-5. [Prometheus Integration](#prometheus-integration)
-6. [Roadmap](#roadmap)
-7. [Contributing](#contributing)
-8. [Contact](#contact)
-
----
-
-## **About the Project**
-
-Logz is a flexible and powerful solution for managing logs and metrics in modern systems. Built in **Go**, it provides extensive support for multiple notification methods such as **HTTP Webhooks**, **WebSocket real-time streaming**, and **native Prometheus integration**, alongside seamless integration with monitoring systems for advanced observability.
-
-Logz is designed to be robust, highly configurable, and scalable, catering to developers, DevOps teams, and software architects who need a centralized approach to logging, metrics and many other aspects of their systems.
-
-**What makes Logz special?**
-
-- 🚀 **Production Tested**: Successfully handles 500+ concurrent logging operations
-- 🌊 **Real-time Streaming**: WebSocket support for live log monitoring
-- 📊 **Native Prometheus**: Built-in metrics collection and HTTP endpoint exposure
-- 🎯 **Zero Mocking**: All tests use real HTTP servers and WebSocket connections
-- 🧪 **Comprehensive Testing**: 11+ integration tests covering all features
-- 🔗 **Easy Integration**: Simple API that works with existing Go applications
-
-**Why Logz?**
-
-- 💡 **Ease of Use**: Configure and manage logs effortlessly with intuitive APIs
-- 🌐 **Seamless Integration**: Drop-in replacement for standard logging with advanced features
-- 🔧 **Extensibility**: Add new notifiers and services as needed
-- 🏭 **Enterprise Ready**: Thread-safe, high-performance logging for production workloads
-
----
-
-## **Features**
-
-✨ **Advanced Logging System**:
-
-- **Multiple Log Levels**: DEBUG, INFO, WARN, ERROR with beautiful emoji formatting
-- **Thread-Safe Concurrent Logging**: Handle thousands of simultaneous log operations
-- **LogEntry Builder Pattern**: Flexible and intuitive log entry construction
-- **Multiple Formatters**: JSON structured logs and colorful text output
-
-🌐 **Real-Time Notifications**:
-
-- **HTTP Webhooks**: Send logs to external services via HTTP POST
-- **WebSocket Integration**: Real-time log streaming to connected clients
-- **Dynamic Notifier Management**: Add/remove notifiers on the fly
-- **Authentication Support**: Secure webhook delivery with token-based auth
-
-� **Prometheus Integration**:
-
-- **Native Metrics Support**: Counter, Gauge, and custom metric types
-- **HTTP Metrics Endpoint**: Standard `/metrics` endpoint for Prometheus scraping
-- **Metric Persistence**: Automatic saving/loading of metrics to/from disk
-- **Metric Validation**: Enforces Prometheus naming conventions
-- **Whitelist Support**: Control which metrics are exported
-
-� **Developer Experience**:
-
-- **Zero Mocking Required**: All tests use real HTTP servers and WebSocket connections
-- **Comprehensive Test Suite**: 11+ integration tests covering all features
-- **Simple API**: Easy-to-use interfaces for quick integration
-- **Context-Aware Logging**: Rich metadata support for better debugging
-
-🚀 **Production Ready**:
-
-- **High Performance**: Tested with 500+ concurrent operations
-- **Memory Efficient**: Optimized mutex usage and resource management
-- **Error Handling**: Robust error handling and recovery mechanisms
-- **Configurable**: Flexible configuration options for different environments
-
----
-
-## **Installation**
-
-Requirements:
-
-- **Go** version 1.19 or later.
-- Prometheus (optional for advanced monitoring).
-
-```bash
-# Clone this repository
-git clone https://github.com/rafa-mori/logz.git
-
-# Navigate to the project directory
-cd logz
-
-# Build the binary using make
-make build
-
-# Install the binary using make
-make install
-
-# (Optional) Add the binary to the PATH to use it globally
-export PATH=$PATH:$(pwd)
 ```
 
----
-
-## **Usage**
-
-### CLI
-
-Here are some examples of commands you can execute with Logz’s CLI:
-
-```bash
-# Log at different levels
-logz info --msg "Starting the application."
-logz error --msg "Database connection failed."
-
-# Start the detached service
-logz start  
-
-# Stop the detached service
-logz stop  
-
-# Watch logs in real-time
-logz watch
-```
-
-### **Usage Examples**
+### CLI Usage Examples
 
 Here are some practical examples of how to use `logz` to log messages and enhance your application's logging capabilities:
 
-#### **1. Log a Debug Message with Metadata**
+#### 1. Log a Debug Message with Metadata
 
 ```bash
 logz debug \
@@ -759,7 +600,7 @@ logz debug \
                      {"requestId":"12345","user":"admin"}
 ```
 
-#### **2. Log an Info Message to a File**
+#### 2. Log an Info Message to a File
 
 ```bash
 logz info \
@@ -768,7 +609,7 @@ logz info \
 --metadata sessionId=98765,location=server01
 ```
 
-#### **3. Log an Error Message in JSON Format**
+#### 3. Log an Error Message in JSON Format
 
 ```bash
 logz error \
@@ -800,14 +641,12 @@ logz error \
 
 ---
 
-### **Description of Commands and Flags**
+### Description of Commands and Flags
 
 - **`--msg`**: Specifies the log message.
 - **`--output`**: Defines where to output the log (`stdout` for console or a file path).
 - **`--format`**: Sets the format of the log (e.g., `text` or `json`).
 - **`--metadata`**: Adds metadata to the log entry in the form of key-value pairs.
-
----
 
 ### Configuration
 
@@ -830,6 +669,27 @@ Logz uses a JSON or YAML configuration file to centralize its setup. The file is
   }
 }
 ```
+
+---
+
+## Performance and Benchmarks
+
+Logz has been thoroughly tested for production use:
+
+- ✅ **Concurrent Operations**: Successfully handles 500+ simultaneous logging operations
+- ✅ **Zero Race Conditions**: Thread-safe design with optimized mutex usage
+- ✅ **Memory Efficient**: Minimal memory overhead with smart resource management
+- ✅ **Network Resilient**: Robust error handling for HTTP and WebSocket failures
+- ✅ **Prometheus Ready**: Metrics collection with minimal performance impact
+
+### Real-World Usage
+
+Currently deployed and battle-tested in production systems including:
+
+- **GOBE Backend System**: Full-featured backend with MCP (Model Context Protocol) support
+- **High-Traffic APIs**: REST APIs with thousands of requests per minute
+- **Microservice Architectures**: Distributed systems with real-time monitoring
+- **CI/CD Pipelines**: Automated deployment and monitoring workflows
 
 ---
 
@@ -883,4 +743,4 @@ Rafael Mori
 
 ---
 
-***I'm open to new work opportunities and collaborations. If you find this project interesting, don’t hesitate to reach out!***
+***I'm open to new work opportunities and collaborations. If you find this project interesting, don't hesitate to reach out!***
