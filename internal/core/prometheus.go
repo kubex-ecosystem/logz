@@ -33,9 +33,9 @@ type Metric struct {
 // loading/saving metrics, and handling metric operations.
 type PrometheusManager struct {
 	enabled         bool
-	metrics         map[string]Metric
+	Metrics         map[string]Metric
 	mutex           sync.RWMutex
-	metricsFile     string          // path to the persistence file
+	MetricsFile     string          // path to the persistence file
 	exportWhitelist map[string]bool // If not empty, only these metrics will be exported to Prometheus
 	httpServer      *http.Server    // HTTP server to expose metrics
 }
@@ -63,25 +63,25 @@ func GetPrometheusManager() *PrometheusManager {
 	if prometheusManagerInstance == nil {
 		prometheusManagerInstance = &PrometheusManager{
 			enabled:         false,
-			metrics:         make(map[string]Metric),
-			metricsFile:     getMetricsFilePath(),
+			Metrics:         make(map[string]Metric),
+			MetricsFile:     getMetricsFilePath(),
 			exportWhitelist: make(map[string]bool),
 		}
-		if err := prometheusManagerInstance.loadMetrics(); err != nil {
+		if err := prometheusManagerInstance.LoadMetrics(); err != nil {
 			fmt.Printf("Warning: could not load metrics: %v\n", err)
 		}
 	}
 	return prometheusManagerInstance
 }
 
-// loadMetrics loads metrics from the persistence file into the PrometheusManager instance.
-func (pm *PrometheusManager) loadMetrics() error {
+// LoadMetrics loads metrics from the persistence file into the PrometheusManager instance.
+func (pm *PrometheusManager) LoadMetrics() error {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
-	data, err := os.ReadFile(pm.metricsFile)
+	data, err := os.ReadFile(pm.MetricsFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			pm.metrics = make(map[string]Metric)
+			pm.Metrics = make(map[string]Metric)
 			return nil
 		}
 		return err
@@ -90,19 +90,19 @@ func (pm *PrometheusManager) loadMetrics() error {
 	if err := json.Unmarshal(data, &loaded); err != nil {
 		return err
 	}
-	pm.metrics = loaded
+	pm.Metrics = loaded
 	return nil
 }
 
-// saveMetrics saves the current metrics to the persistence file.
-func (pm *PrometheusManager) saveMetrics() error {
+// SaveMetrics saves the current metrics to the persistence file.
+func (pm *PrometheusManager) SaveMetrics() error {
 	pm.mutex.RLock()
 	defer pm.mutex.RUnlock()
-	data, err := json.MarshalIndent(pm.metrics, "", "  ")
+	data, err := json.MarshalIndent(pm.Metrics, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(pm.metricsFile, data, 0644)
+	return os.WriteFile(pm.MetricsFile, data, 0644)
 }
 
 // Enable starts the Prometheus HTTP server on the specified port to expose metrics.
@@ -159,7 +159,7 @@ func (pm *PrometheusManager) GetMetrics() map[string]float64 {
 	pm.mutex.RLock()
 	defer pm.mutex.RUnlock()
 	filteredMetrics := make(map[string]float64)
-	for name, metric := range pm.metrics {
+	for name, metric := range pm.Metrics {
 		// Respect the exportWhitelist, if defined
 		if len(pm.exportWhitelist) > 0 && !pm.exportWhitelist[name] {
 			continue
@@ -195,12 +195,12 @@ func (pm *PrometheusManager) AddMetric(name string, value float64, metadata map[
 	}
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
-	pm.metrics[name] = Metric{
+	pm.Metrics[name] = Metric{
 		Value:    value,
 		Metadata: metadata,
 	}
 	fmt.Printf("Metric '%s' added/updated with value: %f\n", name, value)
-	if err := pm.saveMetrics(); err != nil {
+	if err := pm.SaveMetrics(); err != nil {
 		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
 	}
 }
@@ -209,9 +209,9 @@ func (pm *PrometheusManager) AddMetric(name string, value float64, metadata map[
 func (pm *PrometheusManager) RemoveMetric(name string) {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
-	delete(pm.metrics, name)
+	delete(pm.Metrics, name)
 	fmt.Printf("Metric '%s' removed.\n", name)
-	if err := pm.saveMetrics(); err != nil {
+	if err := pm.SaveMetrics(); err != nil {
 		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
 	}
 }
@@ -224,14 +224,14 @@ func (pm *PrometheusManager) IncrementMetric(name string, delta float64) {
 	}
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
-	metric, exists := pm.metrics[name]
+	metric, exists := pm.Metrics[name]
 	if !exists {
 		metric = Metric{Value: 0, Metadata: nil}
 	}
 	metric.Value += delta
-	pm.metrics[name] = metric
+	pm.Metrics[name] = metric
 	fmt.Printf("Metric '%s' incremented by %f, new value: %f\n", name, delta, metric.Value)
-	if err := pm.saveMetrics(); err != nil {
+	if err := pm.SaveMetrics(); err != nil {
 		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
 	}
 }
@@ -240,12 +240,12 @@ func (pm *PrometheusManager) IncrementMetric(name string, delta float64) {
 func (pm *PrometheusManager) ListMetrics() {
 	pm.mutex.RLock()
 	defer pm.mutex.RUnlock()
-	if len(pm.metrics) == 0 {
+	if len(pm.Metrics) == 0 {
 		fmt.Println("No metrics registered.")
 		return
 	}
 	fmt.Println("Registered metrics:")
-	for name, metric := range pm.metrics {
+	for name, metric := range pm.Metrics {
 		fmt.Printf("- %s: %f", name, metric.Value)
 		if len(metric.Metadata) > 0 {
 			metadataJSON, _ := json.Marshal(metric.Metadata)
