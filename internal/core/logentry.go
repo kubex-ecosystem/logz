@@ -20,6 +20,7 @@ const (
 	ERROR   LogLevel = "ERROR"
 	FATAL   LogLevel = "FATAL"
 	SILENT  LogLevel = "SILENT"
+	ANSWER  LogLevel = "ANSWER"
 )
 
 // LogzEntry represents a single log entry with various attributes.

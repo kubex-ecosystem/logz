@@ -3,6 +3,7 @@ package utils
 
 import (
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 
 	"os"
 	"path/filepath"
@@ -18,14 +19,29 @@ func NewTable(data [][]string) Table {
 	return Table{data}
 }
 
+func getDefaultConfig() *tablewriter.Config {
+	config := tablewriter.NewConfigBuilder().
+		WithAutoHide(tw.On).
+		WithHeaderAlignment(tw.AlignLeft).
+		WithRowAlignment(tw.AlignLeft).
+		Build()
+
+	return &config
+}
+
 // PrintTable prints the simple table in the shell with side and vertical borders.
 func (t Table) PrintTable() {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetBorder(true)  // Enables side and vertical borders
-	table.SetRowLine(true) // Enables lines between rows
+	config := getDefaultConfig()
+
+	table := tablewriter.NewTable(
+		os.Stdout,
+		tablewriter.WithConfig(*config),
+	)
+
 	for _, row := range t.data {
 		table.Append(row)
 	}
+
 	table.Render()
 }
 
@@ -51,7 +67,9 @@ func (ft FormattedTable) SaveFormattedTable(filename string) error {
 	}(file)
 
 	table := tablewriter.NewWriter(file)
-	table.SetHeader(ft.header)
+
+	table.Header(ft.header)
+
 	for _, row := range ft.data {
 		table.Append(row)
 	}

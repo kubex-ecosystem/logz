@@ -63,6 +63,10 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 			icon = "\033[31m❌\033[0m "
 		case FATAL:
 			icon = "\033[35m💀\033[0m "
+		case SILENT:
+			icon = "\033[90m🔕\033[0m "
+		case ANSWER:
+			icon = "\033[32m💬\033[0m "
 		default:
 			icon = ""
 		}
@@ -89,6 +93,10 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 			levelStr = "\033[31mERROR\033[0m"
 		case FATAL:
 			levelStr = "\033[35mFATAL\033[0m"
+		case SILENT:
+			levelStr = "\033[90mQUIET\033[0m"
+		case ANSWER:
+			levelStr = "\033[32mANSWER\033[0m"
 		default:
 			levelStr = string(entry.GetLevel())
 		}
