@@ -3,11 +3,12 @@ package logz
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"sync"
+
 	"github.com/rafa-mori/logz/internal/core"
 	logz "github.com/rafa-mori/logz/logger"
 	vs "github.com/rafa-mori/logz/version"
-	"os"
-	"sync"
 )
 
 var (

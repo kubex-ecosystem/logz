@@ -20,6 +20,7 @@ const (
 	ERROR   LogLevel = "ERROR"
 	FATAL   LogLevel = "FATAL"
 	SILENT  LogLevel = "SILENT"
+	ANSWER  LogLevel = "ANSWER"
 )
 
 // LogzEntry represents a single log entry with various attributes.
@@ -192,10 +193,21 @@ func (le *LogEntry) Validate() error {
 
 // String returns a string representation of the LogEntry.
 func (le *LogEntry) String() string {
-	return fmt.Sprintf("[%s] %s - %s",
-		le.Timestamp.Format(time.RFC3339),
-		le.Level,
-		le.Message)
+	if le == nil {
+		return "LogEntry: <nil>"
+	}
+	if le.Level == SILENT || le.Level == ANSWER {
+		return fmt.Sprintf("%s - %s",
+			le.Level,
+			le.Message,
+		)
+	} else {
+		return fmt.Sprintf("[%s] %s - %s",
+			le.Timestamp.Format(time.RFC3339),
+			le.Level,
+			le.Message,
+		)
+	}
 }
 
 // getCallerInfo returns the caller information for the log entry.
