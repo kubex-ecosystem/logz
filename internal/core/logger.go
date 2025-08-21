@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io"
 	"sync/atomic"
 
@@ -37,6 +38,7 @@ var logLevels = map[LogLevel]int{
 	ERROR:   7,
 	FATAL:   8,
 	SILENT:  9,
+	ANSWER:  10,
 }
 
 // LogzCoreImpl represents a core with configuration and VMetadata.
@@ -231,6 +233,26 @@ func (l *LogzCoreImpl) ErrorCtx(msg string, ctx map[string]interface{}) { l.log(
 
 // FatalCtx logs a fatal message with context and terminates the process.
 func (l *LogzCoreImpl) FatalCtx(msg string, ctx map[string]interface{}) { l.log(FATAL, msg, ctx) }
+
+// SilentCtx logs a message with context without any output.
+func (l *LogzCoreImpl) SilentCtx(msg string, ctx map[string]interface{}) { l.log(SILENT, msg, ctx) }
+
+// AnswerCtx logs an answer message with context.
+func (l *LogzCoreImpl) AnswerCtx(msg string, ctx map[string]interface{}) { l.log(ANSWER, msg, ctx) }
+
+// Silent logs a message without any output.
+func (l *LogzCoreImpl) Silent(msg ...any) {
+	if l.shouldLog(SILENT) {
+		l.log(SILENT, fmt.Sprint(msg...), nil)
+	}
+}
+
+// Answer logs a message without any output.
+func (l *LogzCoreImpl) Answer(msg ...any) {
+	if l.shouldLog(ANSWER) {
+		l.log(ANSWER, fmt.Sprint(msg...), nil)
+	}
+}
 
 func (l *LogzCoreImpl) SetLevel(level interface{}) {
 	l.Mu.Lock()

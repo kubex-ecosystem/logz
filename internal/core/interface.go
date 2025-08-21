@@ -12,6 +12,9 @@ type LogzLogger interface {
 	// SetLevel(VLevel interface{})
 	// The VLevel is an LogLevel type or string.
 	SetLevel(interface{})
+
+	Silent(...any)
+	Answer(...any)
 }
 
 // LogzCore is the interface with the basic methods of the existing il.
@@ -69,6 +72,18 @@ type LogzCore interface {
 	// The message is a string.
 	// The context is a map of key-value pairs.
 	FatalCtx(string, map[string]interface{})
+	// SilentCtx logs a message with context without any output.
+	// Method signature:
+	// SilentCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	SilentCtx(string, map[string]interface{})
+	// AnswerCtx logs an answer message with context.
+	// Method signature:
+	// AnswerCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	AnswerCtx(string, map[string]interface{})
 	// GetWriter returns the current VWriter.
 	// Method signature:
 	// GetWriter() interface{}
