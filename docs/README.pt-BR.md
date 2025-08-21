@@ -89,7 +89,7 @@ O objetivo é fornecer uma ferramenta robusta, altamente configurável e escalá
 
 Requisitos:
 
-- **Go** versão 1.19 ou superior.
+- **Go** versão 1.23 ou superior.
 - Prometheus (opcional para monitoramento avançado).
 
 ```bash
@@ -125,7 +125,7 @@ import "github.com/rafa-mori/logz/logger"
 func main() {
     // Criar uma nova instância do logger
     log := logger.NewLogger("meu-app")
-    
+
     // Logging básico com formatação emoji
     log.InfoCtx("Aplicação iniciada com sucesso", nil)
     log.WarnCtx("Esta é uma mensagem de aviso", nil)
@@ -150,11 +150,11 @@ import "github.com/rafa-mori/logz/logger"
 
 func main() {
     log := logger.NewLogger("meu-servico")
-    
+
     // Definir metadata global
     log.SetMetadata("service", "user-api")
     log.SetMetadata("version", "1.2.3")
-    
+
     // Log com contexto adicional
     log.InfoCtx("Login de usuário bem-sucedido", map[string]interface{}{
         "user_id":    12345,
@@ -182,7 +182,7 @@ func main() {
         AddMetadata("amount", 99.99).
         AddMetadata("currency", "BRL").
         SetSeverity(1)
-        
+
     // Usar a entrada com formatadores
     formatter := core.NewJSONFormatter()
     output := formatter.Format(entry)
@@ -205,20 +205,20 @@ import (
 func main() {
     // Criar logger com notificador HTTP
     log := logger.NewLogger("webhook-app")
-    
+
     // Adicionar notificador webhook HTTP
     httpNotifier := core.NewHTTPNotifier(
         "https://hooks.slack.com/services/SEU/WEBHOOK/URL",
         "seu-token-auth",
     )
-    
+
     // Criar entrada de log
     entry := core.NewLogEntry().
         WithLevel(core.ERROR).
         WithMessage("Erro crítico do sistema detectado").
         AddMetadata("severity", "high").
         AddMetadata("component", "database")
-    
+
     // Enviar notificação
     err := httpNotifier.Notify(entry)
     if err != nil {
@@ -243,14 +243,14 @@ import (
 func main() {
     // Criar notificador WebSocket
     wsNotifier := core.NewWebSocketNotifier("ws://localhost:8080/logs", nil)
-    
+
     // Criar e enviar entrada de log
     entry := core.NewLogEntry().
         WithLevel(core.INFO).
         WithMessage("Atualização de log em tempo real").
         AddMetadata("timestamp", time.Now().Unix()).
         AddMetadata("event", "user_action")
-    
+
     err := wsNotifier.Notify(entry)
     if err != nil {
         fmt.Printf("Notificação WebSocket falhou: %v\n", err)
@@ -268,20 +268,20 @@ import "github.com/rafa-mori/logz/internal/core"
 func main() {
     // Obter instância do gerenciador Prometheus
     prometheus := core.GetPrometheusManager()
-    
+
     // Adicionar várias métricas
     prometheus.AddMetric("http_requests_total", 100, map[string]string{
         "method": "GET",
         "status": "200",
     })
-    
+
     prometheus.AddMetric("response_time_seconds", 0.045, map[string]string{
         "endpoint": "/api/users",
     })
-    
+
     // Incrementar contador
     prometheus.IncrementMetric("api_calls_total", 1)
-    
+
     // Iniciar servidor HTTP para expor endpoint /metrics
     prometheus.StartHTTPServer(":2112")
 }
@@ -300,13 +300,13 @@ import (
 func main() {
     log := logger.NewLogger("concurrent-app")
     var wg sync.WaitGroup
-    
+
     // Simular logging de alto tráfego
     for i := 0; i < 1000; i++ {
         wg.Add(1)
         go func(id int) {
             defer wg.Done()
-            
+
             log.InfoCtx("Processando requisição", map[string]interface{}{
                 "request_id": id,
                 "worker":     "goroutine",
@@ -314,7 +314,7 @@ func main() {
             })
         }(i)
     }
-    
+
     wg.Wait()
     log.InfoCtx("Todas as requisições processadas", nil)
 }
@@ -339,24 +339,24 @@ func main() {
     // Inicializar logger e métricas
     log := logger.NewLogger("api-server")
     prometheus := core.GetPrometheusManager()
-    
+
     // Definir metadata global
     log.SetMetadata("service", "user-api")
     log.SetMetadata("version", "1.0.0")
-    
+
     // Iniciar servidor de métricas
     go prometheus.StartHTTPServer(":2112")
-    
+
     // Configurar roteador Gin
     r := gin.Default()
-    
+
     // Middleware para logging e métricas
     r.Use(func(c *gin.Context) {
         start := time.Now()
-        
+
         // Processar requisição
         c.Next()
-        
+
         // Fazer log dos detalhes da requisição
         duration := time.Since(start)
         log.InfoCtx("Requisição HTTP", map[string]interface{}{
@@ -367,23 +367,23 @@ func main() {
             "client_ip":  c.ClientIP(),
             "user_agent": c.Request.UserAgent(),
         })
-        
+
         // Atualizar métricas
         prometheus.AddMetric("http_requests_total", 1, map[string]string{
             "method": c.Request.Method,
             "status": fmt.Sprintf("%d", c.Writer.Status()),
         })
-        
-        prometheus.AddMetric("http_request_duration_seconds", 
+
+        prometheus.AddMetric("http_request_duration_seconds",
             duration.Seconds(), map[string]string{
             "endpoint": c.Request.URL.Path,
         })
     })
-    
+
     // Endpoints da API
     r.GET("/users/:id", getUserHandler(log))
     r.POST("/users", createUserHandler(log))
-    
+
     log.InfoCtx("Servidor iniciando na porta :8080", nil)
     r.Run(":8080")
 }
@@ -488,9 +488,13 @@ Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou enviar
 
 ## **Contato**
 
-💌 **Desenvolvedor:**  
-[Seu Nome](mailto:seu-email@dominio.com)  
-🌐 [Seu LinkedIn](https://linkedin.com/in/seu-perfil)  
-💼 [Portfólio](https://seu-portfolio.com)
+Rafael Mori
+
+- 🌐 [Portfolio](https://rafa-mori.dev)
+- 🔗 [LinkedIn](https://www.linkedin.com/in/rafa-mori/)
+- 📧 [Email](mailto:faelmori@gmail.com)
+- 💼 Follow me on GitHub:
+  - [faelmori](https://github.com/faelmori)
+  - [rafa-mori](https://github.com/rafa-mori)
 
 Adoraria ouvir sobre novas oportunidades de trabalho ou colaborações. Se você gostou desse projeto, não hesite em entrar em contato comigo!
