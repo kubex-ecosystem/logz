@@ -4,7 +4,9 @@
   "version": "1.4.0",
   "private": false,
   "published": true,
-  "aliases": ["logz"],
+  "aliases": [
+    "logz"
+  ],
   "repository": "https://github.com/rafa-mori/logz",
   "homepage": "https://github.com/rafa-mori/logz",
   "description": "Kubex Logz: A complete logging solution for your applications.",
@@ -13,7 +15,26 @@
   "author": "Rafael Mori <faelmori@gmail.com>",
   "organization": "rafa-mori",
   "license": "MIT",
-  "keywords": ["logz", "kubex", "control", "command-line", "tool", "management"],
-  "platforms": ["linux/amd64","darwin/amd64","darwin/arm64","windows/amd64"],
-  "dependencies": ["tar", "gzip", "curl", "git", "zip", "unzip", "jq"]
+  "keywords": [
+    "logz",
+    "kubex",
+    "control",
+    "command-line",
+    "tool",
+    "management"
+  ],
+  "platforms": [
+    "linux/amd64",
+    "darwin/amd64",
+    "darwin/arm64"
+  ],
+  "dependencies": [
+    "tar",
+    "gzip",
+    "curl",
+    "git",
+    "zip",
+    "unzip",
+    "jq"
+  ]
 }

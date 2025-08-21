@@ -1,6 +1,6 @@
 # ![Logz Banner](docs/assets/top_banner.png)
 
-[![Build](https://github.com/rafa-mori/logz/actions/workflows/release.yml/badge.svg)](https://github.com/rafa-mori/logz/actions/workflows/release.yml)
+[![Kubex Go Dist CI](https://github.com/rafa-mori/logz/actions/workflows/kubex_go_release.yml/badge.svg)](https://github.com/rafa-mori/logz/actions/workflows/kubex_go_release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-%3E=1.21-blue)](go.mod)
 [![Releases](https://img.shields.io/github/v/release/rafa-mori/logz?include_prereleases)](https://github.com/rafa-mori/logz/releases)
@@ -134,7 +134,7 @@ import "github.com/rafa-mori/logz/logger"
 func main() {
     // Create a new logger instance
     log := logger.NewLogger("my-app")
-    
+
     // Basic logging with emoji formatting
     log.InfoCtx("Application started successfully", nil)
     log.WarnCtx("This is a warning message", nil)
@@ -159,11 +159,11 @@ import "github.com/rafa-mori/logz/logger"
 
 func main() {
     log := logger.NewLogger("my-service")
-    
+
     // Set global metadata
     log.SetMetadata("service", "user-api")
     log.SetMetadata("version", "1.2.3")
-    
+
     // Log with additional context
     log.InfoCtx("User login successful", map[string]interface{}{
         "user_id":    12345,
@@ -192,7 +192,7 @@ func main() {
         AddMetadata("amount", 99.99).
         AddMetadata("currency", "USD").
         SetSeverity(1)
-        
+
     // Use the entry with formatters
     formatter := core.NewJSONFormatter()
     output := formatter.Format(entry)
@@ -215,20 +215,20 @@ import (
 func main() {
     // Create logger with HTTP notifier
     log := logger.NewLogger("webhook-app")
-    
+
     // Add HTTP webhook notifier
     httpNotifier := core.NewHTTPNotifier(
         "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
         "your-auth-token",
     )
-    
+
     // Create log entry
     entry := core.NewLogEntry().
         WithLevel(core.ERROR).
         WithMessage("Critical system error detected").
         AddMetadata("severity", "high").
         AddMetadata("component", "database")
-    
+
     // Send notification
     err := httpNotifier.Notify(entry)
     if err != nil {
@@ -253,14 +253,14 @@ import (
 func main() {
     // Create WebSocket notifier
     wsNotifier := core.NewWebSocketNotifier("ws://localhost:8080/logs", nil)
-    
+
     // Create and send log entry
     entry := core.NewLogEntry().
         WithLevel(core.INFO).
         WithMessage("Real-time log update").
         AddMetadata("timestamp", time.Now().Unix()).
         AddMetadata("event", "user_action")
-    
+
     err := wsNotifier.Notify(entry)
     if err != nil {
         fmt.Printf("WebSocket notification failed: %v\n", err)
@@ -278,20 +278,20 @@ import "github.com/rafa-mori/logz/internal/core"
 func main() {
     // Get Prometheus manager instance
     prometheus := core.GetPrometheusManager()
-    
+
     // Add various metrics
     prometheus.AddMetric("http_requests_total", 100, map[string]string{
         "method": "GET",
         "status": "200",
     })
-    
+
     prometheus.AddMetric("response_time_seconds", 0.045, map[string]string{
         "endpoint": "/api/users",
     })
-    
+
     // Increment counter
     prometheus.IncrementMetric("api_calls_total", 1)
-    
+
     // Start HTTP server to expose /metrics endpoint
     prometheus.StartHTTPServer(":2112")
 }
@@ -310,13 +310,13 @@ import (
 func main() {
     log := logger.NewLogger("concurrent-app")
     var wg sync.WaitGroup
-    
+
     // Simulate high-traffic logging
     for i := 0; i < 1000; i++ {
         wg.Add(1)
         go func(id int) {
             defer wg.Done()
-            
+
             log.InfoCtx("Processing request", map[string]interface{}{
                 "request_id": id,
                 "worker":     "goroutine",
@@ -324,7 +324,7 @@ func main() {
             })
         }(i)
     }
-    
+
     wg.Wait()
     log.InfoCtx("All requests processed", nil)
 }
@@ -350,24 +350,24 @@ func main() {
     // Initialize logger and metrics
     log := logger.NewLogger("api-server")
     prometheus := core.GetPrometheusManager()
-    
+
     // Set global metadata
     log.SetMetadata("service", "user-api")
     log.SetMetadata("version", "1.0.0")
-    
+
     // Start metrics server
     go prometheus.StartHTTPServer(":2112")
-    
+
     // Setup Gin router
     r := gin.Default()
-    
+
     // Middleware for logging and metrics
     r.Use(func(c *gin.Context) {
         start := time.Now()
-        
+
         // Process request
         c.Next()
-        
+
         // Log request details
         duration := time.Since(start)
         log.InfoCtx("HTTP Request", map[string]interface{}{
@@ -378,23 +378,23 @@ func main() {
             "client_ip":  c.ClientIP(),
             "user_agent": c.Request.UserAgent(),
         })
-        
+
         // Update metrics
         prometheus.AddMetric("http_requests_total", 1, map[string]string{
             "method": c.Request.Method,
             "status": fmt.Sprintf("%d", c.Writer.Status()),
         })
-        
-        prometheus.AddMetric("http_request_duration_seconds", 
+
+        prometheus.AddMetric("http_request_duration_seconds",
             duration.Seconds(), map[string]string{
             "endpoint": c.Request.URL.Path,
         })
     })
-    
+
     // API endpoints
     r.GET("/users/:id", getUserHandler(log))
     r.POST("/users", createUserHandler(log))
-    
+
     log.InfoCtx("Server starting on :8080", nil)
     r.Run(":8080")
 }
@@ -402,19 +402,19 @@ func main() {
 func getUserHandler(log logger.LogzLogger) gin.HandlerFunc {
     return func(c *gin.Context) {
         userID := c.Param("id")
-        
+
         log.InfoCtx("Fetching user", map[string]interface{}{
             "user_id": userID,
             "action":  "get_user",
         })
-        
+
         // Simulate database fetch
         user := map[string]interface{}{
             "id":   userID,
             "name": "John Doe",
             "email": "john@example.com",
         }
-        
+
         c.JSON(http.StatusOK, user)
     }
 }
@@ -424,7 +424,7 @@ func createUserHandler(log logger.LogzLogger) gin.HandlerFunc {
         log.InfoCtx("Creating new user", map[string]interface{}{
             "action": "create_user",
         })
-        
+
         c.JSON(http.StatusCreated, gin.H{"status": "created"})
     }
 }
@@ -450,10 +450,10 @@ type OrderService struct {
 
 func NewOrderService() *OrderService {
     log := logger.NewLogger("order-service")
-    
+
     // Setup WebSocket notifier for real-time updates
     wsNotifier := core.NewWebSocketNotifier("ws://monitoring:8080/orders", nil)
-    
+
     return &OrderService{
         log:      log,
         notifier: wsNotifier,
@@ -465,20 +465,20 @@ func (s *OrderService) ProcessOrder(ctx context.Context, orderID string) error {
         "order_id": orderID,
         "status":   "started",
     })
-    
+
     // Simulate order processing steps
     steps := []string{"validation", "payment", "inventory", "fulfillment"}
-    
+
     for i, step := range steps {
         time.Sleep(100 * time.Millisecond) // Simulate work
-        
+
         // Log each step
         s.log.InfoCtx("Order step completed", map[string]interface{}{
             "order_id": orderID,
             "step":     step,
             "progress": fmt.Sprintf("%d/%d", i+1, len(steps)),
         })
-        
+
         // Send real-time notification
         entry := core.NewLogEntry().
             WithLevel(core.INFO).
@@ -487,15 +487,15 @@ func (s *OrderService) ProcessOrder(ctx context.Context, orderID string) error {
             AddMetadata("step", step).
             AddMetadata("completed", i+1).
             AddMetadata("total", len(steps))
-        
+
         s.notifier.Notify(entry)
     }
-    
+
     s.log.InfoCtx("Order completed successfully", map[string]interface{}{
         "order_id": orderID,
         "status":   "completed",
     })
-    
+
     return nil
 }
 ```
@@ -518,13 +518,13 @@ type PaymentService struct {
 
 func NewPaymentService() *PaymentService {
     log := logger.NewLogger("payment-service")
-    
+
     // Setup webhook for critical alerts
     alertNotifier := core.NewHTTPNotifier(
         "https://hooks.slack.com/services/TEAM/WEBHOOK/TOKEN",
         "Bearer slack-token-123",
     )
-    
+
     return &PaymentService{
         log:           log,
         alertNotifier: alertNotifier,
@@ -536,7 +536,7 @@ func (s *PaymentService) ProcessPayment(amount float64, cardToken string) error 
         "amount":     amount,
         "card_token": cardToken[:8] + "****", // Masked for security
     })
-    
+
     // Simulate payment processing
     if amount > 10000 {
         // Critical error - send alert
@@ -546,22 +546,22 @@ func (s *PaymentService) ProcessPayment(amount float64, cardToken string) error 
             AddMetadata("amount", amount).
             AddMetadata("severity", "critical").
             AddMetadata("requires_action", true)
-        
+
         s.alertNotifier.Notify(entry)
-        
+
         s.log.ErrorCtx("Payment failed - amount too high", map[string]interface{}{
             "amount": amount,
             "reason": "exceeds_limit",
         })
-        
+
         return errors.New("payment amount exceeds limit")
     }
-    
+
     s.log.InfoCtx("Payment processed successfully", map[string]interface{}{
         "amount": amount,
         "status": "success",
     })
-    
+
     return nil
 }
 ```
@@ -576,10 +576,10 @@ logz info --msg "Starting the application."
 logz error --msg "Database connection failed."
 
 # Start the detached service
-logz start  
+logz start
 
 # Stop the detached service
-logz stop  
+logz stop
 
 # Watch logs in real-time
 logz watch
@@ -655,7 +655,7 @@ logz error \
 
 ### Configuration
 
-Logz uses a JSON or YAML configuration file to centralize its setup. The file is automatically generated on first use or can be manually configured at:  
+Logz uses a JSON or YAML configuration file to centralize its setup. The file is automatically generated on first use or can be manually configured at:
 `~/.kubex/logz/config.json`.
 
 **Example Configuration**:
@@ -735,7 +735,7 @@ Contributions are welcome! Feel free to open issues or submit pull requests. Che
 
 ## **Contact**
 
-💌 **Developer**:  
+💌 **Developer**:
 
 Rafael Mori
 
