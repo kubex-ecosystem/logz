@@ -1,4 +1,4 @@
-![Logz Banner](assets/top_banner.png)
+# ![Logz Banner](assets/top_banner.png)
 
 ---
 
