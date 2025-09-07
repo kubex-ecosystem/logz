@@ -4,7 +4,7 @@ site_description: 'Advanced time series analysis, database integration, and task
 site_author: 'Rafael Mori'
 
 repo_name: 'rafa-mori/timecraft'
-repo_url: https://github.com/rafa-mori/timecraft
+repo_url: https://github.com/kubex-ecosystem/timecraft
 
 theme:
   name: material
@@ -96,7 +96,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/rafa-mori/timecraft
+      link: https://github.com/kubex-ecosystem/timecraft
       name: TimeCraft AI on GitHub
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/in/rafa-mori/

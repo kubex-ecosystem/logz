@@ -19,7 +19,7 @@ If you're using an unsupported version, consider upgrading to benefit from the l
 
 If you discover a security vulnerability in `logz`, we’d appreciate a responsible disclosure.
 
-Please report it by opening a **[GitHub Security Advisory](https://github.com/rafa-mori/logz/security/advisories/new)** (private), or contact the maintainer directly if you prefer.
+Please report it by opening a **[GitHub Security Advisory](https://github.com/kubex-ecosystem/logz/security/advisories/new)** (private), or contact the maintainer directly if you prefer.
 
 What to expect:
 - We'll acknowledge your report within 3–5 business days.

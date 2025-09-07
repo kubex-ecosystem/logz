@@ -1,9 +1,9 @@
 # ![Logz Banner](docs/assets/top_banner.png)
 
-[![Kubex Go Dist CI](https://github.com/rafa-mori/logz/actions/workflows/kubex_go_release.yml/badge.svg)](https://github.com/rafa-mori/logz/actions/workflows/kubex_go_release.yml)
+[![Kubex Go Dist CI](https://github.com/kubex-ecosystem/logz/actions/workflows/kubex_go_release.yml/badge.svg)](https://github.com/kubex-ecosystem/logz/actions/workflows/kubex_go_release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-%3E=1.21-blue)](go.mod)
-[![Releases](https://img.shields.io/github/v/release/rafa-mori/logz?include_prereleases)](https://github.com/rafa-mori/logz/releases)
+[![Releases](https://img.shields.io/github/v/release/rafa-mori/logz?include_prereleases)](https://github.com/kubex-ecosystem/logz/releases)
 
 ---
 
@@ -103,7 +103,7 @@ Requirements:
 
 ```bash
 # Clone this repository
-git clone https://github.com/rafa-mori/logz.git
+git clone https://github.com/kubex-ecosystem/logz.git
 
 # Navigate to the project directory
 cd logz
@@ -129,7 +129,7 @@ export PATH=$PATH:$(pwd)
 ```go
 package main
 
-import "github.com/rafa-mori/logz/logger"
+import "github.com/kubex-ecosystem/logz/logger"
 
 func main() {
     // Create a new logger instance
@@ -155,7 +155,7 @@ func main() {
 ```go
 package main
 
-import "github.com/rafa-mori/logz/logger"
+import "github.com/kubex-ecosystem/logz/logger"
 
 func main() {
     log := logger.NewLogger("my-service")
@@ -180,7 +180,7 @@ package main
 
 import (
     "fmt"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 func main() {
@@ -208,8 +208,8 @@ func main() {
 package main
 
 import (
-    "github.com/rafa-mori/logz/logger"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 func main() {
@@ -247,7 +247,7 @@ package main
 import (
     "fmt"
     "time"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 func main() {
@@ -273,7 +273,7 @@ func main() {
 ```go
 package main
 
-import "github.com/rafa-mori/logz/internal/core"
+import "github.com/kubex-ecosystem/logz/internal/core"
 
 func main() {
     // Get Prometheus manager instance
@@ -304,7 +304,7 @@ package main
 
 import (
     "sync"
-    "github.com/rafa-mori/logz/logger"
+    "github.com/kubex-ecosystem/logz/logger"
 )
 
 func main() {
@@ -342,8 +342,8 @@ import (
     "net/http"
     "time"
     "github.com/gin-gonic/gin"
-    "github.com/rafa-mori/logz/logger"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 func main() {
@@ -439,8 +439,8 @@ import (
     "context"
     "fmt"
     "time"
-    "github.com/rafa-mori/logz/logger"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 type OrderService struct {
@@ -507,8 +507,8 @@ package main
 
 import (
     "errors"
-    "github.com/rafa-mori/logz/logger"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 type PaymentService struct {
@@ -744,7 +744,7 @@ Rafael Mori
 - 📧 [Email](mailto:faelmori@gmail.com)
 - 💼 Follow me on GitHub:
   - [faelmori](https://github.com/faelmori)
-  - [rafa-mori](https://github.com/rafa-mori)
+  - [rafa-mori](https://github.com/kubex-ecosystem)
 
 ---
 

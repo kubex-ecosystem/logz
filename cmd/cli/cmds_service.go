@@ -1,7 +1,7 @@
 package cli
 
 import (
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 
 	"github.com/spf13/cobra"
 

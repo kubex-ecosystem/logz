@@ -2,7 +2,7 @@
 package formatters
 
 import (
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 // JSONFormatter formats log entries as JSON.

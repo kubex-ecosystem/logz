@@ -4,7 +4,7 @@ package writters
 import (
 	"io"
 
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 // LogzWriter represents the writer of the log entry.

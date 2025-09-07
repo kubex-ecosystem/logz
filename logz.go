@@ -1,3 +1,4 @@
+// Package logz provides a global logging utility with configurable settings.
 package logz
 
 import (
@@ -6,9 +7,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/rafa-mori/logz/internal/core"
-	logz "github.com/rafa-mori/logz/logger"
-	vs "github.com/rafa-mori/logz/version"
+	"github.com/kubex-ecosystem/logz/internal/core"
+	logz "github.com/kubex-ecosystem/logz/logger"
+	vs "github.com/kubex-ecosystem/logz/version"
 )
 
 var (
@@ -25,6 +26,7 @@ type LogFormat = core.LogFormat
 type Config interface{ core.Config }
 
 // type ConfigManager interface{ core.LogzConfigManager }
+
 type NotifierManager interface{ core.NotifierManager }
 type Notifier interface{ core.Notifier }
 type Logger interface{ logz.LogzLogger }
@@ -96,6 +98,7 @@ func initializeLogger(prefix string) {
 	if logger != nil {
 		return
 	}
+
 	logger = logz.NewLogger(prefix).(Logger)
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel != "" {
@@ -103,19 +106,21 @@ func initializeLogger(prefix string) {
 	} else {
 		logger.SetLevel(core.INFO)
 	}
+
 	logFormat := os.Getenv("LOG_FORMAT")
 	//config := logger.GetConfig().(*core.Config)
 	if logFormat != "" {
 		logger.SetFormat(core.LogFormat(logFormat))
-	} else {
-		//logger.GetConfig().SetFormat(core.TEXT)
+		// } else {
+		// 	//logger.GetConfig().SetFormat(core.TEXT)
 	}
-	logOutput := os.Getenv("LOG_OUTPUT")
-	if logOutput != "" {
-		//logger.GetConfig().SetOutput(logOutput)
-	} else {
-		//logger.GetConfig().SetOutput(os.Stdout.Name())
-	}
+
+	// logOutput := os.Getenv("LOG_OUTPUT")
+	// if logOutput != "" {
+	//logger.GetConfig().SetOutput(logOutput)
+	// } else {
+	//logger.GetConfig().SetOutput(os.Stdout.Name())
+	// }
 	//	})
 }
 
@@ -200,6 +205,7 @@ func SetMetadata(key string, value interface{}) {
 }
 
 // Trace logs a trace message with the given context.
+
 func TraceCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -209,6 +215,7 @@ func TraceCtx(msg string, ctx map[string]interface{}) {
 }
 
 // Notice logs a notice message with the given context.
+
 func NoticeCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -218,6 +225,7 @@ func NoticeCtx(msg string, ctx map[string]interface{}) {
 }
 
 // Success logs a success message with the given context.
+
 func SuccessCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -227,6 +235,7 @@ func SuccessCtx(msg string, ctx map[string]interface{}) {
 }
 
 // Debug logs a debug message with the given context.
+
 func DebugCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -236,6 +245,7 @@ func DebugCtx(msg string, ctx map[string]interface{}) {
 }
 
 // InfoCtx logs an info message with the given context.
+
 func InfoCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -245,6 +255,7 @@ func InfoCtx(msg string, ctx map[string]interface{}) {
 }
 
 // Warn logs a warning message with the given context.
+
 func WarnCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -254,6 +265,7 @@ func WarnCtx(msg string, ctx map[string]interface{}) {
 }
 
 // Error logs an error message with the given context.
+
 func ErrorCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -263,6 +275,7 @@ func ErrorCtx(msg string, ctx map[string]interface{}) {
 }
 
 // FatalC logs a fatal message with the given context and exits the application.
+
 func FatalCtx(msg string, ctx map[string]interface{}) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -272,6 +285,7 @@ func FatalCtx(msg string, ctx map[string]interface{}) {
 }
 
 // AddNotifier adds a notifier to the global core's configuration.
+
 func AddNotifier(name string, notifier Notifier) {
 	//mu.Lock()
 	//defer mu.Unlock()
@@ -284,6 +298,7 @@ func AddNotifier(name string, notifier Notifier) {
 }
 
 // GetNotifier returns the notifier with the given name from the global core's configuration.
+
 func GetNotifier(name string) (interface{}, bool) { //(Notifier, bool) {
 	//mu.RLock()
 	//defer mu.RUnlock()
@@ -310,11 +325,11 @@ func ListNotifiers() []string {
 func SetLogFormat(format LogFormat) {
 	//mu.Lock()
 	//defer mu.Unlock()
-	if logger != nil {
-		/*logger.
-		GetConfig().
-		SetFormat(format)*/
-	}
+	// if logger != nil {
+	// 	/*logger.
+	// 	GetConfig().
+	// 	SetFormat(format)*/
+	// }
 }
 
 // GetLogFormat returns the log format of the global core.

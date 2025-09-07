@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	manifest "github.com/rafa-mori/logz/info"
-	"github.com/rafa-mori/logz/logger"
+	manifest "github.com/kubex-ecosystem/logz/info"
+	"github.com/kubex-ecosystem/logz/logger"
 	"github.com/spf13/cobra"
 )
 

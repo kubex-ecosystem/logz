@@ -1,7 +1,7 @@
 package core
 
 /*import (
-	iKbxCfg "github.com/rafa-mori/kubex-interfaces/config"
+	iKbxCfg "github.com/kubex-ecosystem/kubex-interfaces/config"
 
 	"fmt"
 	"sync"
