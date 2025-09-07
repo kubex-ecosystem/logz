@@ -1,12 +1,12 @@
 # **Contributing to Logz**
 
-Thank you for your interest in contributing to **[Logz](https://github.com/rafa-mori/logz)**! We are excited to have you as part of our community. This guide will help you get started and contribute effectively to the project.
+Thank you for your interest in contributing to **[Logz](https://github.com/kubex-ecosystem/logz)**! We are excited to have you as part of our community. This guide will help you get started and contribute effectively to the project.
 
 ---
 
 ## **How to Contribute**
 
-There are several ways to contribute to [Logz](https://github.com/rafa-mori/logz):
+There are several ways to contribute to [Logz](https://github.com/kubex-ecosystem/logz):
 
 1. **Report Issues**
    - Found bugs or issues in the code? Open an issue detailing the problem.
@@ -28,7 +28,7 @@ There are several ways to contribute to [Logz](https://github.com/rafa-mori/logz
 
 ### 1. **Clone the Repository**
 ```bash
-git clone https://github.com/rafa-mori/logz.git
+git clone https://github.com/kubex-ecosystem/logz.git
 cd logz
 ```
 
@@ -37,7 +37,7 @@ Make sure you have Go installed:
 
 You can install Go using one of the following methods:
 
-- [A super easy way to install Go](https://github.com/rafa-mori/go-installer)
+- [A super easy way to install Go](https://github.com/kubex-ecosystem/go-installer)
   ```shell
     curl -sSfL 'https://raw.githubusercontent.com/faelmori/go-installer/refs/heads/main/go.sh' | bash
   ```

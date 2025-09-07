@@ -55,7 +55,7 @@ detect_shell_rc() {
             return 1
             ;;
     esac
-    
+
     if [ ! -f "$shell_rc_file" ]; then
         log error "Configuration file not found: ${shell_rc_file}"
         return 1
@@ -76,7 +76,7 @@ add_to_path() {
 
     shell_rc_file="$(detect_shell_rc)"
 
-    if [ -z "$shell_rc_file" ]; then
+    if [[ -z "$shell_rc_file" ]]; then
         log error "Could not identify the shell configuration file."
         return 1
     fi
@@ -116,10 +116,10 @@ add_to_path() {
 }
 install_binary() {
     local SUFFIX="${_PLATFORM_WITH_ARCH}"
-    local BINARY_TO_INSTALL="${_BINARY/\/${_APP_NAME}/\/${_APP_NAME}\/bin}${SUFFIX:+_${SUFFIX}}"
+    local BINARY_TO_INSTALL="${_BINARY/\/${_APP_NAME}/\/${_APP_NAME}\/dist}${SUFFIX:+_${SUFFIX}}"
     log info "Installing binary: '${BINARY_TO_INSTALL}' as '$_APP_NAME'"
 
-    if [ "$(id -u)" -ne 0 ]; then
+    if [[ "$(id -u)" -ne 0 ]]; then
         log info "Non-root user detected. Installing to ${_LOCAL_BIN}..."
         mkdir -p "$_LOCAL_BIN"
         cp "$BINARY_TO_INSTALL" "$_LOCAL_BIN/$_APP_NAME" || exit 1
@@ -130,7 +130,7 @@ install_binary() {
         add_to_path "$_GLOBAL_BIN"
     fi
 
-    if [[ -n "$shell_rc_file" ]]; then    
+    if [[ -n "$shell_rc_file" ]]; then
       # shellcheck source=/dev/null
       . "${shell_rc_file:-$(detect_shell_rc)}" || {
           log warn "Failed to reload shell configuration. Please run 'source ${shell_rc_file}' manually."
@@ -153,7 +153,7 @@ uninstall_binary() {
     local shell_rc_file=""
     shell_rc_file="$(detect_shell_rc)"
 
-    if [[ -n "$shell_rc_file" ]]; then    
+    if [[ -n "$shell_rc_file" ]]; then
       # shellcheck source=/dev/null
       . "${shell_rc_file:-$(detect_shell_rc)}" || {
           log warn "Failed to reload shell configuration. Please run 'source ${shell_rc_file}' manually."

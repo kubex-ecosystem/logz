@@ -1,4 +1,4 @@
-module github.com/rafa-mori/logz
+module github.com/kubex-ecosystem/logz
 
 go 1.25.0
 

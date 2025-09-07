@@ -2,7 +2,7 @@
 package readers
 
 import (
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 // LogzReader represents a reader for log entries.

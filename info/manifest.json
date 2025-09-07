@@ -7,8 +7,8 @@
   "aliases": [
     "logz"
   ],
-  "repository": "https://github.com/rafa-mori/logz",
-  "homepage": "https://github.com/rafa-mori/logz",
+  "repository": "https://github.com/kubex-ecosystem/logz",
+  "homepage": "https://github.com/kubex-ecosystem/logz",
   "description": "Kubex Logz: A complete logging solution for your applications.",
   "main": "cmd/main.go",
   "bin": "logz",

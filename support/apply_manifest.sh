@@ -1,34 +1,58 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-set -o errtrace
-set -o functrace
-set -o posix
-
+# set -o posix
+set -o nounset  # Treat unset variables as an error
+set -o errexit  # Exit immediately if a command exits with a non-zero status
+set -o pipefail # Prevent errors in a pipeline from being masked
+set -o errtrace # If a command fails, the shell will exit immediately
+set -o functrace # If a function fails, the shell will exit immediately
+shopt -s inherit_errexit # Inherit the errexit option in functions
 IFS=$'\n\t'
 
+_ROOT_DIR="${_ROOT_DIR:-}"
+_APP_NAME="${_APP_NAME:-}"
+_DESCRIPTION="${_DESCRIPTION:-}"
+_OWNER="${_OWNER:-}"
+_BINARY_NAME="${_BINARY_NAME:-}"
+_PROJECT_NAME="${_PROJECT_NAME:-}"
+_AUTHOR="${_AUTHOR:-}"
+_VERSION="${_VERSION:-}"
+_LICENSE="${_LICENSE:-}"
+_REPOSITORY="${_REPOSITORY:-}"
+_PRIVATE_REPOSITORY="${_PRIVATE_REPOSITORY:-}"
+_VERSION_GO="${_VERSION_GO:-}"
+_PLATFORMS_SUPPORTED="${_PLATFORMS_SUPPORTED:-}"
+
+# _MANIFEST_SUBPATH=${_MANIFEST_SUBPATH:-'internal/module/info/manifest.json'}
+_MANIFEST_SUBPATH=${_MANIFEST_SUBPATH:-'info/manifest.json'}
+
 __get_values_from_manifest() {
-  # Define the root directory (assuming this script is in lib/ under the root)
-  _ROOT_DIR="$(cd "$(dirname "${0}")/.." && pwd)" || return 1
+  # # Define the root directory (assuming this script is in lib/ under the root)
+  _ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
   # shellcheck disable=SC2005
-  _APP_NAME="$(jq -r '.bin' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "$(basename "${_ROOT_DIR}")")" || return 1
-  _DESCRIPTION="$(jq -r '.description' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "No description provided.")" || return 1
-  _OWNER="$(jq -r '.organization' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "rafa-mori")" || return 1
-  _OWNER="${_OWNER,,}" || return 1
-  _BINARY_NAME="${_APP_NAME}" || return 1
-  _PROJECT_NAME="$(jq -r '.name' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "$_APP_NAME")" || return 1
-  _AUTHOR="$(jq -r '.author' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "Rafa Mori")" || return 1
-  _VERSION=$(jq -r '.version' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "v0.0.0") || return 1
-  _LICENSE="$(jq -r '.license' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "MIT")" || return 1
-  _REPOSITORY="$(jq -r '.repository' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "rafa-mori/${_APP_NAME}")" || return 1
-  _PRIVATE_REPOSITORY="$(jq -r '.private' "$_ROOT_DIR/info/manifest.json" 2>/dev/null || echo "false")" || return 1
- 
+  _APP_NAME="$(jq -r '.bin' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "$(basename "${_ROOT_DIR:-}")")"
+  _DESCRIPTION="$(jq -r '.description' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "No description provided.")"
+  _OWNER="$(jq -r '.organization' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "rafa-mori")"
+  _OWNER="${_OWNER,,}"  # Converts to lowercase
+  _BINARY_NAME="${_APP_NAME}"
+  _PROJECT_NAME="$(jq -r '.name' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "$_APP_NAME")"
+  _AUTHOR="$(jq -r '.author' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "Rafa Mori")"
+  _VERSION=$(jq -r '.version' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "v0.0.0")
+  _LICENSE="$(jq -r '.license' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "MIT")"
+  _REPOSITORY="$(jq -r '.repository' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "rafa-mori/${_APP_NAME}")"
+  _PRIVATE_REPOSITORY="$(jq -r '.private' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "false")"
+  _VERSION_GO=$(grep '^go ' "$_ROOT_DIR/go.mod" | awk '{print $2}')
+  _PLATFORMS_SUPPORTED="$(jq -r '.platforms[]' "$_ROOT_DIR/$_MANIFEST_SUBPATH" 2>/dev/null || echo "linux, macOS, windows")"
+  _PLATFORMS_SUPPORTED="$(printf '%s ' "${_PLATFORMS_SUPPORTED[*]//
+/, }")" # Converts to comma-separated list
+  _PLATFORMS_SUPPORTED="${_PLATFORMS_SUPPORTED,,}"  # Converts to lowercase
+
   return 0
 }
 
 __replace_project_name() {
-  local _old_bin_name="goforge"
+  local _old_bin_name="gobe"
   local _new_bin_name="${_BINARY_NAME}"
 
   if [[ ! -d "$_ROOT_DIR/bkp" ]]; then
@@ -61,12 +85,12 @@ __replace_project_name() {
   done
 
   local _files_to_rename=(
-    "$_ROOT_DIR/goforge.go"
-    "$_ROOT_DIR/"**/goforge.go
+    "$_ROOT_DIR/go${_old_bin_name}.go"
+    "$_ROOT_DIR/"**"/${_old_bin_name}.go"
   )
   for _file in "${_files_to_rename[@]}"; do
     if [[ -f "$_file" ]]; then
-      local _new_file="${_file//goforge/$_BINARY_NAME}"
+      local _new_file="${_file//${_old_bin_name}/$_BINARY_NAME}"
       mv "$_file" "$_new_file" || {
         log error "Could not rename $_file to $_new_file. Please check if the file exists and is writable." true
         continue
@@ -109,10 +133,15 @@ __replace_project_name() {
   return 0
 }
 
-apply_manifest() {
-  __get_values_from_manifest || return 1
+change_project_name() {
   __replace_project_name || return 1
   return 0
 }
 
+apply_manifest() {
+  __get_values_from_manifest || return 1
+  return 0
+}
+
 export -f apply_manifest
+export -f change_project_name

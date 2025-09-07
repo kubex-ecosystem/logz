@@ -1,7 +1,7 @@
 package formatters
 
 import (
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 // TableFormatter formats data as a table.

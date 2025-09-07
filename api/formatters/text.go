@@ -1,7 +1,7 @@
 package formatters
 
 import (
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 // TextFormatter formats log entries in plain text.

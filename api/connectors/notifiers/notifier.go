@@ -1,7 +1,7 @@
 // Package notifiers provides the interface for notifier implementations.
 package notifiers
 
-import il "github.com/rafa-mori/logz/internal/core"
+import il "github.com/kubex-ecosystem/logz/internal/core"
 
 type LogzNotifierManager = il.NotifierManager
 type LogzNotifier = il.Notifier
