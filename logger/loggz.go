@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 // LogLevel represents the level of the log entry.

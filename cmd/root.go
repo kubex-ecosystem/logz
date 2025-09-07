@@ -1,8 +1,8 @@
 package main
 
 import (
-	cc "github.com/rafa-mori/logz/cmd/cli"
-	vs "github.com/rafa-mori/logz/version"
+	cc "github.com/kubex-ecosystem/logz/cmd/cli"
+	vs "github.com/kubex-ecosystem/logz/version"
 
 	"github.com/spf13/cobra"
 

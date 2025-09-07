@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	l "github.com/rafa-mori/logz/internal/core"
+	l "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 //go:embed manifest.json

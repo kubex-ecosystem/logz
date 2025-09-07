@@ -7,9 +7,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/rafa-mori/logz/internal/core"
-	logz "github.com/rafa-mori/logz/logger"
-	vs "github.com/rafa-mori/logz/version"
+	"github.com/kubex-ecosystem/logz/internal/core"
+	logz "github.com/kubex-ecosystem/logz/logger"
+	vs "github.com/kubex-ecosystem/logz/version"
 )
 
 var (

@@ -94,7 +94,7 @@ Requisitos:
 
 ```bash
 # Clone este repositório
-git clone https://github.com/rafa-mori/logz.git
+git clone https://github.com/kubex-ecosystem/logz.git
 
 # Navegue até o diretório do projeto
 cd logz
@@ -120,7 +120,7 @@ export PATH=$PATH:$(pwd)
 ```go
 package main
 
-import "github.com/rafa-mori/logz/logger"
+import "github.com/kubex-ecosystem/logz/logger"
 
 func main() {
     // Criar uma nova instância do logger
@@ -146,7 +146,7 @@ func main() {
 ```go
 package main
 
-import "github.com/rafa-mori/logz/logger"
+import "github.com/kubex-ecosystem/logz/logger"
 
 func main() {
     log := logger.NewLogger("meu-servico")
@@ -170,7 +170,7 @@ func main() {
 package main
 
 import (
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 func main() {
@@ -198,8 +198,8 @@ func main() {
 package main
 
 import (
-    "github.com/rafa-mori/logz/logger"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 func main() {
@@ -236,7 +236,7 @@ package main
 
 import (
     "net/http"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/internal/core"
     "github.com/gorilla/websocket"
 )
 
@@ -263,7 +263,7 @@ func main() {
 ```go
 package main
 
-import "github.com/rafa-mori/logz/internal/core"
+import "github.com/kubex-ecosystem/logz/internal/core"
 
 func main() {
     // Obter instância do gerenciador Prometheus
@@ -294,7 +294,7 @@ package main
 
 import (
     "sync"
-    "github.com/rafa-mori/logz/logger"
+    "github.com/kubex-ecosystem/logz/logger"
 )
 
 func main() {
@@ -331,8 +331,8 @@ import (
     "net/http"
     "time"
     "github.com/gin-gonic/gin"
-    "github.com/rafa-mori/logz/logger"
-    "github.com/rafa-mori/logz/internal/core"
+    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 func main() {
@@ -495,6 +495,6 @@ Rafael Mori
 - 📧 [Email](mailto:faelmori@gmail.com)
 - 💼 Follow me on GitHub:
   - [faelmori](https://github.com/faelmori)
-  - [rafa-mori](https://github.com/rafa-mori)
+  - [rafa-mori](https://github.com/kubex-ecosystem)
 
 Adoraria ouvir sobre novas oportunidades de trabalho ou colaborações. Se você gostou desse projeto, não hesite em entrar em contato comigo!

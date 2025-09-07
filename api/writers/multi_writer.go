@@ -2,7 +2,7 @@
 package writters
 
 import (
-	il "github.com/rafa-mori/logz/internal/core"
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
 // LogzMultiWriter represents a multi-writer for log entries.
