@@ -14,9 +14,9 @@ require (
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/olekukonko/cat v0.0.0-20250817074551-3280053e4e00 // indirect
+	github.com/olekukonko/cat v0.0.0-20250908000548-5c7087d15e58 // indirect
 	github.com/olekukonko/errors v1.1.0 // indirect
-	github.com/olekukonko/ll v0.1.0 // indirect
+	github.com/olekukonko/ll v0.1.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 )
 
