@@ -13,7 +13,7 @@
   "main": "cmd/main.go",
   "bin": "logz",
   "author": "Rafael Mori <faelmori@gmail.com>",
-  "organization": "rafa-mori",
+  "organization": "kubex-ecosystem",
   "license": "MIT",
   "keywords": [
     "logz",

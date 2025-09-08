@@ -495,6 +495,6 @@ Rafael Mori
 - 📧 [Email](mailto:faelmori@gmail.com)
 - 💼 Follow me on GitHub:
   - [faelmori](https://github.com/faelmori)
-  - [rafa-mori](https://github.com/kubex-ecosystem)
+  - [kubex-ecosystem](https://github.com/kubex-ecosystem)
 
 Adoraria ouvir sobre novas oportunidades de trabalho ou colaborações. Se você gostou desse projeto, não hesite em entrar em contato comigo!

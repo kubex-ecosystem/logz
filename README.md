@@ -3,7 +3,7 @@
 [![Kubex Go Dist CI](https://github.com/kubex-ecosystem/logz/actions/workflows/kubex_go_release.yml/badge.svg)](https://github.com/kubex-ecosystem/logz/actions/workflows/kubex_go_release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-%3E=1.21-blue)](go.mod)
-[![Releases](https://img.shields.io/github/v/release/rafa-mori/logz?include_prereleases)](https://github.com/kubex-ecosystem/logz/releases)
+[![Releases](https://img.shields.io/github/v/release/kubex-ecosystem/logz?include_prereleases)](https://github.com/kubex-ecosystem/logz/releases)
 
 ---
 
@@ -744,7 +744,7 @@ Rafael Mori
 - 📧 [Email](mailto:faelmori@gmail.com)
 - 💼 Follow me on GitHub:
   - [faelmori](https://github.com/faelmori)
-  - [rafa-mori](https://github.com/kubex-ecosystem)
+  - [kubex-ecosystem](https://github.com/kubex-ecosystem)
 
 ---
 

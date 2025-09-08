@@ -1,16 +1,16 @@
 site_name: TimeCraft AI
-site_url: https://rafa-mori.github.io/timecraft/
-site_description: 'Advanced time series analysis, database integration, and task automation with dynamic notifications and powerful CLI'
-site_author: 'Rafael Mori'
+site_url: https://kubex-ecosystem.github.io/timecraft/
+site_description: "Advanced time series analysis, database integration, and task automation with dynamic notifications and powerful CLI"
+site_author: "Rafael Mori"
 
-repo_name: 'rafa-mori/timecraft'
+repo_name: "kubex-ecosystem/timecraft"
 repo_url: https://github.com/kubex-ecosystem/timecraft
 
 theme:
   name: material
   palette:
-    primary: 'indigo'
-    accent: 'indigo'
+    primary: "indigo"
+    accent: "indigo"
   features:
     - navigation.tabs
     - navigation.top
@@ -58,7 +58,7 @@ markdown_extensions:
   - pymdownx.keys
   - pymdownx.magiclink:
       repo_url_shorthand: true
-      user: rafa-mori
+      user: kubex-ecosystem
       repo: timecraft
   - pymdownx.mark
   - pymdownx.smartsymbols
@@ -76,22 +76,22 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Documentation:
-    - Getting Started:
-      - README: README.en.md
-      - Installation: INSTALL.md
-      - AI Integration: INSTALL_AI.md
-    - User Guide:
-      - README (Portuguese): README.pt-BR.md
+      - Getting Started:
+          - README: README.en.md
+          - Installation: INSTALL.md
+          - AI Integration: INSTALL_AI.md
+      - User Guide:
+          - README (Portuguese): README.pt-BR.md
   - Community:
-    - Contributing: CONTRIBUTING.md
-    - Code of Conduct: CODE_OF_CONDUCT.md
-    - Support: SUPPORT.md
-    - Authors: AUTHORS.md
+      - Contributing: CONTRIBUTING.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Support: SUPPORT.md
+      - Authors: AUTHORS.md
   - Project Info:
-    - License: LICENSE
-    - Notice: NOTICE.md
-    - Security Policy: SECURITY.md
-    - Changelog: CHANGELOG.md
+      - License: LICENSE
+      - Notice: NOTICE.md
+      - Security Policy: SECURITY.md
+      - Changelog: CHANGELOG.md
 
 extra:
   social:
@@ -99,7 +99,7 @@ extra:
       link: https://github.com/kubex-ecosystem/timecraft
       name: TimeCraft AI on GitHub
     - icon: fontawesome/brands/linkedin
-      link: https://www.linkedin.com/in/rafa-mori/
+      link: https://www.linkedin.com/in/kubex-ecosystem/
       name: Rafael Mori on LinkedIn
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/faelOmori
@@ -109,7 +109,6 @@ extra:
   analytics:
     provider: google
     property: ${G-7HLY17F3DK}
-
 # plugins:
 #   - search:
 #       lang: en
