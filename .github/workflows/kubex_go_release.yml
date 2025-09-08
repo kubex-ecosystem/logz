@@ -60,15 +60,15 @@ jobs:
       - name: Load Module Manifest
         id: manifest
         run: |
-          if [[ ! -f "$(git rev-parse --show-toplevel)/internal/module/info/manifest.json" ]]; then
-            echo "❌ internal/module/info/manifest.json not found"
+          if [[ ! -f "$(git rev-parse --show-toplevel)/info/manifest.json" ]]; then
+            echo "❌ info/manifest.json not found"
             exit 1
           fi
 
           # Extract module information
-          MODULE_NAME=$(cat $(git rev-parse --show-toplevel)/internal/module/info/manifest.json | jq -r '.bin // .name // "unknown"')
-          MODULE_VERSION=$(cat $(git rev-parse --show-toplevel)/internal/module/info/manifest.json | jq -r '.version // "0.0.0"')
-          PLATFORMS=$(cat $(git rev-parse --show-toplevel)/internal/module/info/manifest.json | jq -r '.platforms[]?' | tr '\n' ' ' | sed 's/ $//')
+          MODULE_NAME=$(cat $(git rev-parse --show-toplevel)/info/manifest.json | jq -r '.bin // .name // "unknown"')
+          MODULE_VERSION=$(cat $(git rev-parse --show-toplevel)/info/manifest.json | jq -r '.version // "0.0.0"')
+          PLATFORMS=$(cat $(git rev-parse --show-toplevel)/info/manifest.json | jq -r '.platforms[]?' | tr '\n' ' ' | sed 's/ $//')
           # Validate required fields
           if [[ "$MODULE_NAME" == "unknown" || "$MODULE_NAME" == "null" ]]; then
             echo "❌ Module name not found in manifest (bin or name field required)"
@@ -123,7 +123,7 @@ jobs:
             echo "   Git Tag: $TAG_VERSION"
             echo "   Manifest: $MANIFEST_VERSION"
             echo ""
-            echo "Please update internal/module/info/manifest.json version to match the git tag."
+            echo "Please update info/manifest.json version to match the git tag."
             echo "Expected: \"version\": \"$TAG_CLEAN\""
             echo ""
             echo "🛑 Workflow will skip remaining steps for safety."
@@ -250,7 +250,7 @@ jobs:
           echo "**Git Tag**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Manifest**: v${{ steps.manifest.outputs.manifest-version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Please update \`internal/module/info/manifest.json\` version to match the git tag before releasing." >> $GITHUB_STEP_SUMMARY
+          echo "Please update \`info/manifest.json\` version to match the git tag before releasing." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Expected change in manifest:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY

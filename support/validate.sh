@@ -43,7 +43,7 @@ validate_versions() {
 
     # Validate other dependencies from manifest
     local dependencies manifest_file
-    manifest_file="${_ROOT_DIR:-$(git rev-parse --show-toplevel)}/${_MANIFEST_SUBPATH:-/internal/module/info/manifest.json}"
+    manifest_file="${_ROOT_DIR:-$(git rev-parse --show-toplevel)}/${_MANIFEST_SUBPATH:-/info/manifest.json}"
 
     if [[ -f "${manifest_file}" ]]; then
         mapfile -t dependencies < <(jq -r '.dependencies[]?' "${manifest_file}")
