@@ -183,9 +183,9 @@ jobs:
               continue
             fi
             # Set environment variables
-            export NON_INTERACTIVE=${NON_INTERACTIVE:-${{ github.event.env.NON_INTERACTIVE }}}
-            export FORCE=${FORCE:-${{ github.event.env.FORCE }}}
-            export CI=${CI:-${{ github.event.env.CI }}}
+            export NON_INTERACTIVE=${NON_INTERACTIVE:-${{ github.env.NON_INTERACTIVE }}}
+            export FORCE=${FORCE:-${{ github.env.FORCE }}}
+            export CI=${CI:-${{ github.env.CI }}}
             export DRY_RUN=${DRY_RUN:-${{ github.event.inputs.dry_run }}}
             export DEBUG=${DEBUG:-${{ github.event.inputs.debug }}}
             echo "🔨 Building for $OS/$ARCH..."
