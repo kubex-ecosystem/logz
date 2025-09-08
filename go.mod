@@ -1,6 +1,6 @@
 module github.com/kubex-ecosystem/logz
 
-go 1.25
+go 1.25.1
 
 require (
 	github.com/fatih/color v1.18.0
