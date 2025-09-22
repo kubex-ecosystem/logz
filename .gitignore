@@ -57,5 +57,5 @@ tests/**/*
 .codex/config.toml
 .kubex/main-instructions.md
 .notes/logz-full_d.lkt.txt
-.claude/agents/micro-improvements-agent.md
+.claude/
 CLAUDE.md
