@@ -276,6 +276,21 @@ type WebSocketNotifier struct {
 	NotifierImpl
 }
 
+// NewWebSocketNotifierWithConfig creates a new WebSocketNotifier instance.
+func NewWebSocketNotifierWithConfig(config *NotifierWebSocketConfig) *WebSocketNotifier {
+	notifier := &WebSocketNotifier{
+		NotifierImpl: NotifierImpl{
+			EnabledFlag: true, // Habilitado por padrão
+			WsEndpoint:  config.Endpoint,
+		},
+	}
+	// Inicializar NotifierManager padrão se necessário
+	if notifier.NotifierManager == nil {
+		notifier.NotifierManager = NewNotifierManager(nil)
+	}
+	return notifier
+}
+
 // NewWebSocketNotifier creates a new WebSocketNotifier instance.
 func NewWebSocketNotifier(endpoint string) *WebSocketNotifier {
 	notifier := &WebSocketNotifier{

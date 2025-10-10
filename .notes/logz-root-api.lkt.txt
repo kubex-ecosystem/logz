@@ -1,0 +1,248 @@
+# LookAtni Code Snapshot
+# -----------------------
+# Data de geração: 2025-10-10T04:26:41.616Z
+# Fonte: /projects/kubex/logz/api
+# Hostname: dev
+# Sistema: linux x64 (Debian GNU/Linux 12 (bookworm))
+# Kernel: 6.1.0-40-amd64
+# Usuário: user
+# UID: 1002
+# Shell: /usr/bin/zsh
+# Total de arquivos: 8
+# Tamanho bruto: 0.0 MB
+# Gerado por: lookatni@v1.2.0 (via CLI Script)
+# Comando usado: tsx generateMarkers.ts generate ./ ../logz-root-api.lkt.txt --exclude support --exclude bkp --exclude dist --exclude .venv --exclude demo --exclude docs-site --exclude node_modules --exclude *.png --exclude *jpg --exclude *.git --exclude .git --exclude *.txt --exclude *.md --exclude .env --exclude out --exclude bin --exclude extension --exclude *.sh --exclude *.json --exclude *.yaml --exclude guiweb --exclude .notes -v
+# Hash do snapshot: 0cfa83776e7ff85e41b8...
+
+/// formatters/table.go ///
+package formatters
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// TableFormatter formats data as a table.
+type TableFormatter = il.TableFormatter
+
+func NewTableFormatter() il.LogFormatter {
+	return &TableFormatter{}
+}
+
+func NewTableFormatterExt() *il.TableFormatter {
+	return &TableFormatter{}
+}
+
+/// formatters/text.go ///
+package formatters
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// TextFormatter formats log entries in plain text.
+type TextFormatter = il.TextFormatter
+
+func NewTextFormatter() *TextFormatter {
+	return &TextFormatter{}
+}
+
+/// integrations/prometheus.go ///
+// Package integrations provides integration with various external services.
+package integrations
+
+import (
+	"github.com/kubex-ecosystem/logz/internal/core"
+)
+
+type Metric = core.Metric
+type PrometheusManager = core.PrometheusManager
+
+// GetPrometheusManager returns the singleton instance of PrometheusManager.
+// If it doesn't exist, it initializes a new one.
+func GetPrometheusManager() *PrometheusManager {
+	return core.GetPrometheusManager()
+}
+
+/// notifiers/notifier.go ///
+// Package notifiers provides the interface for notifier implementations.
+package notifiers
+
+import (
+	"context"
+	"crypto/tls"
+	"net"
+	"net/http"
+	"net/url"
+	"time"
+
+	"github.com/gorilla/websocket"
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+type Config = il.Config
+type ConfigImpl = il.ConfigImpl
+
+type ConfigManager = il.ConfigManager
+type ConfigManagerImpl = il.ConfigManagerImpl
+
+func NewLogzConfigManager() ConfigManager {
+	return *il.NewConfigManager()
+}
+
+type NotifierManager = il.NotifierManager
+type NotifierManagerImpl = il.NotifierManagerImpl
+
+// NewLogzNotifierManager creates a new instance of LogzNotifierManager.
+func NewLogzNotifierManager(notifiers map[string]Notifier) NotifierManager {
+	if notifiers == nil {
+		notifiers = make(map[string]Notifier)
+	}
+	return il.NewNotifierManager(notifiers)
+}
+
+type Notifier = il.Notifier
+type NotifierImpl = il.NotifierImpl
+
+// NewNotifier creates a new Notifier service instance.
+func NewNotifier(
+	manager il.NotifierManager,
+	enabled bool,
+	webhookURL string,
+	HTTPMethod string,
+	authToken string,
+	logLevel string,
+	wsEndpoint string,
+	whitelist []string,
+) Notifier {
+	return il.NewNotifier(manager, enabled, webhookURL, HTTPMethod, authToken, logLevel, wsEndpoint, whitelist)
+}
+
+type HTTPNotifier = il.HTTPNotifier
+
+func NewHTTPNotifier(webhookURL string, authToken string) HTTPNotifier {
+	return *il.NewHTTPNotifier(webhookURL, authToken)
+}
+
+type WebSocketNotifier = il.WebSocketNotifier
+
+func NewWebSocketNotifier(endpoint string, authToken string) WebSocketNotifier {
+	return *il.NewWebSocketNotifier(endpoint)
+}
+
+type NotifierWebSocketConfig = il.NotifierWebSocketConfig
+
+func NewNotifierWebSocketConfig(
+	TLSClientConfig *tls.Config,
+	HandshakeTimeout time.Duration,
+	Jar http.CookieJar,
+	WriteBufferPool websocket.BufferPool,
+	ReadBufferSize, WriteBufferSize int,
+	Subprotocols []string,
+	EnableCompression bool,
+	NetDial func(network, addr string) (net.Conn, error),
+	NetDialContext func(ctx context.Context, network, addr string) (net.Conn, error),
+	NetDialTLSContext func(ctx context.Context, network, addr string) (net.Conn, error),
+	Proxy func(*http.Request) (*url.URL, error),
+) *NotifierWebSocketConfig {
+	return &il.NotifierWebSocketConfig{
+		TLSClientConfig:   TLSClientConfig,
+		HandshakeTimeout:  HandshakeTimeout,
+		Jar:               Jar,
+		WriteBufferPool:   WriteBufferPool,
+		ReadBufferSize:    ReadBufferSize,
+		WriteBufferSize:   WriteBufferSize,
+		Subprotocols:      Subprotocols,
+		EnableCompression: EnableCompression,
+		NetDial:           NetDial,
+		NetDialContext:    NetDialContext,
+		NetDialTLSContext: NetDialTLSContext,
+		Proxy:             Proxy,
+	}
+}
+
+type DBusNotifier = il.DBusNotifier
+
+func NewDBusNotifier() DBusNotifier {
+	return *il.NewDBusNotifier()
+}
+
+/// readers/reader.go ///
+// Package readers provides functionality to read and process data from various sources.
+package readers
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// LogzReader represents a reader for log entries.
+type LogzReader = il.LogReader
+
+// LogzFileReader represents a file reader for log entries.
+type LogzFileReader = il.FileLogReader
+
+// NewLogzReader creates a new instance of LogzReader.
+// It initializes a reader that can read log entries from a source.
+// This allows for reading log entries from various formats and sources.
+func NewLogzReader() LogzReader {
+	return il.NewFileLogReader()
+}
+
+/// service/http.go ///
+// Package service provides HTTP-related services.
+package service
+
+import (
+	"net/http"
+
+	"github.com/godbus/dbus/v5"
+	core "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+func Run() error { return core.Run() }
+
+func Start(port string) error                      { return core.Start(port) }
+func Stop() error                                  { return core.Stop() }
+func Server() *http.Server                         { return core.Server() }
+func Client() *http.Client                         { return core.Client() }
+func DBus() *dbus.Conn                             { return core.DBus() }
+func IsRunning() bool                              { return core.IsRunning() }
+func GetServiceInfo() (int, string, string, error) { return core.GetServiceInfo() }
+
+/// writers/multi_writer.go ///
+// Package writters provides functionality for managing writers.
+package writters
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// LogzMultiWriter represents a multi-writer for log entries.
+type LogzMultiWriter[T any] = il.LogMultiWriter[T]
+
+// NewLogzMultiWriter creates a new instance of LogzMultiWriter.
+// It initializes a multi-writer that can handle multiple log writers.
+// This allows for writing log entries to multiple outputs simultaneously.
+func NewLogzMultiWriter[T any]() LogzMultiWriter[T] {
+	return il.NewMultiWriter[T]()
+}
+
+/// writers/writer.go ///
+// Package writters provides functionality for managing writers.
+package writters
+
+import (
+	"io"
+
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// LogzWriter represents the writer of the log entry.
+type LogzWriter[T any] = il.LogWriter[T]
+
+// LogzFormatter represents the formatter for the log entry.
+type LogzFormatter = il.LogFormatter
+
+// NewLogzWriter creates a new instance of LogzWriter with the given writer.
+func NewLogzWriter[T any](out io.Writer, formatter LogzFormatter) LogzWriter[T] {
+	return il.NewDefaultWriter[T](out, formatter)
+}

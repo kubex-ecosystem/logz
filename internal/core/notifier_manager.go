@@ -30,7 +30,9 @@ type NotifierWebSocketConfig struct {
 	NetDial           func(network, addr string) (net.Conn, error)
 	NetDialContext    func(ctx context.Context, network, addr string) (net.Conn, error)
 	NetDialTLSContext func(ctx context.Context, network, addr string) (net.Conn, error)
-	Proxy             func(*http.Request) (*url.URL, error)
+
+	Endpoint string
+	Proxy    func(*http.Request) (*url.URL, error)
 }
 
 // NotifierManager defines the interface for managing notifiers.
@@ -69,6 +71,7 @@ type NotifierManagerImpl struct {
 	websocket  *websocket.Conn
 	webClient  *http.Client
 	dbusClient *dbus.Conn
+	wsConfig   *NotifierWebSocketConfig
 	notifiers  map[string]Notifier
 	mu         sync.RWMutex
 }
