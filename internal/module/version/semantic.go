@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	manifest "github.com/kubex-ecosystem/logz/info"
+	manifest "github.com/kubex-ecosystem/logz/internal/module/info"
 	"github.com/kubex-ecosystem/logz/logger"
 	"github.com/spf13/cobra"
 )
@@ -27,9 +27,7 @@ func init() {
 	if info == nil {
 		info, err = manifest.GetManifest()
 		if err != nil {
-			gl.ErrorCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{
-				"error": err,
-			})
+			gl.ErrorCtx("Failed to get manifest: "+err.Error(), map[string]any{})
 		}
 	}
 }
@@ -65,9 +63,7 @@ func init() {
 		var err error
 		info, err = manifest.GetManifest()
 		if err != nil {
-			gl.ErrorCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{
-				"error": err,
-			})
+			gl.ErrorCtx("Failed to get manifest: "+err.Error(), map[string]any{})
 		}
 	}
 	if vrs == nil {
@@ -78,9 +74,7 @@ func init() {
 func getLatestTag(repoURL string) (string, error) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			gl.ErrorCtx(fmt.Sprintf("Recovered from panic in getLatestTag: %v", rec), map[string]interface{}{
-				"error": rec,
-			})
+			gl.ErrorCtx(fmt.Sprintf("Recovered from panic in getLatestTag: %v", rec), map[string]interface{}{})
 			err = fmt.Errorf("panic occurred while fetching latest tag: %v", rec)
 		}
 	}()
@@ -258,7 +252,7 @@ func (v *ServiceImpl) GetRepository() string {
 }
 func (v *ServiceImpl) setLastCheckedAt(t time.Time) {
 	v.lastCheckedAt = t
-	gl.DebugCtx(fmt.Sprintf("Last checked at: %v", t), map[string]interface{}{})
+	gl.DebugCtx("Last checked at: "+t.Format(time.RFC3339), map[string]interface{}{})
 }
 
 func NewVersionService() Service {
@@ -288,8 +282,8 @@ func init() {
 			Run: func(cmd *cobra.Command, args []string) {
 				if info.IsPrivate() {
 					gl.WarnCtx("The information shown may not be accurate for private repositories.", map[string]interface{}{})
-					gl.InfoCtx(fmt.Sprintf("Current version: %v", GetVersion()), map[string]interface{}{})
-					gl.InfoCtx(fmt.Sprintf("Git repository: %v", GetGitRepositoryModelURL()), map[string]interface{}{})
+					gl.InfoCtx("Current version: "+GetVersion(), map[string]interface{}{})
+					gl.InfoCtx("Git repository: "+GetGitRepositoryModelURL(), map[string]interface{}{})
 					return
 				}
 				GetVersionInfo()
@@ -335,14 +329,14 @@ func init() {
 					return
 				}
 				if err := vrs.updateLatestVersion(); err != nil {
-					gl.ErrorCtx(fmt.Sprintf("Failed to update version: %v", err), map[string]interface{}{})
+					gl.ErrorCtx("Failed to update version: "+err.Error(), map[string]interface{}{})
 				} else {
 					latestVersion, err := vrs.GetLatestVersion()
 					if err != nil {
-						gl.ErrorCtx(fmt.Sprintf("Failed to get latest version: %v", err), map[string]interface{}{})
+						gl.ErrorCtx("Failed to get latest version: "+err.Error(), map[string]interface{}{})
 					} else {
-						gl.InfoCtx(fmt.Sprintf("Current version: %v", vrs.GetCurrentVersion()), map[string]interface{}{})
-						gl.InfoCtx(fmt.Sprintf("Latest version: %v", latestVersion), map[string]interface{}{})
+						gl.InfoCtx("Current version: "+vrs.GetCurrentVersion(), map[string]interface{}{})
+						gl.InfoCtx("Latest version: "+latestVersion, map[string]interface{}{})
 					}
 					vrs.setLastCheckedAt(time.Now())
 				}
@@ -355,7 +349,7 @@ func init() {
 			Short: "Get the current version of " + info.GetName(),
 			Long:  "Get the current version of " + info.GetName() + " from the manifest.",
 			Run: func(cmd *cobra.Command, args []string) {
-				gl.InfoCtx(fmt.Sprintf("Current version: %v", vrs.GetCurrentVersion()), map[string]interface{}{})
+				gl.InfoCtx("Current version: "+vrs.GetCurrentVersion(), map[string]interface{}{})
 			},
 		}
 	}
@@ -377,7 +371,7 @@ func GetVersion() string {
 	if info == nil {
 		_, err := manifest.GetManifest()
 		if err != nil {
-			gl.ErrorCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{})
+			gl.ErrorCtx("Failed to get manifest: "+err.Error(), map[string]interface{}{})
 			return "Unknown version"
 		}
 	}
@@ -390,8 +384,8 @@ func GetGitRepositoryModelURL() string {
 	return info.GetRepository()
 }
 func GetVersionInfo() string {
-	gl.InfoCtx(fmt.Sprintf("Version: %v", GetVersion()), map[string]interface{}{})
-	gl.InfoCtx(fmt.Sprintf("Git repository: %v", GetGitRepositoryModelURL()), map[string]interface{}{})
+	gl.InfoCtx("Version: "+GetVersion(), map[string]interface{}{})
+	gl.InfoCtx("Git repository: "+GetGitRepositoryModelURL(), map[string]interface{}{})
 	return fmt.Sprintf("Version: %s\nGit repository: %s", GetVersion(), GetGitRepositoryModelURL())
 }
 func GetLatestVersionFromGit() string {
@@ -412,14 +406,14 @@ func GetLatestVersionFromGit() string {
 
 	response, err := netClient.Get(gitURLWithoutGit + "/releases/latest")
 	if err != nil {
-		gl.ErrorCtx(fmt.Sprintf("Error fetching latest version: %v", err), map[string]interface{}{})
-		gl.ErrorCtx(gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		gl.ErrorCtx("Error fetching latest version: "+err.Error(), map[string]interface{}{})
+		gl.ErrorCtx("Url: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
 		return err.Error()
 	}
 
 	if response.StatusCode != 200 {
-		gl.ErrorCtx(fmt.Sprintf("Error fetching latest version: %v", response.Status), map[string]interface{}{})
-		gl.ErrorCtx(gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		gl.ErrorCtx("Error fetching latest version: "+response.Status, map[string]interface{}{})
+		gl.ErrorCtx("Url: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
 		body, _ := io.ReadAll(response.Body)
 		return fmt.Sprintf("Error: %s\nResponse: %s", response.Status, string(body))
 	}
@@ -433,7 +427,7 @@ func GetLatestVersionInfo() string {
 		gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
 		return "Cannot fetch latest version for private repositories."
 	}
-	gl.InfoCtx(fmt.Sprintf("Latest version: %v", GetLatestVersionFromGit()), map[string]interface{}{})
+	gl.InfoCtx("Latest version: "+GetLatestVersionFromGit(), map[string]interface{}{})
 	return "Latest version: " + GetLatestVersionFromGit()
 }
 func GetVersionInfoWithLatestAndCheck() string {
