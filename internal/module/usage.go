@@ -1,29 +1,35 @@
-package main
+package module
 
 import (
-	"fmt"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"os"
-	"os/exec"
-	"strings"
 )
 
+// colorYellow, colorGreen, colorBlue, colorRed, and colorHelp are utility functions
+// that return a string formatted with the specified color using the fatih/color package.
+// These functions are used to colorize output in the CLI usage template.
+// They are registered as template functions in the CLI usage template to allow
+// coloring specific parts of the command usage output.
 func colorYellow(s string) string {
 	return color.New(color.FgYellow).SprintFunc()(s)
 }
+
 func colorGreen(s string) string {
 	return color.New(color.FgGreen).SprintFunc()(s)
 }
+
 func colorBlue(s string) string {
 	return color.New(color.FgBlue).SprintFunc()(s)
 }
+
 func colorRed(s string) string {
 	return color.New(color.FgRed).SprintFunc()(s)
 }
+
 func colorHelp(s string) string {
 	return color.New(color.FgCyan).SprintFunc()(s)
 }
+
 func hasServiceCommands(cmds []*cobra.Command) bool {
 	for _, cmd := range cmds {
 		if cmd.Annotations["service"] == "true" {
@@ -32,6 +38,7 @@ func hasServiceCommands(cmds []*cobra.Command) bool {
 	}
 	return false
 }
+
 func hasModuleCommands(cmds []*cobra.Command) bool {
 	for _, cmd := range cmds {
 		if cmd.Annotations["service"] != "true" {
@@ -40,6 +47,7 @@ func hasModuleCommands(cmds []*cobra.Command) bool {
 	}
 	return false
 }
+
 func setUsageDefinition(cmd *cobra.Command) {
 	cobra.AddTemplateFunc("colorYellow", colorYellow)
 	cobra.AddTemplateFunc("colorGreen", colorGreen)
@@ -81,18 +89,3 @@ var cliUsageTemplate = `{{- if index .Annotations "banner" }}{{colorBlue (index 
 
 {{colorYellow (printf "Use \"%s [command] --help\" for more information about a command." .CommandPath)}}{{end}}
 `
-
-const AppName = "logz"
-
-func installCheck() {
-	usrEnvs := os.Environ()
-	envPath := os.Getenv("PATH")
-	usrEnvs = append(usrEnvs, fmt.Sprintf("PATH=%s", envPath))
-	appBinPath, appBinPathErr := exec.LookPath(AppName)
-	if appBinPathErr != nil {
-		fmt.Printf("ErrorCtx: %v\n", appBinPathErr)
-		return
-	}
-	appBinPath = strings.Replace(appBinPath, AppName, "", 1)
-
-}

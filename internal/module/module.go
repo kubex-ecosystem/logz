@@ -1,9 +1,9 @@
-package main
+// Package module provides internal types and functions for the GoBE application.
+package module
 
 import (
 	cc "github.com/kubex-ecosystem/logz/cmd/cli"
-	vs "github.com/kubex-ecosystem/logz/version"
-
+	vs "github.com/kubex-ecosystem/logz/internal/module/version"
 	"github.com/spf13/cobra"
 
 	"os"
@@ -11,7 +11,9 @@ import (
 )
 
 // Logz represents the main structure for the logz command-line interface.
-type Logz struct{}
+type Logz struct {
+	hideBanner bool
+}
 
 // Alias returns the alias for the logz command.
 func (m *Logz) alias() string {
@@ -114,9 +116,4 @@ func (m *Logz) concatenateExamples() string {
 		examples += string(example) + "\n  "
 	}
 	return examples
-}
-
-// RegX returns a new instance of the Logz struct.
-func RegX() *Logz {
-	return &Logz{}
 }

@@ -4,15 +4,13 @@ package manifest
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
 
-	l "github.com/kubex-ecosystem/logz/internal/core"
+	l "github.com/kubex-ecosystem/logz/logger"
 )
 
 //go:embed manifest.json
 var manifestJSONData []byte
 var application Manifest
-var lgr l.LogzLogger
 
 type manifest struct {
 	Manifest
@@ -66,9 +64,8 @@ func (m *manifest) IsPrivate() bool        { return m.Private }
 
 func init() {
 	_, err := GetManifest()
-	lgr = l.NewLogger("application")
 	if err != nil {
-		lgr.FatalCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{
+		l.NewLogger("Kubex").FatalCtx("Failed to get manifest: "+err.Error(), map[string]any{
 			"error": err,
 		})
 	}

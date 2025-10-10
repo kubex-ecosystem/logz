@@ -1,3 +1,4 @@
+// Package cli provides common utilities for command-line interfaces.
 package cli
 
 import (
@@ -20,17 +21,17 @@ func GetDescriptions(descriptionArg []string, hideBanner bool) map[string]string
 
 	if !hideBanner {
 		banner = `
- __                                  
-|  \                                 
-| ▓▓       ______   ______  ________ 
+ __
+|  \
+| ▓▓       ______   ______  ________
 | ▓▓      /      \ /      \|        \
 | ▓▓     |  ▓▓▓▓▓▓\  ▓▓▓▓▓▓\\▓▓▓▓▓▓▓▓
-| ▓▓     | ▓▓  | ▓▓ ▓▓  | ▓▓ /    ▓▓ 
-| ▓▓_____| ▓▓__/ ▓▓ ▓▓__| ▓▓/  ▓▓▓▓_ 
+| ▓▓     | ▓▓  | ▓▓ ▓▓  | ▓▓ /    ▓▓
+| ▓▓_____| ▓▓__/ ▓▓ ▓▓__| ▓▓/  ▓▓▓▓_
 | ▓▓     \\▓▓    ▓▓\▓▓    ▓▓  ▓▓    \
  \▓▓▓▓▓▓▓▓ \▓▓▓▓▓▓ _\▓▓▓▓▓▓▓\▓▓▓▓▓▓▓▓
-                  |  \__| ▓▓         
-                   \▓▓    ▓▓         
+                  |  \__| ▓▓
+                   \▓▓    ▓▓
                     \▓▓▓▓▓▓          `
 	} else {
 		banner = ""

@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/kubex-ecosystem/logz/internal/core"
+	vs "github.com/kubex-ecosystem/logz/internal/module/version"
 	logz "github.com/kubex-ecosystem/logz/logger"
-	vs "github.com/kubex-ecosystem/logz/version"
 )
 
 var (

@@ -151,20 +151,17 @@ func watchMetricsCmd() *cobra.Command {
 			fmt.Println("Watching metrics (press Ctrl+C to exit):")
 			ticker := time.NewTicker(2 * time.Second)
 			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					metrics := il.GetPrometheusManager().GetMetrics()
-					fmt.Println("Current Metrics:")
-					if len(metrics) == 0 {
-						fmt.Println("  No metrics registered.")
-					} else {
-						for name, value := range metrics {
-							fmt.Printf(" - %s: %f\n", name, value)
-						}
+			for range ticker.C {
+				metrics := il.GetPrometheusManager().GetMetrics()
+				fmt.Println("Current Metrics:")
+				if len(metrics) == 0 {
+					fmt.Println("  No metrics registered.")
+				} else {
+					for name, value := range metrics {
+						fmt.Printf(" - %s: %f\n", name, value)
 					}
-					fmt.Println("-----")
 				}
+				fmt.Println("-----")
 			}
 		},
 	}
