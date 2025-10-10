@@ -1,0 +1,6218 @@
+# LookAtni Code Snapshot
+# -----------------------
+# Data de geração: 2025-10-10T04:43:16.595Z
+# Fonte: /projects/kubex/logz
+# Hostname: dev
+# Sistema: linux x64 (Debian GNU/Linux 12 (bookworm))
+# Kernel: 6.1.0-40-amd64
+# Usuário: user
+# UID: 1002
+# Shell: /usr/bin/zsh
+# Total de arquivos: 41
+# Tamanho bruto: 0.2 MB
+# Gerado por: lookatni@v1.2.0 (via CLI Script)
+# Comando usado: tsx generateMarkers.ts generate ./ ../logz-full.lkt.txt --exclude support --exclude bkp --exclude dist --exclude .venv --exclude demo --exclude docs-site --exclude node_modules --exclude *.png --exclude *jpg --exclude *.git --exclude .git --exclude *.txt --exclude *.md --exclude .env --exclude out --exclude bin --exclude extension --exclude *.sh --exclude *.json --exclude *.yaml --exclude guiweb --exclude .notes -v
+# Hash do snapshot: 7a002d9f8ff9aaef237d...
+
+/// .codex/config.toml ///
+[settings]
+model_reasoning_summary = "concise"
+user_intent_summary     = "detailed"
+project_summary         = "detailed"
+default_max_tokens_out  = 700
+fail_fast               = true
+temperature             = 0.1
+
+[manifests]
+# cada repo terá estes princípios leves sempre no contexto
+paths = [
+  "docs/brand/**/kubex_brand_visual_spec*.md",
+  "docs/architecture/**/Resilience-by-Design*.md",
+  "docs/governance/**/KUBEX_MANIFESTO*.md"
+]
+max_tokens = 300
+update_strategy = "incremental"
+priority = "high"
+
+[context]
+scopes = [
+  { name = "objective",   max_tokens = 120, summarization = "bullet_goals" },
+  { name = "constraints", max_tokens = 120, summarization = "hard_rules"   },
+  { name = "facts",       max_tokens = 200, summarization = "code_facts"   },
+  { name = "delta",       max_tokens = 180, summarization = "git_diff"     },
+  { name = "plan",        max_tokens = 160, summarization = "step_plan"    },
+  { name = "exec",        max_tokens = 120, summarization = "checklist"    }
+]
+eviction_order = ["exec", "plan", "delta"]
+
+[output]
+style = "succinct_actionable"
+postamble = "✅ Valide: build/test passam e objetivo foi atendido."
+# foco em produto: não deixar “relatórios de tarefa” no repo
+generate_task_summaries = false
+allow_repo_writing_of_reports = false
+
+# ajuste a confiança conforme o repo
+[projects]
+# exemplo: substitua <REPO_NAME> ou remova se preferir deteção automática
+"/<ABS_PATH>/<REPO_NAME>" = { trust_level = "trusted" }
+
+[guards]
+dangerous_patterns    = ["rm -rf", "dd if=", "mkfs", "drop table", "helm uninstall --all"]
+require_confirmation  = true
+auto_dry_run          = true
+
+[behaviors]
+goal_driven_context   = true
+prefer_recent_diffs   = true
+refuse_when_unsafe    = true
+
+[summarizers]
+bullet_goals = """
+- 3–5 bullets com verbo imperativo + artefato esperado.
+"""
+hard_rules = """
+- Restrições duras (build tags, compatibilidade, lint), sem opinião estética.
+"""
+code_facts = """
+- Fatos verificáveis do código (assinaturas, tipos, caminhos), sem interpretação.
+"""
+git_diff = """
+- Mudanças por arquivo; +funções, -removidas, contratos alterados; destaque breaking.
+"""
+step_plan = """
+- 3–6 passos atômicos, cada um com checagem objetiva.
+"""
+checklist = """
+- Checklist [ ] executável.
+"""
+
+/// .nvmrc ///
+v22.19.0
+
+/// Dockerfile ///
+
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git zeromq-dev build-base
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main cmd/main.go
+
+# Runtime stage
+FROM alpine:latest
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates zeromq
+
+# Copy binary from builder
+COPY --from=builder /app/main .
+
+# Copy configuration and web files
+COPY --from=builder /app/config ./config
+COPY --from=builder /app/web/build ./web/build
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Expose ports
+EXPOSE 8080 5555
+
+# Run the application
+CMD ["./main"]
+
+/// LICENSE ///
+MIT License
+
+Copyright (c) 2025 Rafael Mori
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+/// Makefile ///
+# Description: Makefile for building and installing a Go application
+# Author: Rafael Mori
+# Copyright (c) 2025 Rafael Mori
+# License: MIT License
+
+# Define the application name and root directory
+ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+TARGET_MANIFEST = $(ROOT_DIR)info/manifest.json
+APP_NAME := $(shell jq -r '.name' < $(TARGET_MANIFEST))
+_RUN_PRE_SCRIPTS := $(shell echo "true")
+_RUN_POST_SCRIPTS := $(shell echo "true")
+
+ifeq ($(APP_NAME),)
+APP_NAME := $(shell  echo $(basename $(CURDIR)) | tr '[:upper:]' '[:lower:]')
+endif
+ORGANIZATION := $(shell jq -r '.organization' < $(TARGET_MANIFEST))
+ifeq ($(ORGANIZATION),)
+ORGANIZATION := $(shell git config --get user.name | tr '[:upper:]' '[:lower:]')
+endif
+ifeq ($(ORGANIZATION),)
+ORGANIZATION := $(shell git config --get user.email | cut -d '@' -f 1 | tr '[:upper:]' '[:lower:]')
+endif
+ifeq ($(ORGANIZATION),)
+ORGANIZATION := $(shell echo $(USER) | tr '[:upper:]' '[:lower:]')
+endif
+REPOSITORY := $(shell jq -r '.repository' < $(TARGET_MANIFEST))
+ifeq ($(REPOSITORY),)
+REPOSITORY := $(shell git config --get remote.origin.url)
+endif
+ifeq ($(REPOSITORY),)
+REPOSITORY := $(shell git config --get remote.upstream.url)
+endif
+ifeq ($(REPOSITORY),)
+REPOSITORY := $(printf 'https://github.com/%s/%s.git' $(ORGANIZATION) $(APP_NAME))
+endif
+DESCRIPTION := $(shell jq -r '.description' < $(TARGET_MANIFEST))
+ifeq ($(DESCRIPTION),)
+DESCRIPTION := $(shell git log -1 --pretty=%B | head -n 1)
+endif
+BINARY_NAME := $(shell jq -r '.bin' < $(TARGET_MANIFEST))
+ifeq ($(BINARY_NAME),)
+BINARY_NAME := $(ROOT_DIR)dist/$(APP_NAME)
+else
+BINARY_NAME := $(ROOT_DIR)dist/$(BINARY_NAME)
+endif
+CMD_DIR := $(ROOT_DIR)cmd
+
+# Define the color codes
+COLOR_GREEN := \033[32m
+COLOR_YELLOW := \033[33m
+COLOR_RED := \033[31m
+COLOR_BLUE := \033[34m
+COLOR_RESET := \033[0m
+
+# Logging Functions
+log = @printf "%b%s%b %s\n" "$(COLOR_BLUE)" "[LOG]" "$(COLOR_RESET)" "$(1)"
+log_info = @printf "%b%s%b %s\n" "$(COLOR_BLUE)" "[INFO]" "$(COLOR_RESET)" "$(1)"
+log_success = @printf "%b%s%b %s\n" "$(COLOR_GREEN)" "[SUCCESS]" "$(COLOR_RESET)" "$(1)"
+log_warning = @printf "%b%s%b %s\n" "$(COLOR_YELLOW)" "[WARNING]" "$(COLOR_RESET)" "$(1)"
+log_break = @printf "%b%s%b\n" "$(COLOR_BLUE)" "[INFO]" "$(COLOR_RESET)"
+log_error = @printf "%b%s%b %s\n" "$(COLOR_RED)" "[ERROR]" "$(COLOR_RESET)" "$(1)"
+
+ARGUMENTS := $(MAKECMDGOALS)
+INSTALL_SCRIPT = $(ROOT_DIR)support/main.sh
+CMD_STR := $(strip $(firstword $(ARGUMENTS)))
+ARGS := $(filter-out $(strip $(CMD_STR)), $(ARGUMENTS))
+
+# Default target: help
+.DEFAULT_GOAL := help
+
+# Build the binary using the install script.
+build:
+	@bash $(INSTALL_SCRIPT) build $(ARGS)
+	$(shell exit 0)
+
+build-dev:
+	@bash $(INSTALL_SCRIPT) build-dev $(ARGS)
+	$(shell exit 0)
+
+# Install the binary and configure the environment.
+install:
+	@bash $(INSTALL_SCRIPT) install $(ARGS)
+	$(shell exit 0)
+
+# Uninstall the binary and clean up.
+uninstall:
+	@bash $(INSTALL_SCRIPT) uninstall $(ARGS)
+	$(shell exit 0)
+
+# Clean up build artifacts.
+clean:
+	@bash $(INSTALL_SCRIPT) clean $(ARGS)
+	$(shell exit 0)
+
+# Run tests.
+test:
+	@bash $(INSTALL_SCRIPT) test $(ARGS)
+	$(shell exit 0)
+
+# Platform-specific targets (prevent wildcard capture)
+linux:
+	@echo "Process finished for platform: linux"
+
+amd64:
+	@echo "Process finished for architecture: amd64"
+
+windows:
+	@echo "Process finished for platform: windows"
+
+darwin:
+	@echo "Process finished for platform: darwin"
+
+arm64:
+	@echo "Process finished for architecture: arm64"
+
+386:
+	@echo "Process finished for architecture: 386"
+
+all:
+	@echo "Process finished for all platforms and architectures"
+
+build-docs:
+	@echo "Building documentation..."
+	@bash $(INSTALL_SCRIPT) build-docs $(ARGS)
+	$(shell exit 0)
+
+serve-docs:
+	@echo "Starting documentation server..."
+	@bash $(INSTALL_SCRIPT) serve-docs $(ARGS)
+
+pub-docs:
+	@echo "Publishing documentation..."
+	@bash $(INSTALL_SCRIPT) pub-docs $(ARGS)
+	$(shell exit 0)
+
+## Run dynamic commands with arguments calling the install script.
+%:
+	@:
+	$(call log_info, Running command: $(CMD_STR))
+	$(call log_info, Args: $(ARGS))
+	@bash $(INSTALL_SCRIPT) $(CMD_STR) $(ARGS)
+	$(shell exit 0)
+
+# Display help message
+help:
+	$(call log, $(APP_NAME) Build System Help)
+	$(call log_break)
+	$(call log, Available targets:)
+	$(call log,   make build      - Build the binary using install script)
+	$(call log,   make install    - Install the binary and configure environment)
+	$(call log,   make docs       - Start API documentation server)
+	$(call log,   make build-docs - Build documentation server binary)
+	$(call log,   make clean      - Clean up build artifacts)
+	$(call log,   make test       - Run tests)
+	$(call log,   make help       - Display this help message)
+	$(call log_break)
+	$(call log, Documentation:)
+	$(call log,   make docs       - Starts beautiful API documentation at http://localhost:8080/docs)
+	$(call log,   ./start-docs.sh - Alternative way to start documentation server)
+	$(call log_break)
+	$(call log, Usage with arguments:)
+	$(call log,   make install ARGS='--custom-arg value' - Pass custom arguments to the install script)
+	$(call log_break)
+	$(call log, Example:)
+	$(call log,   make install ARGS='--prefix /usr/local')
+	$(call log_break)
+	$(call log, Description:)
+	$(call log,   $(DESCRIPTION))
+	$(call log_break)
+	$(call log, For more information, visit:)
+	$(call log,  $(REPOSITORY))
+	$(call log_break)
+	$(call log_success, End of help message)
+	$(shell exit 0)
+
+/// api/formatters/table.go ///
+package formatters
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// TableFormatter formats data as a table.
+type TableFormatter = il.TableFormatter
+
+func NewTableFormatter() il.LogFormatter {
+	return &TableFormatter{}
+}
+
+func NewTableFormatterExt() *il.TableFormatter {
+	return &TableFormatter{}
+}
+
+/// api/formatters/text.go ///
+package formatters
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// TextFormatter formats log entries in plain text.
+type TextFormatter = il.TextFormatter
+
+func NewTextFormatter() *TextFormatter {
+	return &TextFormatter{}
+}
+
+/// api/integrations/prometheus.go ///
+// Package integrations provides integration with various external services.
+package integrations
+
+import (
+	"github.com/kubex-ecosystem/logz/internal/core"
+)
+
+type Metric = core.Metric
+type PrometheusManager = core.PrometheusManager
+
+// GetPrometheusManager returns the singleton instance of PrometheusManager.
+// If it doesn't exist, it initializes a new one.
+func GetPrometheusManager() *PrometheusManager {
+	return core.GetPrometheusManager()
+}
+
+/// api/notifiers/notifier.go ///
+// Package notifiers provides the interface for notifier implementations.
+package notifiers
+
+import (
+	"context"
+	"crypto/tls"
+	"net"
+	"net/http"
+	"net/url"
+	"time"
+
+	"github.com/gorilla/websocket"
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+type Config = il.Config
+type ConfigImpl = il.ConfigImpl
+
+type ConfigManager = il.ConfigManager
+type ConfigManagerImpl = il.ConfigManagerImpl
+
+func NewLogzConfigManager() ConfigManager {
+	return *il.NewConfigManager()
+}
+
+type NotifierManager = il.NotifierManager
+type NotifierManagerImpl = il.NotifierManagerImpl
+
+// NewLogzNotifierManager creates a new instance of LogzNotifierManager.
+func NewLogzNotifierManager(notifiers map[string]Notifier) NotifierManager {
+	if notifiers == nil {
+		notifiers = make(map[string]Notifier)
+	}
+	return il.NewNotifierManager(notifiers)
+}
+
+type Notifier = il.Notifier
+type NotifierImpl = il.NotifierImpl
+
+// NewNotifier creates a new Notifier service instance.
+func NewNotifier(
+	manager il.NotifierManager,
+	enabled bool,
+	webhookURL string,
+	HTTPMethod string,
+	authToken string,
+	logLevel string,
+	wsEndpoint string,
+	whitelist []string,
+) Notifier {
+	return il.NewNotifier(manager, enabled, webhookURL, HTTPMethod, authToken, logLevel, wsEndpoint, whitelist)
+}
+
+type HTTPNotifier = il.HTTPNotifier
+
+func NewHTTPNotifier(webhookURL string, authToken string) HTTPNotifier {
+	return *il.NewHTTPNotifier(webhookURL, authToken)
+}
+
+type WebSocketNotifier = il.WebSocketNotifier
+
+func NewWebSocketNotifier(endpoint string, authToken string) WebSocketNotifier {
+	return *il.NewWebSocketNotifier(endpoint)
+}
+
+type NotifierWebSocketConfig = il.NotifierWebSocketConfig
+
+func NewNotifierWebSocketConfig(
+	TLSClientConfig *tls.Config,
+	HandshakeTimeout time.Duration,
+	Jar http.CookieJar,
+	WriteBufferPool websocket.BufferPool,
+	ReadBufferSize, WriteBufferSize int,
+	Subprotocols []string,
+	EnableCompression bool,
+	NetDial func(network, addr string) (net.Conn, error),
+	NetDialContext func(ctx context.Context, network, addr string) (net.Conn, error),
+	NetDialTLSContext func(ctx context.Context, network, addr string) (net.Conn, error),
+	Proxy func(*http.Request) (*url.URL, error),
+) *NotifierWebSocketConfig {
+	return &il.NotifierWebSocketConfig{
+		TLSClientConfig:   TLSClientConfig,
+		HandshakeTimeout:  HandshakeTimeout,
+		Jar:               Jar,
+		WriteBufferPool:   WriteBufferPool,
+		ReadBufferSize:    ReadBufferSize,
+		WriteBufferSize:   WriteBufferSize,
+		Subprotocols:      Subprotocols,
+		EnableCompression: EnableCompression,
+		NetDial:           NetDial,
+		NetDialContext:    NetDialContext,
+		NetDialTLSContext: NetDialTLSContext,
+		Proxy:             Proxy,
+	}
+}
+
+type DBusNotifier = il.DBusNotifier
+
+func NewDBusNotifier() DBusNotifier {
+	return *il.NewDBusNotifier()
+}
+
+/// api/readers/reader.go ///
+// Package readers provides functionality to read and process data from various sources.
+package readers
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// LogzReader represents a reader for log entries.
+type LogzReader = il.LogReader
+
+// LogzFileReader represents a file reader for log entries.
+type LogzFileReader = il.FileLogReader
+
+// NewLogzReader creates a new instance of LogzReader.
+// It initializes a reader that can read log entries from a source.
+// This allows for reading log entries from various formats and sources.
+func NewLogzReader() LogzReader {
+	return il.NewFileLogReader()
+}
+
+/// api/service/http.go ///
+// Package service provides HTTP-related services.
+package service
+
+import (
+	"net/http"
+
+	"github.com/godbus/dbus/v5"
+	core "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+func Run() error { return core.Run() }
+
+func Start(port string) error                      { return core.Start(port) }
+func Stop() error                                  { return core.Stop() }
+func Server() *http.Server                         { return core.Server() }
+func Client() *http.Client                         { return core.Client() }
+func DBus() *dbus.Conn                             { return core.DBus() }
+func IsRunning() bool                              { return core.IsRunning() }
+func GetServiceInfo() (int, string, string, error) { return core.GetServiceInfo() }
+
+/// api/writers/multi_writer.go ///
+// Package writters provides functionality for managing writers.
+package writters
+
+import (
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// LogzMultiWriter represents a multi-writer for log entries.
+type LogzMultiWriter[T any] = il.LogMultiWriter[T]
+
+// NewLogzMultiWriter creates a new instance of LogzMultiWriter.
+// It initializes a multi-writer that can handle multiple log writers.
+// This allows for writing log entries to multiple outputs simultaneously.
+func NewLogzMultiWriter[T any]() LogzMultiWriter[T] {
+	return il.NewMultiWriter[T]()
+}
+
+/// api/writers/writer.go ///
+// Package writters provides functionality for managing writers.
+package writters
+
+import (
+	"io"
+
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// LogzWriter represents the writer of the log entry.
+type LogzWriter[T any] = il.LogWriter[T]
+
+// LogzFormatter represents the formatter for the log entry.
+type LogzFormatter = il.LogFormatter
+
+// NewLogzWriter creates a new instance of LogzWriter with the given writer.
+func NewLogzWriter[T any](out io.Writer, formatter LogzFormatter) LogzWriter[T] {
+	return il.NewDefaultWriter[T](out, formatter)
+}
+
+/// docker-compose.yml ///
+
+version: '3.8'
+
+services:
+  discord-mcp-hub:
+    build: .
+    ports:
+      - "8080:8080"
+      - "5555:5555"
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SERVER_PORT=8080
+      - SERVER_HOST=0.0.0.0
+      - ZMQ_ADDRESS=tcp://0.0.0.0
+      - ZMQ_PORT=5555
+      - GIN_MODE=release
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+
+/// go.mod ///
+module github.com/kubex-ecosystem/logz
+
+go 1.25.1
+
+require (
+	github.com/fatih/color v1.18.0
+	github.com/fsnotify/fsnotify v1.9.0
+	github.com/godbus/dbus/v5 v5.1.0
+	github.com/olekukonko/tablewriter v1.0.9
+	github.com/spf13/cobra v1.10.1
+	github.com/spf13/viper v1.20.1
+	golang.org/x/text v0.28.0
+)
+
+require (
+	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/olekukonko/cat v0.0.0-20250908000548-5c7087d15e58 // indirect
+	github.com/olekukonko/errors v1.1.0 // indirect
+	github.com/olekukonko/ll v0.1.1 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
+)
+
+require (
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/gorilla/websocket v1.5.3
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/sagikazarmark/locafero v0.10.0 // indirect
+	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
+	github.com/spf13/afero v1.14.0 // indirect
+	github.com/spf13/cast v1.9.2 // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/subosito/gotenv v1.6.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+/// go.sum ///
+github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/fatih/color v1.18.0 h1:S8gINlzdQ840/4pfAwic/ZE0djQEH3wM94VfqLTZcOM=
+github.com/fatih/color v1.18.0/go.mod h1:4FelSpRwEGDpQ12mAdzqdOukCy4u8WUtOY6lkT/6HfU=
+github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
+github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
+github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
+github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
+github.com/go-viper/mapstructure/v2 v2.4.0 h1:EBsztssimR/CONLSZZ04E8qAkxNYq4Qp9LvH92wZUgs=
+github.com/go-viper/mapstructure/v2 v2.4.0/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlndYOZ6rGS0BRZIxGhM=
+github.com/godbus/dbus/v5 v5.1.0 h1:4KLkAxT3aOY8Li4FRJe/KvhoNFFxo0m6fNuFUO8QJUk=
+github.com/godbus/dbus/v5 v5.1.0/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
+github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
+github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
+github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
+github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
+github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
+github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
+github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
+github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
+github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
+github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
+github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
+github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
+github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
+github.com/mattn/go-runewidth v0.0.16 h1:E5ScNMtiwvlvB5paMFdw9p4kSQzbXFikJ5SQO6TULQc=
+github.com/mattn/go-runewidth v0.0.16/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
+github.com/olekukonko/cat v0.0.0-20250908000548-5c7087d15e58 h1:aSvhHjdWYx04mBoHHbtGoHHjjO13Ma1xcqi9zhw7DyQ=
+github.com/olekukonko/cat v0.0.0-20250908000548-5c7087d15e58/go.mod h1:rEKTHC9roVVicUIfZK7DYrdIoM0EOr8mK1Hj5s3JjH0=
+github.com/olekukonko/errors v1.1.0 h1:RNuGIh15QdDenh+hNvKrJkmxxjV4hcS50Db478Ou5sM=
+github.com/olekukonko/errors v1.1.0/go.mod h1:ppzxA5jBKcO1vIpCXQ9ZqgDh8iwODz6OXIGKU8r5m4Y=
+github.com/olekukonko/ll v0.1.1 h1:9Dfeed5/Mgaxb9lHRAftLK9pVfYETvHn+If6lywVhJc=
+github.com/olekukonko/ll v0.1.1/go.mod h1:2dJo+hYZcJMLMbKwHEWvxCUbAOLc/CXWS9noET22Mdo=
+github.com/olekukonko/tablewriter v1.0.9 h1:XGwRsYLC2bY7bNd93Dk51bcPZksWZmLYuaTHR0FqfL8=
+github.com/olekukonko/tablewriter v1.0.9/go.mod h1:5c+EBPeSqvXnLLgkm9isDdzR3wjfBkHR9Nhfp3NWrzo=
+github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
+github.com/pelletier/go-toml/v2 v2.2.4/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
+github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
+github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
+github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
+github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
+github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
+github.com/sagikazarmark/locafero v0.10.0 h1:FM8Cv6j2KqIhM2ZK7HZjm4mpj9NBktLgowT1aN9q5Cc=
+github.com/sagikazarmark/locafero v0.10.0/go.mod h1:Ieo3EUsjifvQu4NZwV5sPd4dwvu0OCgEQV7vjc9yDjw=
+github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
+github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
+github.com/spf13/afero v1.14.0 h1:9tH6MapGnn/j0eb0yIXiLjERO8RB6xIVZRDCX7PtqWA=
+github.com/spf13/afero v1.14.0/go.mod h1:acJQ8t0ohCGuMN3O+Pv0V0hgMxNYDlvdk+VTfyZmbYo=
+github.com/spf13/cast v1.9.2 h1:SsGfm7M8QOFtEzumm7UZrZdLLquNdzFYfIbEXntcFbE=
+github.com/spf13/cast v1.9.2/go.mod h1:jNfB8QC9IA6ZuY2ZjDp0KtFO2LZZlg4S/7bzP6qqeHo=
+github.com/spf13/cobra v1.10.1 h1:lJeBwCfmrnXthfAupyUTzJ/J4Nc1RsHC/mSRU2dll/s=
+github.com/spf13/cobra v1.10.1/go.mod h1:7SmJGaTHFVBY0jW4NXGluQoLvhqFQM+6XSKD+P4XaB0=
+github.com/spf13/pflag v1.0.9/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
+github.com/spf13/pflag v1.0.10 h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=
+github.com/spf13/pflag v1.0.10/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
+github.com/spf13/viper v1.20.1 h1:ZMi+z/lvLyPSCoNtFCpqjy0S4kPbirhpTMwl8BkW9X4=
+github.com/spf13/viper v1.20.1/go.mod h1:P9Mdzt1zoHIG8m2eZQinpiBjo6kCmZSKBClNNqjJvu4=
+github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
+github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
+github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
+golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.36.0 h1:KVRy2GtZBrk1cBYA7MKu5bEZFxQk4NIDV6RLVcC8o0k=
+golang.org/x/sys v0.36.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
+golang.org/x/text v0.28.0 h1:rhazDwis8INMIwQ4tpjLDzUhx6RlXqZNPEM0huQojng=
+golang.org/x/text v0.28.0/go.mod h1:U8nCwOR8jO/marOQ0QbDiOngZVEBB7MAiitBuMjXiNU=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+
+/// info/application.go ///
+// Package manifest provides functionality to read and parse the application manifest.
+package manifest
+
+import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
+
+	l "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+//go:embed manifest.json
+var manifestJSONData []byte
+var application Manifest
+var lgr l.LogzLogger
+
+type manifest struct {
+	Manifest
+	Name            string   `json:"name"`
+	ApplicationName string   `json:"application"`
+	Bin             string   `json:"bin"`
+	Version         string   `json:"version"`
+	Repository      string   `json:"repository"`
+	Aliases         []string `json:"aliases,omitempty"`
+	Homepage        string   `json:"homepage,omitempty"`
+	Description     string   `json:"description,omitempty"`
+	Main            string   `json:"main,omitempty"`
+	Author          string   `json:"author,omitempty"`
+	License         string   `json:"license,omitempty"`
+	Keywords        []string `json:"keywords,omitempty"`
+	Platforms       []string `json:"platforms,omitempty"`
+	LogLevel        string   `json:"log_level,omitempty"`
+	Debug           bool     `json:"debug,omitempty"`
+	ShowTrace       bool     `json:"show_trace,omitempty"`
+	Private         bool     `json:"private,omitempty"`
+}
+type Manifest interface {
+	GetName() string
+	GetVersion() string
+	GetAliases() []string
+	GetRepository() string
+	GetHomepage() string
+	GetDescription() string
+	GetMain() string
+	GetBin() string
+	GetAuthor() string
+	GetLicense() string
+	GetKeywords() []string
+	GetPlatforms() []string
+	IsPrivate() bool
+}
+
+func (m *manifest) GetName() string        { return m.Name }
+func (m *manifest) GetVersion() string     { return m.Version }
+func (m *manifest) GetAliases() []string   { return m.Aliases }
+func (m *manifest) GetRepository() string  { return m.Repository }
+func (m *manifest) GetHomepage() string    { return m.Homepage }
+func (m *manifest) GetDescription() string { return m.Description }
+func (m *manifest) GetMain() string        { return m.Main }
+func (m *manifest) GetBin() string         { return m.Bin }
+func (m *manifest) GetAuthor() string      { return m.Author }
+func (m *manifest) GetLicense() string     { return m.License }
+func (m *manifest) GetKeywords() []string  { return m.Keywords }
+func (m *manifest) GetPlatforms() []string { return m.Platforms }
+func (m *manifest) IsPrivate() bool        { return m.Private }
+
+func init() {
+	_, err := GetManifest()
+	lgr = l.NewLogger("application")
+	if err != nil {
+		lgr.FatalCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{
+			"error": err,
+		})
+	}
+}
+
+func GetManifest() (Manifest, error) {
+	if application != nil {
+		return application, nil
+	}
+
+	var m manifest
+	if err := json.Unmarshal(manifestJSONData, &m); err != nil {
+		return nil, err
+	}
+
+	application = &m
+	return application, nil
+}
+
+/// internal/core/config.go ///
+package core
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"strconv"
+	"sync"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/viper"
+
+	// "github.com/fsnotify/fsnotify"
+	// "github.com/spf13/viper"
+	//
+	// "encoding/json"
+	// "fmt"
+	// "log"
+	// "os"
+	// "path/filepath"
+	// "strconv"
+	// "strings"
+	// "sync"
+	// "time"
+	"strings"
+	"time"
+)
+
+const (
+	defaultPort        = "9999"
+	defaultBindAddress = "0.0.0.0"
+	defaultMode        = ModeStandalone
+)
+
+var defaultLogPath = "stdout"
+
+// Config interface defines the methods to access configuration settings.
+type Config interface {
+	Port() string
+	BindAddress() string
+	Address() string
+	PidFile() string
+	ReadTimeout() time.Duration
+	WriteTimeout() time.Duration
+	IdleTimeout() time.Duration
+	Output() string
+	SetOutput(configPath string)
+	NotifierManager() interface{}
+	Mode() interface{}
+	Level() string
+	SetLevel(VLevel interface{})
+	Format() string
+	SetFormat(LogFormat interface{})
+	GetInt(key string, value int) int
+	GetFormatter() interface{}
+}
+
+// ConfigImpl implements the Config interface and holds the configuration values.
+type ConfigImpl struct {
+	// Config is a constraint to implement Config interface
+	Config
+
+	VlLevel           LogLevel
+	VlFormat          LogFormat
+	VlPort            string
+	VlBindAddress     string
+	VlAddress         string
+	VlPidFile         string
+	VlReadTimeout     time.Duration
+	VlWriteTimeout    time.Duration
+	VlIdleTimeout     time.Duration
+	VlOutput          string
+	VlNotifierManager NotifierManager
+	VlMode            LogMode
+}
+
+func (c *ConfigImpl) GetFormatter() interface{} {
+	switch c.Format() {
+	case "json":
+		return &JSONFormatter{}
+	default:
+		return &TextFormatter{}
+	}
+}
+func (c *ConfigImpl) Port() string                 { return c.VlPort }
+func (c *ConfigImpl) BindAddress() string          { return c.VlBindAddress }
+func (c *ConfigImpl) Address() string              { return c.VlAddress }
+func (c *ConfigImpl) PidFile() string              { return c.VlPidFile }
+func (c *ConfigImpl) ReadTimeout() time.Duration   { return c.VlReadTimeout }
+func (c *ConfigImpl) WriteTimeout() time.Duration  { return c.VlWriteTimeout }
+func (c *ConfigImpl) IdleTimeout() time.Duration   { return c.VlIdleTimeout }
+func (c *ConfigImpl) NotifierManager() interface{} { return c.VlNotifierManager }
+func (c *ConfigImpl) Mode() interface{}            { return c.VlMode }
+func (c *ConfigImpl) Level() string                { return strings.ToUpper(string(c.VlLevel)) }
+func (c *ConfigImpl) SetLevel(VLevel interface{})  { c.VlLevel = LogLevel(VLevel.(string)) }
+func (c *ConfigImpl) Format() string               { return strings.ToLower(string(c.VlFormat)) }
+func (c *ConfigImpl) SetFormat(format interface{}) { c.VlFormat = LogFormat(format.(string)) }
+func (c *ConfigImpl) Output() string {
+	if c.VlOutput != "" {
+		return c.VlOutput
+	}
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		home, homeErr = os.UserConfigDir()
+		if homeErr != nil {
+			home, homeErr = os.UserCacheDir()
+			if homeErr != nil {
+				home = "/tmp"
+			}
+		}
+	}
+	logPath := filepath.Join(home, ".kubex", "logz", "logz.log")
+	if mkdirErr := os.MkdirAll(filepath.Dir(logPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return ""
+	}
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		if _, createErr := os.Create(logPath); createErr != nil {
+			return ""
+		}
+	}
+	return logPath
+}
+func (c *ConfigImpl) SetOutput(configPath string) {
+	c.VlOutput = configPath
+}
+func (c *ConfigImpl) GetInt(key string, defaultValue int) int {
+	viperInstance := viper.GetViper()
+
+	// Primeiro tenta buscar via Viper, se disponível
+	if viperInstance != nil {
+		// Obtém o valor como string para lidar com chaves configuradas em diferentes formatos
+		rawValue := viperInstance.GetString(key)
+		if rawValue != "" {
+			parsedVal, err := strconv.Atoi(rawValue) // Converte o valor para inteiro
+			if err == nil {
+				return parsedVal
+			}
+		}
+	}
+
+	// Caso não encontre ou a conversão falhe, retorna o valor padrão
+	return defaultValue
+}
+func (c *ConfigImpl) GetString(key string, defaultValue string) string {
+	viperInstance := viper.GetViper()
+
+	// Primeiro tenta buscar via Viper, se disponível
+	if viperInstance != nil {
+		// Obtém o valor como string para lidar com chaves configuradas em diferentes formatos
+		rawValue := viperInstance.GetString(key)
+		if rawValue != "" {
+			return rawValue
+		}
+	}
+
+	// Caso não encontre ou a conversão falhe, retorna o valor padrão
+	return defaultValue
+}
+
+// ConfigManager interface defines methods to manage configuration.
+type ConfigManager interface {
+	GetConfig() Config
+	GetPidPath() string
+	GetConfigPath() string
+	Output() string
+	SetOutput(configPath string)
+	LoadConfig() (Config, error)
+}
+
+// ConfigManagerImpl implements the ConfigManager interface.
+type ConfigManagerImpl struct {
+	VConfig Config
+	Mu      sync.RWMutex
+}
+
+func (cm *ConfigManagerImpl) checkConfig() {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig == nil {
+		cm.VConfig = &ConfigImpl{}
+	}
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		home, homeErr = os.UserConfigDir()
+		if homeErr != nil {
+			home, homeErr = os.UserCacheDir()
+			if homeErr != nil {
+				home = "/tmp"
+			}
+		}
+	}
+	configPath := filepath.Join(home, ".kubex", "logz", "VConfig.json")
+	if mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return
+	}
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		if _, createErr := os.Create(configPath); createErr != nil {
+			return
+		}
+	}
+}
+
+func (cm *ConfigManagerImpl) Port() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+
+	cm.checkConfig()
+	if cm.VConfig != nil {
+		return cm.VConfig.Port()
+	}
+	return defaultPort
+}
+
+func (cm *ConfigManagerImpl) BindAddress() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+
+	cm.checkConfig()
+	if cm.VConfig != nil {
+		return cm.VConfig.BindAddress()
+	}
+	return defaultBindAddress
+}
+
+func (cm *ConfigManagerImpl) Address() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Address()
+	}
+	return fmt.Sprintf("%s:%s", defaultBindAddress, defaultPort)
+}
+
+func (cm *ConfigManagerImpl) PidFile() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.PidFile()
+	}
+	return "logz_srv.pid"
+}
+
+func (cm *ConfigManagerImpl) ReadTimeout() time.Duration {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.ReadTimeout()
+	}
+	return time.Duration(15 * time.Second)
+}
+
+func (cm *ConfigManagerImpl) WriteTimeout() time.Duration {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.WriteTimeout()
+	}
+	return time.Duration(15 * time.Second)
+}
+
+func (cm *ConfigManagerImpl) IdleTimeout() time.Duration {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.IdleTimeout()
+	}
+	return time.Duration(60 * time.Second)
+}
+
+func (cm *ConfigManagerImpl) NotifierManager() interface{} {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.NotifierManager()
+	}
+	return nil
+}
+
+func (cm *ConfigManagerImpl) Mode() interface{} {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Mode()
+	}
+	return defaultMode
+}
+
+func (cm *ConfigManagerImpl) Level() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Level()
+	}
+	return strings.ToUpper(string(cm.VConfig.Level()))
+}
+
+func (cm *ConfigManagerImpl) Format() string {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	if cm.VConfig != nil {
+		return cm.VConfig.Format()
+	}
+	return strings.ToLower(string(cm.VConfig.Format()))
+}
+
+func (cm *ConfigManagerImpl) GetInt(key string, value int) int {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	viperInstance := viper.GetViper()
+	if viperInstance != nil {
+		rawValue := viperInstance.GetString(key)
+		if rawValue != "" {
+			parsedVal, err := strconv.Atoi(rawValue)
+			if err == nil {
+				return parsedVal
+			}
+		}
+	}
+	return value
+}
+
+func (cm *ConfigManagerImpl) GetConfig() Config {
+	cm.Mu.RLock()
+	defer cm.Mu.RUnlock()
+	return cm.VConfig
+}
+
+// GetPidPath returns the path to the PID file.
+func (cm *ConfigManagerImpl) GetPidPath() string {
+	cacheDir, cacheDirErr := os.UserCacheDir()
+	if cacheDirErr != nil {
+		cacheDir = "/tmp"
+	}
+	cacheDir = filepath.Join(cacheDir, "logz", cm.VConfig.PidFile())
+	if mkdirErr := os.MkdirAll(filepath.Dir(cacheDir), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return ""
+	}
+	return cacheDir
+}
+
+// GetConfigPath returns the path to the configuration file.
+func (cm *ConfigManagerImpl) GetConfigPath() string {
+	if cm.VConfig != nil {
+		if cm.VConfig.Output() != "" && cm.VConfig.Mode() == ModeService {
+			return cm.VConfig.Output()
+		}
+	}
+
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		home, homeErr = os.UserConfigDir()
+		if homeErr != nil {
+			home, homeErr = os.UserCacheDir()
+			if homeErr != nil {
+				home = "/tmp"
+			}
+		}
+	}
+	configPath := filepath.Join(home, ".kubex", "logz", "VConfig.json")
+	if mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return ""
+	}
+	return configPath
+}
+
+// SetOutput sets the path to the default log file.
+func (cm *ConfigManagerImpl) SetOutput(output string) {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig != nil {
+		cm.VConfig.SetOutput(output)
+	} else {
+
+		if cm.VConfig.Mode() == ModeService {
+			VConfig, configErr := cm.LoadConfig()
+			if configErr != nil {
+				log.Printf("ErrorCtx loading configuration: %v\n", configErr)
+				return
+			}
+			VConfig.SetOutput(output)
+			cm.VConfig = VConfig
+		} else {
+			log.Printf("Cannot set output in standalone VMode\n")
+		}
+
+	}
+}
+
+// Output returns the path to the configuration file.
+func (cm *ConfigManagerImpl) Output() string {
+	if cm.VConfig != nil {
+		if cm.VConfig.Output() != "" {
+			return cm.VConfig.Output()
+		}
+	}
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		home, homeErr = os.UserConfigDir()
+		if homeErr != nil {
+			home, homeErr = os.UserCacheDir()
+			if homeErr != nil {
+				home = "/tmp"
+			}
+		}
+	}
+	logPath := filepath.Join(home, ".kubex", "logz", "logz.log")
+	if mkdirErr := os.MkdirAll(filepath.Dir(logPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return ""
+	}
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		if _, createErr := os.Create(logPath); createErr != nil {
+			return ""
+		}
+	}
+	return logPath
+}
+
+func (cm *ConfigManagerImpl) SetLevel(VLevel interface{}) {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig != nil {
+		cm.VConfig.SetLevel(VLevel)
+	} else {
+		VConfig, configErr := cm.LoadConfig()
+		if configErr != nil {
+			log.Printf("ErrorCtx loading configuration: %v\n", configErr)
+			return
+		}
+		VConfig.SetLevel(VLevel)
+		cm.VConfig = VConfig
+	}
+}
+
+func (cm *ConfigManagerImpl) SetFormat(format interface{}) {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	if cm.VConfig != nil {
+		cm.VConfig.SetFormat(format)
+	} else {
+		VConfig, configErr := cm.LoadConfig()
+		if configErr != nil {
+			log.Printf("ErrorCtx loading configuration: %v\n", configErr)
+			return
+		}
+		VConfig.SetFormat(format)
+		cm.VConfig = VConfig
+	}
+}
+
+// GetFormatter returns the formatter for the core.
+func (cm *ConfigManagerImpl) GetFormatter() interface{} {
+	switch cm.VConfig.Format() {
+	case "text":
+		return &TextFormatter{}
+	default:
+		return &JSONFormatter{}
+	}
+}
+
+// LoadConfig loads the configuration from the file and returns a Config instance.
+func (cm *ConfigManagerImpl) LoadConfig() (Config, error) {
+	cm.Mu.Lock()
+	defer cm.Mu.Unlock()
+	configPath := cm.GetConfigPath()
+	if err := ensureConfigExists(configPath); err != nil {
+		return nil, fmt.Errorf("failed to ensure VConfig exists: %w", err)
+	}
+
+	viperObj := viper.New()
+	viperObj.SetConfigFile(configPath)
+	viperObj.SetConfigType(getConfigType(configPath))
+
+	if readErr := viperObj.ReadInConfig(); readErr != nil {
+		return nil, fmt.Errorf("failed to read VConfig: %w", readErr)
+	}
+
+	notifierManager := NewNotifierManager(nil)
+	if notifierManager == nil {
+		return nil, fmt.Errorf("failed to create notifier manager")
+	}
+
+	VMode := LogMode(viperObj.GetString("VMode"))
+	if VMode != ModeService && VMode != ModeStandalone {
+		VMode = defaultMode
+	}
+
+	VConfig := ConfigImpl{
+		VlPort:            getOrDefault(viperObj.GetString("port"), defaultPort),
+		VlBindAddress:     getOrDefault(viperObj.GetString("bindAddress"), defaultBindAddress),
+		VlAddress:         fmt.Sprintf("%s:%s", defaultBindAddress, defaultPort),
+		VlPidFile:         viperObj.GetString("pidFile"),
+		VlReadTimeout:     viperObj.GetDuration("readTimeout"),
+		VlWriteTimeout:    viperObj.GetDuration("writeTimeout"),
+		VlIdleTimeout:     viperObj.GetDuration("idleTimeout"),
+		VlOutput:          getOrDefault(viperObj.GetString("defaultLogPath"), defaultLogPath),
+		VlNotifierManager: notifierManager,
+		VlMode:            VMode,
+	}
+
+	cm.VConfig = &VConfig
+
+	viperObj.WatchConfig()
+	viperObj.OnConfigChange(func(e fsnotify.Event) {
+		log.Printf("Configuration changed: %s", e.Name)
+		// Update Config dynamically, if necessary
+	})
+
+	return cm.VConfig, nil
+}
+
+// NewConfigManager creates a new instance of ConfigManager.
+func NewConfigManager() *ConfigManager {
+	cfgMgr := &ConfigManagerImpl{}
+
+	if cfg, err := cfgMgr.LoadConfig(); err != nil || cfg == nil {
+		log.Printf("ErrorCtx loading configuration: %v\n", err)
+		return nil
+	}
+
+	var cfgM ConfigManager = cfgMgr
+
+	return &cfgM
+}
+
+// ensureConfigExists checks if the configuration file exists, and creates it with default values if it does not.
+func ensureConfigExists(configPath string) error {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		defaultConfig := ConfigImpl{
+			VlPort:            defaultPort,
+			VlBindAddress:     defaultBindAddress,
+			VlAddress:         fmt.Sprintf("%s:%s", defaultBindAddress, defaultPort),
+			VlPidFile:         "logz_srv.pid",
+			VlReadTimeout:     15 * time.Second,
+			VlWriteTimeout:    15 * time.Second,
+			VlIdleTimeout:     60 * time.Second,
+			VlOutput:          defaultLogPath,
+			VlNotifierManager: NewNotifierManager(nil),
+			VlMode:            defaultMode,
+		}
+		data, _ := json.MarshalIndent(defaultConfig, "", "  ")
+		if writeErr := os.WriteFile(configPath, data, 0644); writeErr != nil {
+			return fmt.Errorf("failed to create default VConfig: %w", writeErr)
+		}
+	}
+	return nil
+}
+
+func getConfigType(configPath string) string {
+	configType := filepath.Ext(configPath)
+	switch configType {
+	case ".yaml":
+		return "yaml"
+	case ".yml":
+		return "yaml"
+	case ".toml":
+		return "toml"
+	case ".ini":
+		return "ini"
+	default:
+		return "json"
+	}
+
+}
+
+// getOrDefault returns the value if it is not empty, otherwise returns the default value.
+func getOrDefault(value, defaultValue string) string {
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+/// internal/core/config_manager.go ///
+package core
+
+import (
+	//"fmt"
+	//c "github.com/kubex-ecosystem/kubex-interfaces/config"
+
+	//c "github.com/kubex-ecosystem/kubex-interfaces/config"
+	//"os"
+	//"path/filepath"
+	"time"
+)
+
+// LogzConfig specific to Logz
+type LogzConfig struct {
+	LogLevel     string
+	LogFormat    string
+	LogFilePath  string
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	PidFile      string
+}
+
+//func (lc *LogzConfig) Validate() error {
+//	if lc.LogLevel == "" {
+//		return fmt.Errorf("LogLevel cannot be empty")
+//	}
+//	if lc.LogFilePath == "" {
+//		return fmt.Errorf("LogFilePath cannot be empty")
+//	}
+//	return nil
+//}
+//
+//// LogzConfigManager with validation support
+//type LogzConfigManager struct {
+//	*LogzConfig
+//	config *LogzConfig
+//}
+
+//func NewLogzConfigManager() *LogzConfigManager {
+//	return NewConfigManager()
+//	//return &LogzConfigManager{
+//	//	LogzConfig: &cfg
+//	//}
+//}
+
+//func (lcm *LogzConfigManager) ValidateConfig() error {
+//	if config, ok := any(lcm).(c.Configurable); ok {
+//		return config.Validate()
+//	}
+//	return fmt.Errorf("invalid configuration or validation not supported")
+//}
+//
+//func (lcm *LogzConfigManager) GetConfig() *LogzConfig { return lcm.config }
+//
+//// GetPidPath returns the path to the PID file.
+//func (lcm *LogzConfigManager) GetPidPath() string {
+//	cacheDir, cacheDirErr := os.UserCacheDir()
+//	if cacheDirErr != nil {
+//		cacheDir = "/tmp"
+//	}
+//	cacheDir = filepath.Join(cacheDir, "logz", lcm.config.PidFile)
+//	if mkdirErr := os.MkdirAll(filepath.Dir(cacheDir), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+//		return ""
+//	}
+//	return cacheDir
+//}
+//
+//// GetConfigPath returns the path to the configuration file.
+//func (lcm *LogzConfigManager) GetConfigPath() string {
+//	if lcm.config != nil {
+//		if lcm.Output() != "" {
+//			return lcm.Output()
+//		}
+//	}
+//
+//	home, homeErr := os.UserHomeDir()
+//	if homeErr != nil {
+//		home, homeErr = os.UserConfigDir()
+//		if homeErr != nil {
+//			home, homeErr = os.UserCacheDir()
+//			if homeErr != nil {
+//				home = "/tmp"
+//			}
+//		}
+//	}
+//	configPath := filepath.Join(home, ".kubex", "logz", "VConfig.json")
+//	if mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+//		return ""
+//	}
+//	return configPath
+//}
+//
+//// SetOutput sets the path to the default log file.
+//func (lcm *LogzConfigManager) SetOutput(output string) {
+//	if lcm.config != nil {
+//		lcm.SetOutput(output)
+//	} else {
+//		fmt.Println("Cannot set output in standalone VMode")
+//	}
+//}
+//
+//// Output returns the path to the configuration file.
+//func (lcm *LogzConfigManager) Output() string {
+//	if lcm.config != nil {
+//		if lcm.Output() != "" {
+//			return lcm.Output()
+//		}
+//	}
+//	home, homeErr := os.UserHomeDir()
+//	if homeErr != nil {
+//		home, homeErr = os.UserConfigDir()
+//		if homeErr != nil {
+//			home, homeErr = os.UserCacheDir()
+//			if homeErr != nil {
+//				home = "/tmp"
+//			}
+//		}
+//	}
+//	logPath := filepath.Join(home, ".kubex", "logz", "logz.log")
+//	if mkdirErr := os.MkdirAll(filepath.Dir(logPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+//		return ""
+//	}
+//	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+//		if _, createErr := os.Create(logPath); createErr != nil {
+//			return ""
+//		}
+//	}
+//	return logPath
+//}
+//
+//func (lcm *LogzConfigManager) SetLevel(level LogLevel) { lcm.config.LogLevel = string(level) }
+//
+//func (lcm *LogzConfigManager) SetFormat(format LogFormat) {
+//	lcm.config.LogFormat = string(format)
+//}
+//
+//// GetFormatter returns the formatter for the core.
+//func (lcm *LogzConfigManager) GetFormatter() LogFormatter {
+//	switch lcm.config.LogFormat {
+//	case "text":
+//		return &TextFormatter{}
+//	default:
+//		return &JSONFormatter{}
+//	}
+//}
+
+// LoadConfig loads the configuration from the file and returns a Config instance.
+// func (lcm *LogzConfigManager) LoadConfig() (*LogzConfig, error) {
+// 	cfg, err := InitConfigManager()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to initialize the configuration manager: %w", err)
+// 	}
+
+// 	// Load the configuration from the file
+// 	cf := cfg.GetConfig()
+
+// 	// Validate the configuration
+// 	if err := cf.Validate(); err != nil {
+// 		return nil, fmt.Errorf("failed to validate the configuration: %w", err)
+// 	}
+
+// 	// Save the configuration
+// 	lcm.VConfig = &cf
+
+// 	return lcm.VConfig, nil
+// }
+
+/// internal/core/core_test.go ///
+package core
+
+import (
+	"testing"
+)
+
+// TestLoggerCreation testa criação do logger
+func TestLoggerCreation(t *testing.T) {
+	logger := NewLogger("test")
+
+	if logger == nil {
+		t.Fatal("Failed to create logger")
+	}
+
+	t.Log("Logger created successfully")
+}
+
+// TestLoggerBasicLogging testa logging básico
+func TestLoggerBasicLogging(t *testing.T) {
+	logger := NewLogger("basic-test")
+
+	// Testar diferentes níveis
+	logger.InfoCtx("Info message", map[string]interface{}{"test": true})
+	logger.WarnCtx("Warning message", map[string]interface{}{"test": true})
+	logger.ErrorCtx("Error message", map[string]interface{}{"test": true})
+
+	t.Log("Basic logging test completed")
+}
+
+// TestMetadataSet testa metadata
+func TestMetadataSet(t *testing.T) {
+	logger := NewLogger("metadata-test")
+
+	logger.SetMetadata("service", "logz")
+	logger.InfoCtx("Message with global metadata", map[string]interface{}{
+		"local": "data",
+	})
+
+	t.Log("Metadata test completed")
+}
+
+/// internal/core/formatters.go ///
+package core
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"reflect"
+	"runtime"
+	"strings"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+)
+
+// LogFormatter defines the contract for formatting log entries.
+type LogFormatter interface {
+	// Format converts a log entry to a formatted string.
+	// Returns the formatted string and an error if formatting fails.
+	Format(entry LogzEntry) (string, error)
+}
+
+// JSONFormatter formats the log in JSON format.
+type JSONFormatter struct{}
+
+// Format converts the log entry to JSON.
+// Returns the JSON string and an error if marshalling fails.
+func (f *JSONFormatter) Format(entry LogzEntry) (string, error) {
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// TextFormatter formats the log in plain text.
+type TextFormatter struct{}
+
+// Format converts the log entry to a formatted string with colors and icons.
+// Returns the formatted string and an error if formatting fails.
+func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
+
+	// Check for environment variables
+	noColor := os.Getenv("LOGZ_NO_COLOR") != "" || runtime.GOOS == "windows"
+	noIcon := os.Getenv("LOGZ_NO_ICON") != ""
+
+	icon, levelStr := "", ""
+
+	if !noIcon {
+		switch entry.GetLevel() {
+		case NOTICE:
+			icon = "\033[33m📝\033[0m "
+		case TRACE:
+			icon = "\033[36m🔍\033[0m "
+		case SUCCESS:
+			icon = "\033[32m✅\033[0m "
+		case DEBUG:
+			icon = "\033[34m🐛\033[0m "
+		case INFO:
+			icon = "\033[32mℹ️\033[0m "
+		case WARN:
+			icon = "\033[33m⚠️\033[0m "
+		case ERROR:
+			icon = "\033[31m❌\033[0m "
+		case FATAL:
+			icon = "\033[35m💀\033[0m "
+		case SILENT:
+			icon = ""
+		case ANSWER:
+			icon = ""
+		default:
+			icon = ""
+		}
+	} else {
+		icon = ""
+	}
+
+	// Configure colors and icons by VLevel
+	if !noColor {
+		switch entry.GetLevel() {
+		case NOTICE:
+			levelStr = "\033[33mNOTICE\033[0m"
+		case TRACE:
+			levelStr = "\033[36mTRACE\033[0m"
+		case SUCCESS:
+			levelStr = "\033[32mSUCCESS\033[0m"
+		case DEBUG:
+			levelStr = "\033[34mDEBUG\033[0m"
+		case INFO:
+			levelStr = "\033[32mINFO\033[0m"
+		case WARN:
+			levelStr = "\033[33mWARN\033[0m"
+		case ERROR:
+			levelStr = "\033[31mERROR\033[0m"
+		case FATAL:
+			levelStr = "\033[35mFATAL\033[0m"
+		case SILENT:
+			levelStr = ""
+		case ANSWER:
+			levelStr = ""
+		default:
+			levelStr = string(entry.GetLevel())
+		}
+	} else {
+		levelStr = string(entry.GetLevel())
+	}
+
+	systemLocale := os.Getenv("LANG")
+	tag, _ := language.Parse(systemLocale)
+	p := message.NewPrinter(tag)
+
+	// Context and Metadata
+	context := ""
+	metadata := ""
+	timestamp := ""
+	if len(entry.GetMetadata()) > 0 {
+		if sc, exist := entry.GetMetadata()["showContext"]; exist {
+			tp := reflect.TypeOf(sc)
+			if tp.Kind() == reflect.Bool {
+				if sc.(bool) {
+					if c, exists := entry.GetMetadata()["context"]; exists {
+						context = c.(string)
+					}
+				}
+			} else if tp.Kind() == reflect.String {
+				if sc.(string) == "true" {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+				}
+			}
+
+		} else if map[LogLevel]bool{DEBUG: true, INFO: true}[entry.GetLevel()] {
+			if c, exists := entry.GetMetadata()["context"]; exists {
+				context = c.(string)
+			}
+		}
+		if smd, exist := entry.GetMetadata()["showData"]; exist {
+			tp := reflect.TypeOf(smd)
+			if tp.Kind() == reflect.Bool {
+				if smd.(bool) {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+				}
+			} else if tp.Kind() == reflect.String {
+				if smd.(string) == "true" {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+				}
+			}
+		} else if entry.GetLevel() == DEBUG {
+			metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+		}
+		if stp, exist := entry.GetMetadata()["showTimestamp"]; exist {
+			tp := reflect.TypeOf(stp)
+			if tp.Kind() == reflect.Bool {
+				if stp.(bool) {
+					timestamp = fmt.Sprintf("[%s]", entry.GetTimestamp().Format(p.Sprintf("%d-%m-%Y %H:%M:%S")))
+				}
+			} else if tp.Kind() == reflect.String {
+				if stp.(string) == "true" {
+					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+				}
+			}
+		}
+	}
+	var header string
+	if levelStr != "" && icon != "" {
+		// Construct the header
+		header = fmt.Sprintf("%s [%s] %s %s - ", timestamp, levelStr, context, icon)
+	} else {
+		header = strings.TrimSpace(fmt.Sprintf("%s %s", timestamp, context))
+	}
+
+	// Return the formatted log entry
+	return fmt.Sprintf("%s%s%s", header, entry.GetMessage(), metadata), nil
+}
+
+type TableFormatter struct{}
+
+// Format formats the log entry as a table string.
+// It uses the FormatRow method to get the rows and then constructs a string representation.
+func (f *TableFormatter) Format(entry LogzEntry) (string, error) {
+	rows, err := f.FormatRow(entry)
+	if err != nil {
+		return "", err
+	}
+
+	var sb strings.Builder
+	for _, row := range rows {
+		sb.WriteString(strings.Join(row, " | "))
+		sb.WriteString("\n")
+	}
+
+	return sb.String(), nil
+}
+
+// FormatRow formats the log entry as a table.
+func (f *TableFormatter) FormatRow(entry LogzEntry) ([][]string, error) {
+	level := entry.GetLevel()
+	context := entry.GetContext()
+	message := entry.GetMessage()
+	timestamp := entry.GetTimestamp()
+	source := entry.GetSource()
+
+	table := [][]string{
+		{"Timestamp", "Level", "Context", "Source", "Message"},
+		{timestamp.Format("2006-01-02 15:04:05"), string(level), context, source, message},
+	}
+
+	return table, nil
+}
+
+/// internal/core/integration_test.go ///
+package core
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
+)
+
+// TestHTTPNotifierFunctionality testa notificação HTTP com servidor real
+func TestHTTPNotifierFunctionality(t *testing.T) {
+	// Canal para receber dados
+	received := make(chan map[string]interface{}, 1)
+
+	// Criar servidor HTTP de teste
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		var payload map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		received <- payload
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"success"}`))
+	}))
+	defer server.Close()
+
+	// Criar notifier HTTP
+	notifier := NewHTTPNotifier(server.URL, "test-token-123")
+
+	// Criar entrada de log
+	entry := NewLogEntry().
+		WithLevel(INFO).
+		WithMessage("Test HTTP notification message").
+		AddMetadata("test_key", "test_value").
+		AddMetadata("notification_id", 12345)
+
+	// Enviar notificação
+	err := notifier.Notify(entry)
+	if err != nil {
+		t.Fatalf("Failed to send HTTP notification: %v", err)
+	}
+
+	// Verificar se foi recebido
+	select {
+	case payload := <-received:
+		if payload["message"] != "Test HTTP notification message" {
+			t.Errorf("Expected message 'Test HTTP notification message', got %v", payload["message"])
+		}
+		if payload["level"] != "INFO" {
+			t.Errorf("Expected level 'INFO', got %v", payload["level"])
+		}
+		t.Logf("HTTP notification received successfully: %+v", payload)
+	case <-time.After(3 * time.Second):
+		t.Fatal("Timeout waiting for HTTP notification")
+	}
+}
+
+// TestWebSocketNotifierFunctionality testa notificação WebSocket com servidor real
+func TestWebSocketNotifierFunctionality(t *testing.T) {
+	// Canal para receber mensagens
+	received := make(chan string, 1)
+
+	// Configurar WebSocket upgrader
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+
+	// Criar servidor WebSocket
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Logf("WebSocket upgrade failed: %v", err)
+			return
+		}
+		defer conn.Close()
+
+		// Ler mensagem
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			t.Logf("WebSocket read error: %v", err)
+			return
+		}
+		received <- string(message)
+	}))
+	defer server.Close()
+
+	// Converter HTTP URL para WebSocket URL
+	wsURL := "ws" + server.URL[4:] // Remove "http" e adiciona "ws"
+
+	// Criar notifier WebSocket
+	notifier := NewWebSocketNotifier(wsURL)
+
+	// Dar tempo para servidor inicializar
+	time.Sleep(100 * time.Millisecond)
+
+	// Criar entrada de log
+	entry := NewLogEntry().
+		WithLevel(WARN).
+		WithMessage("Test WebSocket notification").
+		AddMetadata("websocket_test", true).
+		AddMetadata("timestamp", time.Now().Unix())
+
+	// Enviar notificação
+	err := notifier.Notify(entry)
+	if err != nil {
+		t.Fatalf("Failed to send WebSocket notification: %v", err)
+	}
+
+	// Verificar se foi recebido
+	select {
+	case message := <-received:
+		// Verificar se a mensagem contém dados esperados
+		if len(message) == 0 {
+			t.Fatal("Received empty message")
+		}
+
+		// Tentar parsear como JSON
+		var parsed map[string]interface{}
+		if err := json.Unmarshal([]byte(message), &parsed); err == nil {
+			if parsed["message"] != "Test WebSocket notification" {
+				t.Errorf("Expected message 'Test WebSocket notification', got %v", parsed["message"])
+			}
+			if parsed["level"] != "WARN" {
+				t.Errorf("Expected level 'WARN', got %v", parsed["level"])
+			}
+		}
+
+		t.Logf("WebSocket notification received successfully: %s", message)
+	case <-time.After(3 * time.Second):
+		t.Fatal("Timeout waiting for WebSocket notification")
+	}
+}
+
+// TestConcurrentLogging testa logging concorrente sem race conditions
+func TestConcurrentLogging(t *testing.T) {
+	logger := NewLogger("concurrent-test")
+
+	const numGoroutines = 10
+	const logsPerGoroutine = 50
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Usar canal para contar logs completados
+	completed := make(chan int, numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func(goroutineID int) {
+			defer wg.Done()
+
+			logCount := 0
+			for j := 0; j < logsPerGoroutine; j++ {
+				logger.InfoCtx(
+					fmt.Sprintf("Goroutine %d - Log %d", goroutineID, j),
+					map[string]interface{}{
+						"goroutine_id": goroutineID,
+						"log_number":   j,
+						"timestamp":    time.Now().UnixNano(),
+						"test_data":    fmt.Sprintf("data-%d-%d", goroutineID, j),
+					},
+				)
+				logCount++
+			}
+			completed <- logCount
+		}(i)
+	}
+
+	wg.Wait()
+	close(completed)
+
+	// Verificar se todos os logs foram completados
+	totalLogs := 0
+	for count := range completed {
+		totalLogs += count
+	}
+
+	expectedTotal := numGoroutines * logsPerGoroutine
+	if totalLogs != expectedTotal {
+		t.Errorf("Expected %d total logs, got %d", expectedTotal, totalLogs)
+	}
+
+	t.Logf("Successfully completed %d concurrent logs", totalLogs)
+}
+
+// TestLogEntry testa funcionalidade de LogEntry
+func TestLogEntry(t *testing.T) {
+	entry := NewLogEntry()
+
+	// Testar builder pattern
+	entry = entry.
+		WithLevel(ERROR).
+		WithMessage("Test error message").
+		WithSource("test-source").
+		WithContext("test-context").
+		WithSeverity(logLevels[ERROR]). // Adicionar severity válido
+		AddMetadata("error_code", 500).
+		AddMetadata("request_id", "req-123").
+		AddTag("service", "logz").
+		AddTag("env", "test")
+
+	// Verificar valores
+	if entry.GetLevel() != ERROR {
+		t.Errorf("Expected level ERROR, got %v", entry.GetLevel())
+	}
+
+	if entry.GetMessage() != "Test error message" {
+		t.Errorf("Expected message 'Test error message', got %v", entry.GetMessage())
+	}
+
+	if entry.GetSource() != "test-source" {
+		t.Errorf("Expected source 'test-source', got %v", entry.GetSource())
+	}
+
+	metadata := entry.GetMetadata()
+	if metadata["error_code"] != 500 {
+		t.Errorf("Expected error_code 500, got %v", metadata["error_code"])
+	}
+
+	// Testar validação
+	err := entry.Validate()
+	if err != nil {
+		t.Errorf("Entry validation failed: %v", err)
+	}
+
+	// Testar string representation
+	str := entry.String()
+	if len(str) == 0 {
+		t.Error("Entry string representation is empty")
+	}
+
+	t.Logf("Entry validation completed successfully")
+} // TestPrometheusMetrics testa funcionalidade básica do Prometheus
+func TestPrometheusMetrics(t *testing.T) {
+	pm := GetPrometheusManager()
+
+	// Adicionar métricas
+	pm.AddMetric("test_counter", 42.0, map[string]string{"type": "test"})
+	pm.AddMetric("test_gauge", 3.14159, map[string]string{"unit": "pi"})
+
+	// Incrementar métrica
+	pm.IncrementMetric("test_counter", 8.0)
+
+	// Obter métricas
+	metrics := pm.GetMetrics()
+
+	// Verificar valores
+	if metrics["test_counter"] != 50.0 { // 42 + 8
+		t.Errorf("Expected test_counter to be 50.0, got %f", metrics["test_counter"])
+	}
+
+	if metrics["test_gauge"] != 3.14159 {
+		t.Errorf("Expected test_gauge to be 3.14159, got %f", metrics["test_gauge"])
+	}
+
+	// Remover métrica
+	pm.RemoveMetric("test_gauge")
+
+	updatedMetrics := pm.GetMetrics()
+	if _, exists := updatedMetrics["test_gauge"]; exists {
+		t.Error("test_gauge should have been removed")
+	}
+
+	t.Logf("Prometheus metrics test completed successfully")
+}
+
+// TestLogFormats testa diferentes formatadores
+func TestLogFormats(t *testing.T) {
+	entry := NewLogEntry().
+		WithLevel(INFO).
+		WithMessage("Test formatting").
+		AddMetadata("format_test", true)
+
+	// Testar JSON formatter
+	jsonFormatter := &JSONFormatter{}
+	jsonResult, err := jsonFormatter.Format(entry)
+	if err != nil {
+		t.Errorf("JSON formatter failed: %v", err)
+	}
+
+	if len(jsonResult) == 0 {
+		t.Error("JSON formatter returned empty result")
+	}
+
+	// Verificar se é JSON válido
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonResult), &parsed); err != nil {
+		t.Errorf("JSON formatter did not produce valid JSON: %v", err)
+	}
+
+	// Testar Text formatter
+	textFormatter := &TextFormatter{}
+	textResult, err := textFormatter.Format(entry)
+	if err != nil {
+		t.Errorf("Text formatter failed: %v", err)
+	}
+
+	if len(textResult) == 0 {
+		t.Error("Text formatter returned empty result")
+	}
+
+	t.Logf("Format testing completed successfully")
+	t.Logf("JSON result: %s", jsonResult)
+	t.Logf("Text result: %s", textResult)
+}
+
+/// internal/core/interface.go ///
+package core
+
+// LogzLogger combines the existing core with the standard Go log methods.
+type LogzLogger interface {
+	LogzCore
+	// GetLevel returns the current log VLevel.
+	// Method signature:
+	// GetLevel() interface{}
+	GetLevel() interface{}
+	// SetLevel sets the log VLevel.
+	// Method signature:
+	// SetLevel(VLevel interface{})
+	// The VLevel is an LogLevel type or string.
+	SetLevel(interface{})
+
+	Silent(...any)
+	Answer(...any)
+}
+
+// LogzCore is the interface with the basic methods of the existing il.
+type LogzCore interface {
+
+	// SetMetadata sets a VMetadata key-value pair.
+	// If the key is empty, it returns all VMetadata.
+	// Returns the value and a boolean indicating if the key exists.
+	SetMetadata(string, interface{})
+	// TraceCtx logs a trace message with context.
+	// Method signature:
+	// TraceCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	TraceCtx(string, map[string]interface{})
+	// NoticeCtx logs a notice message with context.
+	// Method signature:
+	// NoticeCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	NoticeCtx(string, map[string]interface{})
+	// SuccessCtx logs a success message with context.
+	// Method signature:
+	// SuccessCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	SuccessCtx(string, map[string]interface{})
+	// DebugCtx logs a debug message with context.
+	// Method signature:
+	// DebugCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	DebugCtx(string, map[string]interface{})
+	// InfoCtx logs an informational message with context.
+	// Method signature:
+	// InfoCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	InfoCtx(string, map[string]interface{})
+	// WarnCtx logs a warning message with context.
+	// Method signature:
+	// WarnCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	WarnCtx(string, map[string]interface{})
+	// ErrorCtx logs an error message with context.
+	// Method signature:
+	// ErrorCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	ErrorCtx(string, map[string]interface{})
+	// FatalCtx logs a fatal message with context and exits the application.
+	// Method signature:
+	// FatalCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	FatalCtx(string, map[string]interface{})
+	// SilentCtx logs a message with context without any output.
+	// Method signature:
+	// SilentCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	SilentCtx(string, map[string]interface{})
+	// AnswerCtx logs an answer message with context.
+	// Method signature:
+	// AnswerCtx(message string, context map[string]interface{})
+	// The message is a string.
+	// The context is a map of key-value pairs.
+	AnswerCtx(string, map[string]interface{})
+	// GetWriter returns the current VWriter.
+	// Method signature:
+	// GetWriter() interface{}
+	// The VWriter is an interface that implements the LogWriter interface.
+	GetWriter() interface{}
+	// SetWriter sets the VWriter.
+	// Method signature:
+	// SetWriter(VWriter interface{})
+	// The VWriter is an interface that implements the LogWriter interface or io.Writer.
+	SetWriter(interface{})
+	// GetConfig returns the current configuration.
+	// Method signature:
+	// GetConfig() interface{}
+	// The configuration is an interface that implements the Config interface.
+	GetConfig() interface{}
+	// SetConfig sets the configuration.
+	SetConfig(interface{})
+	// SetFormat sets the format for the log entries.
+	SetFormat(interface{})
+	//// GetLevel returns the current log VLevel.
+	//// Method signature:
+	//// GetLevel() interface{}
+	//GetLevel() interface{}
+	//// SetLevel sets the log VLevel.
+	//// Method signature:
+	//// SetLevel(VLevel interface{})
+	//// The VLevel is an LogLevel type or string.
+	//SetLevel(interface{})
+}
+
+/// internal/core/log_rotate.go ///
+package core
+
+import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// CheckLogSize checks and manages the size of the logs
+func CheckLogSize(config Config) error {
+	logDir := config.Output()
+	files, err := os.ReadDir(logDir)
+	if err != nil {
+		fmt.Println("ErrorCtx reading the log directory:", err)
+		return err
+	}
+
+	// Fetch maximum log sizes from the configuration
+	maxLogSize := config.GetInt("maxLogSize", 20*1024*1024)      // Default 20 MB
+	moduleLogSize := config.GetInt("moduleLogSize", 5*1024*1024) // Default 5 MB
+
+	var totalSize int64
+	filesToRotate := []string{}
+
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".log") {
+			fileInfo, err := file.Info()
+			if err != nil {
+				fmt.Println("ErrorCtx getting file information:", err)
+				continue
+			}
+			totalSize += fileInfo.Size()
+			if fileInfo.Size() > int64(moduleLogSize) {
+				filesToRotate = append(filesToRotate, filepath.Join(logDir, file.Name()))
+			}
+		}
+	}
+
+	// Rotation based on total size
+	if totalSize > int64(maxLogSize) {
+		fmt.Println("Archiving logs due to excessive size...")
+		if err := ArchiveLogs(filesToRotate); err != nil {
+			fmt.Println("ErrorCtx archiving logs:", err)
+			return err
+		}
+	}
+
+	// Individual rotation of large files
+	if len(filesToRotate) > 0 {
+		fmt.Println("Rotating large log files...")
+		if err := RotateLogFiles(filesToRotate); err != nil {
+			fmt.Println("ErrorCtx rotating log files:", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RotateLogFiles compresses and recreates the log files
+func RotateLogFiles(files []string) error {
+	for _, logFile := range files {
+		if err := RotateLogFile(logFile); err != nil {
+			fmt.Println("ErrorCtx rotating the log file:", err)
+			continue
+		}
+		fmt.Println("Log file rotated successfully:", logFile)
+	}
+	return nil
+}
+
+// RotateLogFile compresses a single log file
+func RotateLogFile(logFilePath string) error {
+	archivePath := fmt.Sprintf("%s.tar.gz", logFilePath)
+	if err := CreateTarGz(archivePath, []string{logFilePath}); err != nil {
+		return err
+	}
+
+	if err := os.Remove(logFilePath); err != nil {
+		return fmt.Errorf("error removing the log file: %v", err)
+	}
+
+	if err := os.WriteFile(logFilePath, []byte{}, 0644); err != nil {
+		return fmt.Errorf("error recreating the log file: %v", err)
+	}
+	return nil
+}
+
+// CreateTarGz creates a tar.gz file from the logs
+func CreateTarGz(archivePath string, files []string) error {
+	archiveFile, err := os.Create(archivePath)
+	if err != nil {
+		return fmt.Errorf("error creating the tar.gz file: %v", err)
+	}
+	defer archiveFile.Close()
+
+	gw := gzip.NewWriter(archiveFile)
+	defer gw.Close()
+
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	for _, file := range files {
+		if err := addFileToTar(tw, file); err != nil {
+			return err
+		}
+	}
+	fmt.Println("Logs archived successfully:", archivePath)
+	return nil
+}
+
+// addFileToTar adds a file to the tar archive
+func addFileToTar(tw *tar.Writer, filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("error opening the file: %v", err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("error getting file information: %v", err)
+	}
+
+	header, err := tar.FileInfoHeader(info, "")
+	if err != nil {
+		return fmt.Errorf("error creating the tar header: %v", err)
+	}
+	header.Name = filepath.Base(filePath)
+
+	if err := tw.WriteHeader(header); err != nil {
+		return fmt.Errorf("error writing the tar header: %v", err)
+	}
+
+	if _, err := io.Copy(tw, file); err != nil {
+		return fmt.Errorf("error copying the file content to the tar: %v", err)
+	}
+
+	return nil
+}
+
+// ArchiveLogs archives old logs into a zip file
+func ArchiveLogs(files []string) error {
+	logDir := GetLogPath()
+	if len(files) == 0 {
+		err := filepath.Walk(logDir, func(path string, info os.FileInfo, err error) error {
+			if strings.HasSuffix(info.Name(), ".log") {
+				files = append(files, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("error listing the log files: %v", err)
+		}
+	}
+	tempDir := os.TempDir()
+	archiveName := fmt.Sprintf("logs_archive_%s.zip", time.Now().Format("20060102_150405"))
+	archivePath := filepath.Join(tempDir, archiveName)
+
+	zipFile, err := os.Create(archivePath)
+	if err != nil {
+		return fmt.Errorf("error creating the zip file: %v", err)
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	for _, file := range files {
+		if err := addFileToZip(zipWriter, file); err != nil {
+			return err
+		}
+	}
+
+	fmt.Println("Logs archived successfully:", archivePath)
+	return nil
+}
+
+// addFileToZip adds a file to the zip archive
+func addFileToZip(zipWriter *zip.Writer, filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("error opening the file for zip: %v", err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("error getting file information: %v", err)
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return fmt.Errorf("error creating the zip header: %v", err)
+	}
+	header.Name = filepath.Base(filePath)
+
+	writer, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		return fmt.Errorf("error creating the file in the zip: %v", err)
+	}
+
+	if _, err := io.Copy(writer, file); err != nil {
+		return fmt.Errorf("error copying the file content to the zip: %v", err)
+	}
+
+	return nil
+}
+
+func GetLogDirectorySize(directory string) (int64, error) {
+	if directory == "" {
+		directory = filepath.Dir(GetLogPath())
+	}
+	var totalSize int64
+
+	// Traverse the specified directory
+	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing the path %s: %v", path, err)
+		}
+
+		// Only files are considered in the total size
+		if !info.IsDir() {
+			totalSize += info.Size()
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return 0, fmt.Errorf("error calculating the directory size: %v", err)
+	}
+
+	return totalSize, nil
+}
+
+/// internal/core/logentry.go ///
+package core
+
+import (
+	"errors"
+	"fmt"
+	"runtime"
+	"time"
+)
+
+// LogLevel represents the severity VLevel of a log entry.
+type LogLevel string
+
+const (
+	DEBUG   LogLevel = "DEBUG"
+	TRACE   LogLevel = "TRACE"
+	NOTICE  LogLevel = "NOTICE"
+	INFO    LogLevel = "INFO"
+	SUCCESS LogLevel = "SUCCESS"
+	WARN    LogLevel = "WARN"
+	ERROR   LogLevel = "ERROR"
+	FATAL   LogLevel = "FATAL"
+	SILENT  LogLevel = "SILENT"
+	ANSWER  LogLevel = "ANSWER"
+)
+
+// LogzEntry represents a single log entry with various attributes.
+type LogzEntry interface {
+	// WithLevel sets the log VLevel for the LogEntry.
+	WithLevel(level LogLevel) LogzEntry
+	// WithSource sets the source for the LogEntry.
+	WithSource(source string) LogzEntry
+	// WithContext sets the context for the LogEntry.
+	WithContext(context string) LogzEntry
+	// WithMessage sets the message for the LogEntry.
+	WithMessage(message string) LogzEntry
+	// WithProcessID sets the process ID for the LogEntry.
+	WithProcessID(pid int) LogzEntry
+	// WithHostname sets the hostname for the LogEntry.
+	WithHostname(hostname string) LogzEntry
+	// WithSeverity sets the severity VLevel for the LogEntry.
+	WithSeverity(severity int) LogzEntry
+	// WithTraceID sets the trace ID for the LogEntry.
+	WithTraceID(traceID string) LogzEntry
+	// AddTag adds a tag to the LogEntry.
+	AddTag(key, value string) LogzEntry
+	// AddMetadata adds VMetadata to the LogEntry.
+	AddMetadata(key string, value interface{}) LogzEntry
+	// GetMetadata returns the VMetadata of the LogEntry.
+	GetMetadata() map[string]interface{}
+	// GetContext returns the context of the LogEntry.
+	GetContext() string
+	// GetTimestamp returns the timestamp of the LogEntry.
+	GetTimestamp() time.Time
+	// GetMessage returns the message of the LogEntry.
+	GetMessage() string
+	// GetLevel returns the log VLevel of the LogEntry.
+	GetLevel() LogLevel
+	// GetSource returns the source of the LogEntry.
+	GetSource() string
+	// Validate checks if the LogEntry has all required fields set.
+	Validate() error
+	// String returns a string representation of the LogEntry.
+	String() string
+}
+
+// LogEntry represents a single log entry with various attributes.
+type LogEntry struct {
+	Timestamp time.Time              `json:"timestamp"`           // The time when the log entry was created.
+	Level     LogLevel               `json:"VLevel"`              // The severity VLevel of the log entry.
+	Source    string                 `json:"source"`              // The source of the log entry.
+	Context   string                 `json:"context,omitempty"`   // Additional context for the log entry.
+	Message   string                 `json:"message"`             // The log message.
+	Tags      map[string]string      `json:"tags,omitempty"`      // Optional tags associated with the log entry.
+	Metadata  map[string]interface{} `json:"VMetadata,omitempty"` // Optional VMetadata associated with the log entry.
+	ProcessID int                    `json:"pid,omitempty"`       // The process ID associated with the log entry.
+	Hostname  string                 `json:"hostname,omitempty"`  // The hostname where the log entry was created.
+	Severity  int                    `json:"severity"`            // The severity VLevel as an integer.
+	TraceID   string                 `json:"trace_id,omitempty"`  // Optional trace ID for tracing logs.
+	Caller    string                 `json:"caller,omitempty"`    // The caller of the log entry.
+}
+
+// NewLogEntry creates a new instance of LogEntry with the current timestamp and initialized maps.
+func NewLogEntry() LogzEntry {
+	le := LogEntry{
+		Timestamp: time.Now(),
+		Tags:      make(map[string]string),
+		Metadata:  make(map[string]interface{}),
+		Caller:    getCallerInfo(3),
+	}
+	return &le
+}
+
+// WithLevel sets the log VLevel for the LogEntry.
+func (le *LogEntry) WithLevel(level LogLevel) LogzEntry {
+	le.Level = level
+	return le
+}
+
+// WithSource sets the source for the LogEntry.
+func (le *LogEntry) WithSource(source string) LogzEntry {
+	le.Source = source
+	return le
+}
+
+// WithContext sets the context for the LogEntry.
+func (le *LogEntry) WithContext(context string) LogzEntry {
+	le.Context = context
+	return le
+}
+
+// WithMessage sets the message for the LogEntry.
+func (le *LogEntry) WithMessage(message string) LogzEntry {
+	le.Message = message
+	return le
+}
+
+// WithProcessID sets the process ID for the LogEntry.
+func (le *LogEntry) WithProcessID(pid int) LogzEntry {
+	le.ProcessID = pid
+	return le
+}
+
+// WithHostname sets the hostname for the LogEntry.
+func (le *LogEntry) WithHostname(hostname string) LogzEntry {
+	le.Hostname = hostname
+	return le
+}
+
+// WithSeverity sets the severity VLevel for the LogEntry.
+func (le *LogEntry) WithSeverity(severity int) LogzEntry {
+	le.Severity = severity
+	return le
+}
+
+// WithTraceID sets the trace ID for the LogEntry.
+func (le *LogEntry) WithTraceID(traceID string) LogzEntry {
+	le.TraceID = traceID
+	return le
+}
+
+// AddTag adds a tag to the LogEntry.
+func (le *LogEntry) AddTag(key, value string) LogzEntry {
+	if le.Tags == nil {
+		le.Tags = make(map[string]string)
+	}
+	le.Tags[key] = value
+	return le
+}
+
+// GetLevel returns the log VLevel of the LogEntry.
+func (le *LogEntry) GetLevel() LogLevel { return le.Level }
+
+// AddMetadata adds VMetadata to the LogEntry.
+func (le *LogEntry) AddMetadata(key string, value interface{}) LogzEntry {
+	if le.Metadata == nil {
+		le.Metadata = make(map[string]interface{})
+	}
+	le.Metadata[key] = value
+	return le
+}
+
+// GetMetadata returns the VMetadata of the LogEntry.
+func (le *LogEntry) GetMetadata() map[string]interface{} { return le.Metadata }
+
+// GetContext returns the context of the LogEntry.
+func (le *LogEntry) GetContext() string { return le.Context }
+
+// GetTimestamp returns the timestamp of the LogEntry.
+func (le *LogEntry) GetTimestamp() time.Time { return le.Timestamp }
+
+// GetMessage returns the message of the LogEntry.
+func (le *LogEntry) GetMessage() string { return le.Message }
+
+// GetSource returns the source of the LogEntry.
+func (le *LogEntry) GetSource() string { return le.Source }
+
+// Validate checks if the LogEntry has all required fields set.
+func (le *LogEntry) Validate() error {
+	if le.Timestamp.IsZero() {
+		return errors.New("timestamp is required")
+	}
+	if le.Level == "" {
+		return errors.New("VLevel is required")
+	}
+	if le.Message == "" {
+		return errors.New("message is required")
+	}
+	if le.Severity <= 0 {
+		return errors.New("severity must be greater than zero")
+	}
+	return nil
+}
+
+// String returns a string representation of the LogEntry.
+func (le *LogEntry) String() string {
+	if le == nil {
+		return "LogEntry: <nil>"
+	}
+	if le.Level == SILENT || le.Level == ANSWER {
+		return fmt.Sprintf("%s - %s",
+			le.Level,
+			le.Message,
+		)
+	} else {
+		return fmt.Sprintf("[%s] %s - %s",
+			le.Timestamp.Format(time.RFC3339),
+			le.Level,
+			le.Message,
+		)
+	}
+}
+
+// getCallerInfo returns the caller information for the log entry.
+func getCallerInfo(skip int) string {
+	pc, file, line, ok := runtime.Caller(skip)
+	if !ok {
+		return "unknown"
+	}
+	funcName := runtime.FuncForPC(pc).Name()
+	return fmt.Sprintf("%s:%d %s", trimFilePath(file), line, funcName)
+}
+
+/// internal/core/logger.go ///
+package core
+
+import (
+	"fmt"
+	"io"
+	"sync/atomic"
+
+	//"io"
+	"log"
+	"os"
+	"strings"
+	"sync"
+)
+
+type LogMode string
+type LogFormat string
+
+const (
+	JSON LogFormat = "json"
+	TEXT LogFormat = "text"
+	YAML LogFormat = "yaml"
+	XML  LogFormat = "xml"
+	RAW  LogFormat = "raw"
+)
+
+const (
+	ModeService    LogMode = "service"    // Indicates that the core is being used by a detached process
+	ModeStandalone LogMode = "standalone" // Indicates that the core is being used locally (e.g., CLI)
+)
+
+var logLevels = map[LogLevel]int{
+	DEBUG:   1,
+	TRACE:   2,
+	INFO:    3,
+	NOTICE:  4,
+	SUCCESS: 5,
+	WARN:    6,
+	ERROR:   7,
+	FATAL:   8,
+	SILENT:  9,
+	ANSWER:  10,
+}
+
+// LogzCoreImpl represents a core with configuration and VMetadata.
+type LogzCoreImpl struct {
+	// LogzLogger is a constraint to implement this interface
+	LogzLogger
+
+	// Logger is a promoted global Go Logger
+	log.Logger
+
+	out       io.Writer                   // destination for output
+	prefix    atomic.Pointer[string]      // prefix on each line to identify the logger (but see Lmsgprefix)
+	prefixX   atomic.Pointer[*LogzLogger] // prefix on each line to identify the logger (but see Lmsgprefix)
+	flag      atomic.Int32                // properties
+	isDiscard atomic.Bool
+
+	VLevel    LogLevel
+	VWriter   LogWriter[any]
+	VConfig   Config
+	VMetadata map[string]interface{}
+	VMode     LogMode // Mode control: service or standalone
+	Mu        sync.RWMutex
+}
+
+// NewLogger creates a new instance of LogzCoreImpl with the provided configuration.
+func NewLogger(prefix string) LogzLogger { //VConfig Config) LogzLogger {
+	level := INFO // Default log VLevel
+
+	//if VConfig == nil {
+	// If no VConfig is provided, create a new default VConfig
+	// Create a new ConfigManager
+	//if cfgMgr := NNewConfigManager(); cfgMgr != nil {
+	//	configMgr := *cfgMgr
+	//	VConfig = configMgr.GetConfig()
+	//} else {
+	//	log.Println("ErrorCtx creating ConfigManager")
+	//	return nil
+	//}
+	//}
+
+	// Set the log VLevel from the Config
+	//VLevel = LogLevel(VConfig.Level()) // Method VConfig.Level() returns the log VLevel as a string
+
+	//var out *os.File
+	//var err error
+	//// Set the output to stdout if not specified or if the output is invalid
+	//if strings.ToLower(VConfig.Output()) == "stdout" || VConfig.Output() == "" || VConfig.Output() == os.Stdout.Name() {
+	//	out = os.Stdout
+	//} else {
+	//	fmt.Println("Output: ", VConfig.Output())
+	//	// Ensure the log file exists and has the correct permissions
+	//	if _, err = os.Stat(VConfig.Output()); os.IsNotExist(err) {
+	//		if err = os.MkdirAll(filepath.Dir(VConfig.Output()), 0755); err != nil {
+	//			log.Printf("ErrorCtx creating log directory: %v\nRedirecting to stdout...\n", err)
+	//			out = os.Stdout
+	//		} else {
+	//			out, err = os.OpenFile(VConfig.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//			if err != nil {
+	//				log.Printf("ErrorCtx opening log file: %v\nRedirecting to stdout...\n", err)
+	//				out = os.Stdout
+	//			}
+	//		}
+	//	} else {
+	//		out, err = os.OpenFile(VConfig.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//		if err != nil {
+	//			log.Printf("ErrorCtx opening log file: %v\nRedirecting to stdout...\n", err)
+	//			out = os.Stdout
+	//		}
+	//	}
+	//}
+	//
+	//// Initialize the formatter (JSON or text)
+	//var formatter LogFormatter
+	//if VConfig.Format() == "json" {
+	//	formatter = &JSONFormatter{}
+	//} else {
+	//	formatter = &TextFormatter{}
+	//}
+	writer := NewDefaultWriter[any](os.Stdout, &TextFormatter{}) //out, formatter)
+
+	// Read the VMode from Config
+	//VMode := VConfig.Mode()
+	//if VMode != ModeService && VMode != ModeStandalone {
+	mode := ModeStandalone // Default to standalone if not specified
+	//}
+
+	lgr := &LogzCoreImpl{
+		VLevel:  level,
+		VWriter: writer,
+		//VConfig:   VConfig,
+		VMetadata: make(map[string]interface{}),
+		VMode:     mode,
+	}
+	lgr.prefix.Store(&prefix)
+	return lgr
+}
+
+// SetMetadata sets a VMetadata key-value pair for the LogzCoreImpl.
+func (l *LogzCoreImpl) SetMetadata(key string, value interface{}) {
+	l.Mu.Lock()
+	defer l.Mu.Unlock()
+	l.VMetadata[key] = value
+}
+
+// shouldLog checks if the log VLevel should be logged.
+func (l *LogzCoreImpl) shouldLog(level LogLevel) bool {
+	return logLevels[level] >= logLevels[l.VLevel]
+}
+
+// log logs a message with the specified VLevel and context.
+func (l *LogzCoreImpl) log(level LogLevel, msg string, ctx map[string]interface{}) {
+	if !l.shouldLog(level) {
+		return
+	}
+
+	l.Mu.RLock()
+	defer l.Mu.RUnlock()
+
+	entry := NewLogEntry().
+		WithLevel(level).
+		WithMessage(msg).
+		WithSeverity(logLevels[level])
+
+	// Merge global and local VMetadata
+	finalContext := mergeContext(l.VMetadata, ctx)
+	for k, v := range finalContext {
+		entry.AddMetadata(k, v)
+	}
+
+	// Merge global and local VMetadata
+	finalMetadata := mergeMetadata(l.VMetadata, ctx)
+	for k, v := range finalMetadata {
+		entry.AddMetadata(k, v)
+	}
+
+	if level != SILENT {
+		// Write the log using the configured VWriter
+		if err := l.VWriter.Write(entry); err != nil {
+			log.Printf("ErrorCtx writing log: %v", err)
+		}
+	}
+
+	// Only in service VMode, notify via Notifiers
+	//if l.VMode == ModeService && l.VConfig != nil {
+	// for _, name := range l.VConfig.NotifierManager().ListNotifiers() {
+	//	if notifier, ok := l.VConfig.NotifierManager().GetNotifier(name); ok {
+	//		if notifier != nil {
+	//			ntf := notifier
+	//			if ntfErr := ntf.Notify(entry); ntfErr != nil {
+	//				log.Printf("ErrorCtx notifying %s: %v", name, ntfErr)
+	//			}
+	//		}
+	//	}
+	// }
+	//}
+
+	// Update metrics in PrometheusManager, if enabled
+	if l.VMode == ModeService {
+		pm := GetPrometheusManager()
+		if pm.IsEnabled() {
+			pm.IncrementMetric("logs_total", 1)
+			pm.IncrementMetric("logs_total_"+string(level), 1)
+		}
+	}
+
+	// Terminate the process in case of FATAL log
+	if level == FATAL {
+		os.Exit(1)
+	}
+}
+
+// TraceCtx logs a trace message with context.
+func (l *LogzCoreImpl) TraceCtx(msg string, ctx map[string]interface{}) { l.log(TRACE, msg, ctx) }
+
+// NoticeCtx logs a notice message with context.
+func (l *LogzCoreImpl) NoticeCtx(msg string, ctx map[string]interface{}) { l.log(NOTICE, msg, ctx) }
+
+// SuccessCtx logs a success message with context.
+func (l *LogzCoreImpl) SuccessCtx(msg string, ctx map[string]interface{}) { l.log(SUCCESS, msg, ctx) }
+
+// DebugCtx logs a debug message with context.
+func (l *LogzCoreImpl) DebugCtx(msg string, ctx map[string]interface{}) { l.log(DEBUG, msg, ctx) }
+
+// InfoCtx logs an info message with context.
+func (l *LogzCoreImpl) InfoCtx(msg string, ctx map[string]interface{}) { l.log(INFO, msg, ctx) }
+
+// WarnCtx logs a warning message with context.
+func (l *LogzCoreImpl) WarnCtx(msg string, ctx map[string]interface{}) { l.log(WARN, msg, ctx) }
+
+// ErrorCtx logs an error message with context.
+func (l *LogzCoreImpl) ErrorCtx(msg string, ctx map[string]interface{}) { l.log(ERROR, msg, ctx) }
+
+// FatalCtx logs a fatal message with context and terminates the process.
+func (l *LogzCoreImpl) FatalCtx(msg string, ctx map[string]interface{}) { l.log(FATAL, msg, ctx) }
+
+// SilentCtx logs a message with context without any output.
+func (l *LogzCoreImpl) SilentCtx(msg string, ctx map[string]interface{}) { l.log(SILENT, msg, ctx) }
+
+// AnswerCtx logs an answer message with context.
+func (l *LogzCoreImpl) AnswerCtx(msg string, ctx map[string]interface{}) { l.log(ANSWER, msg, ctx) }
+
+// Silent logs a message without any output.
+func (l *LogzCoreImpl) Silent(msg ...any) {
+	if l.shouldLog(SILENT) {
+		l.log(SILENT, fmt.Sprint(msg...), nil)
+	}
+}
+
+// Answer logs a message without any output.
+func (l *LogzCoreImpl) Answer(msg ...any) {
+	if l.shouldLog(ANSWER) {
+		l.log(ANSWER, fmt.Sprint(msg...), nil)
+	}
+}
+
+func (l *LogzCoreImpl) SetLevel(level interface{}) {
+	l.Mu.Lock()
+	defer l.Mu.Unlock()
+	if lvl, ok := level.(LogLevel); ok {
+		l.VLevel = lvl
+	} else if lvlStr, ok := level.(string); ok {
+		l.VLevel = LogLevel(lvlStr)
+	} else {
+		log.Println("Invalid log level type")
+	}
+}
+func (l *LogzCoreImpl) GetLevel() interface{} {
+	l.Mu.RLock()
+	defer l.Mu.RUnlock()
+
+	if l.VLevel == "" {
+		l.VLevel = INFO
+	}
+	return l.VLevel
+}
+
+func (l *LogzCoreImpl) SetWriter(writer any) {
+	l.Mu.Lock()
+	defer l.Mu.Unlock()
+	if osFile, ok := writer.(*os.File); ok {
+		l.VWriter = NewDefaultWriter[any](osFile, &TextFormatter{})
+	} else if logWriter, ok := writer.(LogWriter[any]); ok {
+		l.VWriter = logWriter
+	} else {
+		log.Println("Invalid writer type")
+	}
+}
+func (l *LogzCoreImpl) GetWriter() interface{} {
+	l.Mu.RLock()
+	defer l.Mu.RUnlock()
+	if l.VWriter == nil {
+		l.VWriter = NewDefaultWriter[any](os.Stdout, &TextFormatter{})
+	}
+	return l.VWriter
+}
+
+func (l *LogzCoreImpl) GetMode() interface{} {
+	l.Mu.RLock()
+	defer l.Mu.RUnlock()
+	if l.VMode == "" {
+		l.VMode = ModeStandalone
+	}
+	return l.VMode
+}
+
+func (l *LogzCoreImpl) SetConfig(config interface{}) {
+	l.Mu.Lock()
+	defer l.Mu.Unlock()
+	if cfg, ok := config.(Config); ok {
+		l.VConfig = cfg
+	} else {
+		log.Println("Invalid config type")
+	}
+}
+func (l *LogzCoreImpl) GetConfig() interface{} {
+	l.Mu.RLock()
+	defer l.Mu.RUnlock()
+	if l.VConfig == nil {
+		c := NewConfigManager()
+		c2 := *c
+		c3 := c2.GetConfig()
+		l.VConfig = c3
+	}
+	return l.VConfig
+}
+
+// trimFilePath trims the file path to show only the last two segments.
+func trimFilePath(filePath string) string {
+	parts := strings.Split(filePath, "/")
+	if len(parts) > 2 {
+		return strings.Join(parts[len(parts)-2:], "/")
+	}
+	return filePath
+}
+
+// mergeContext merges global and local context maps.
+func mergeContext(global, local map[string]interface{}) map[string]interface{} {
+	merged := make(map[string]interface{})
+	for k, v := range global {
+		merged[k] = v
+	}
+	for k, v := range local {
+		merged[k] = v
+	}
+	return merged
+}
+
+// mergeMetadata merges global and local context maps.
+func mergeMetadata(global, local map[string]interface{}) map[string]interface{} {
+	merged := make(map[string]interface{})
+	for k, v := range global {
+		merged[k] = v
+	}
+	for k, v := range local {
+		merged[k] = v
+	}
+	return merged
+}
+
+/// internal/core/logz_manager.go ///
+package core
+
+/*import (
+	iKbxCfg "github.com/kubex-ecosystem/kubex-interfaces/config"
+
+	"fmt"
+	"sync"
+)
+
+type LogInterface interface {
+	Initialize(config iKbxCfg.ConfigManager[iKbxCfg.Configurable]) error
+	Log(message string)
+	Stop()
+}
+
+var (
+	loggerRegistry = make(map[string]*LoggerInstance)
+	registryMutex  sync.Mutex
+)
+
+type LoggerInstance struct {
+	LogChannel  chan string
+	DoneChannel chan bool
+	Config      *iKbxCfg.ConfigManager[LogzConfig]
+}
+
+func (li *LoggerInstance) Start() {
+	go func() {
+		for {
+			select {
+			case log := <-li.LogChannel:
+				fmt.Println("Log:", log)
+			case <-li.DoneChannel:
+				fmt.Println("Logger finalizado.")
+				return
+			}
+		}
+	}()
+}
+
+func GetLoggerInstance(name string, config *iKbxCfg.ConfigManager[LogzConfig]) (*LoggerInstance, error) {
+	// Validate the configuration
+	if config == nil {
+		return nil, fmt.Errorf("configuração inválida")
+	}
+
+	// Necessary to validate the configuration because of the pointer receiver
+	cfg := config.GetConfig()
+
+	// Validate the configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuração inválida: %v", err)
+	}
+
+	registryMutex.Lock()
+	defer registryMutex.Unlock()
+
+	if logger, exists := loggerRegistry[name]; exists {
+		return logger, nil
+	}
+
+	newLogger := &LoggerInstance{
+		LogChannel:  make(chan string, 100),
+		DoneChannel: make(chan bool),
+		Config:      config,
+	}
+	newLogger.Start()
+	loggerRegistry[name] = newLogger
+	return newLogger, nil
+}
+*/
+
+/// internal/core/multi_writer.go ///
+package core
+
+import (
+	"encoding/json"
+	"os"
+)
+
+// LogMultiWriter defines the contract for writing logs to multiple writers.
+type LogMultiWriter[T any] interface {
+	Write(entry T) error
+	AddWriter(w LogWriter[T])
+	GetWriters() []LogWriter[T]
+}
+
+// MultiWriter is a writer that can write to multiple LogWriters.
+// It implements the LogMultiWriter interface.
+// It allows adding new writers dynamically and writing log entries to all of them.
+// It can be used to aggregate logs from different sources or formats.
+type MultiWriter[T any] struct {
+	writers []LogWriter[T]
+}
+
+// NewMultiWriter creates a new instance of MultiWriter with the provided writers.
+func NewMultiWriter[T any](writers ...LogWriter[T]) *MultiWriter[T] {
+	return &MultiWriter[T]{writers: writers}
+}
+
+func (mw *MultiWriter[T]) AddWriter(w LogWriter[T]) {
+	mw.writers = append(mw.writers, w)
+}
+
+func (mw *MultiWriter[T]) Write(entry T) error {
+	for _, w := range mw.writers {
+		if err := w.Write(entry); err != nil {
+			return err
+		}
+	}
+
+	/* structTest := json.Marshal(entry)
+	if structTest != nil {
+		if strEntry, ok := entry.(string); ok {
+			for _, w := range mw.writers {
+				if err := w.Write(strEntry); err != nil {
+					return err
+				}
+			}
+		}
+	} */
+
+	json.NewEncoder(os.Stdout).Encode(entry)
+
+	return nil
+}
+
+func (mw *MultiWriter[T]) GetWriters() []LogWriter[T] { return mw.writers }
+
+/// internal/core/notifier.go ///
+package core
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/godbus/dbus/v5"
+	"github.com/gorilla/websocket"
+)
+
+// Notifier defines the interface for a log notifier.
+type Notifier interface {
+	// Notify sends a log entry notification.
+	Notify(entry LogzEntry) error
+
+	// Enable activates the notifier.
+	Enable()
+
+	// Disable deactivates the notifier.
+	Disable()
+
+	// Enabled checks if the notifier is active.
+	Enabled() bool
+
+	// WebServer returns the HTTP server instance.
+	WebServer() *http.Server
+
+	// Websocket returns the WebSocket instance.
+	Websocket() *websocket.Conn
+
+	// WebClient returns the HTTP client instance.
+	WebClient() *http.Client
+	// DBusClient returns the DBus connection instance.
+	DBusClient() *dbus.Conn
+}
+
+// NotifierImpl is the implementation of the Notifier interface.
+type NotifierImpl struct {
+	NotifierManager NotifierManager // Manager for notifier instances.
+	EnabledFlag     bool            // Flag indicating if the notifier is enabled.
+	WebhookURL      string          // URL for webhook notifications.
+	HTTPMethod      string          // HTTP method for webhook notifications.
+	AuthToken       string          // Authentication token for notifications.
+	LogLevel        string          // Log VLevel for filtering notifications.
+	WsEndpoint      string          // WebSocket endpoint for notifications.
+	Whitelist       []string        // Whitelist of sources for notifications.
+}
+
+// NewNotifier creates a new NotifierImpl instance.
+func NewNotifier(manager NotifierManager, enabled bool, webhookURL, HTTPMethod, authToken, logLevel, wsEndpoint string, whitelist []string) Notifier {
+	if whitelist == nil {
+		whitelist = []string{}
+	}
+	return &NotifierImpl{
+		NotifierManager: manager,
+		EnabledFlag:     enabled,
+		WebhookURL:      webhookURL,
+		HTTPMethod:      HTTPMethod,
+		AuthToken:       authToken,
+		LogLevel:        logLevel,
+		WsEndpoint:      wsEndpoint,
+		Whitelist:       whitelist,
+	}
+}
+
+// Notify sends a log entry notification based on the configured settings.
+func (n *NotifierImpl) Notify(entry LogzEntry) error {
+	if !n.EnabledFlag {
+		return nil
+	}
+
+	// Validate log VLevel
+	if n.LogLevel != "" && n.LogLevel != string(entry.GetLevel()) {
+		return nil
+	}
+
+	// Validate Whitelist
+	if len(n.Whitelist) > 0 && !contains(n.Whitelist, entry.GetSource()) {
+		return nil
+	}
+
+	// HTTP Notification
+	if n.WebhookURL != "" {
+		if err := n.httpNotify(entry); err != nil {
+			return err
+		}
+	}
+
+	// WebSocket Notification
+	if n.WsEndpoint != "" {
+		if err := n.wsNotify(entry); err != nil {
+			return err
+		}
+	}
+
+	// DBus Notification
+	if n.DBusClient() != nil {
+		if err := n.dbusNotify(entry); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// httpNotify sends an HTTP notification.
+func (n *NotifierImpl) httpNotify(entry LogzEntry) error {
+	if n.HTTPMethod == "POST" {
+		req, err := http.NewRequest("POST", n.WebhookURL, strings.NewReader(entry.GetMessage()))
+		if err != nil {
+			return fmt.Errorf("HTTP request creation error: %w", err)
+		}
+		if n.AuthToken != "" {
+			req.Header.Set("Authorization", "Bearer "+n.AuthToken)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := n.WebClient().Do(req)
+		if err != nil {
+			return fmt.Errorf("HTTP request error: %w", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("HTTP request failed: %s", resp.Status)
+		}
+	} else {
+		return fmt.Errorf("unsupported HTTP method: %s", n.HTTPMethod)
+	}
+	return nil
+}
+
+// wsNotify sends a WebSocket notification.
+func (n *NotifierImpl) wsNotify(entry LogzEntry) error {
+	_ = n.AuthToken + "|" + entry.GetMessage()
+	ws, _, err := websocket.DefaultDialer.Dial(n.WsEndpoint, nil)
+	if err != nil {
+		return fmt.Errorf("WebSocket connection error: %w", err)
+	}
+	defer ws.Close()
+	if err := ws.WriteJSON(entry); err != nil {
+		return fmt.Errorf("WebSocket write error: %w", err)
+	}
+
+	// Optionally, you can read a message from the WebSocket server to confirm the connection.
+	// msg, _, err := ws.ReadMessage()
+	if _, _, err := ws.ReadMessage(); err != nil {
+		return fmt.Errorf("WebSocket read error: %w", err)
+	}
+
+	// Optionally, you can handle the response from the WebSocket server here.
+	// For now, we just read a message to confirm the connection is working.
+	if _, _, err := ws.ReadMessage(); err != nil {
+		return fmt.Errorf("WebSocket read error: %w", err)
+	}
+
+	// Print the response message for debugging purposes.
+	// You can uncomment or remove this line in production code.
+	// This is just an example; you might want to handle the response differently.
+	// fmt.Printf("WebSocket response: %s\n", msg)
+	return nil
+}
+
+// dbusNotify sends a DBus notification.
+func (n *NotifierImpl) dbusNotify(entry LogzEntry) error {
+	output := n.AuthToken + "|" + entry.GetMessage()
+	dbusObj := n.DBusClient().Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
+	if call := dbusObj.Call("org.freedesktop.Notifications.Notify", 0, "", uint32(0), "", output, []string{}, map[string]dbus.Variant{}, int32(5000)); call.Err != nil {
+		return fmt.Errorf("DBus call error: %w", call.Err)
+	}
+	return nil
+}
+
+// Enable activates the notifier.
+func (n *NotifierImpl) Enable() { n.EnabledFlag = true }
+
+// Disable deactivates the notifier.
+func (n *NotifierImpl) Disable() { n.EnabledFlag = false }
+
+// Enabled checks if the notifier is active.
+func (n *NotifierImpl) Enabled() bool { return n.EnabledFlag }
+
+// WebServer returns the HTTP server instance.
+func (n *NotifierImpl) WebServer() *http.Server { return n.NotifierManager.WebServer() }
+
+// Websocket returns the Gorilla WebSocket connection instance.
+func (n *NotifierImpl) Websocket() *websocket.Conn { return n.NotifierManager.Websocket() }
+
+// WebClient returns the HTTP client instance.
+func (n *NotifierImpl) WebClient() *http.Client { return n.NotifierManager.WebClient() }
+
+// DBusClient returns the DBus connection instance.
+func (n *NotifierImpl) DBusClient() *dbus.Conn { return n.NotifierManager.DBusClient() }
+
+// contains checks if a slice contains a specific value.
+func contains(slice []string, value string) bool {
+	for _, item := range slice {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}
+
+// HTTPNotifier is a notifier that sends HTTP notifications.
+type HTTPNotifier struct {
+	NotifierImpl
+}
+
+// NewHTTPNotifier creates a new HTTPNotifier instance.
+func NewHTTPNotifier(webhookURL, authToken string) *HTTPNotifier {
+	notifier := &HTTPNotifier{
+		NotifierImpl: NotifierImpl{
+			EnabledFlag: true, // Habilitado por padrão
+			WebhookURL:  webhookURL,
+			AuthToken:   authToken,
+			HTTPMethod:  "POST",
+		},
+	}
+	// Inicializar NotifierManager padrão se necessário
+	if notifier.NotifierManager == nil {
+		notifier.NotifierManager = NewNotifierManager(nil)
+	}
+	return notifier
+}
+
+// Notify sends an HTTP notification.
+func (n *HTTPNotifier) Notify(entry LogzEntry) error {
+	if !n.EnabledFlag {
+		return nil
+	}
+
+	// Serializar a entrada como JSON
+	entryData := map[string]interface{}{
+		"timestamp": entry.GetTimestamp(),
+		"level":     entry.GetLevel(),
+		"message":   entry.GetMessage(),
+		"metadata":  entry.GetMetadata(),
+		"source":    entry.GetSource(),
+	}
+
+	jsonData, err := json.Marshal(entryData)
+	if err != nil {
+		return fmt.Errorf("HTTPNotifier JSON marshal error: %w", err)
+	}
+
+	req, err := http.NewRequest(n.HTTPMethod, n.WebhookURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("HTTPNotifier request creation error: %w", err)
+	}
+
+	if n.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+n.AuthToken)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("HTTPNotifier request error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("HTTPNotifier request failed with status: %s", resp.Status)
+	}
+	return nil
+}
+
+// WebSocketNotifier is a notifier that sends WebSocket notifications.
+type WebSocketNotifier struct {
+	NotifierImpl
+}
+
+// NewWebSocketNotifier creates a new WebSocketNotifier instance.
+func NewWebSocketNotifier(endpoint string) *WebSocketNotifier {
+	notifier := &WebSocketNotifier{
+		NotifierImpl: NotifierImpl{
+			EnabledFlag: true, // Habilitado por padrão
+			WsEndpoint:  endpoint,
+		},
+	}
+	// Inicializar NotifierManager padrão se necessário
+	if notifier.NotifierManager == nil {
+		notifier.NotifierManager = NewNotifierManager(nil)
+	}
+	return notifier
+}
+
+// Notify sends a WebSocket notification.
+func (n *WebSocketNotifier) Notify(entry LogzEntry) error {
+	if !n.EnabledFlag {
+		return nil
+	}
+	if n.WsEndpoint == "" {
+		return fmt.Errorf("WebSocket endpoint not configured")
+	}
+
+	// Conectar ao WebSocket
+	ws, _, err := websocket.DefaultDialer.Dial(n.WsEndpoint, nil)
+	if err != nil {
+		return fmt.Errorf("WebSocketNotifier dial error: %w", err)
+	}
+	defer ws.Close()
+
+	// Serializar a entrada como JSON
+	entryData := map[string]interface{}{
+		"timestamp": entry.GetTimestamp(),
+		"level":     entry.GetLevel(),
+		"message":   entry.GetMessage(),
+		"metadata":  entry.GetMetadata(),
+		"source":    entry.GetSource(),
+	}
+
+	jsonData, err := json.Marshal(entryData)
+	if err != nil {
+		return fmt.Errorf("WebSocketNotifier JSON marshal error: %w", err)
+	}
+
+	// Enviar mensagem
+	err = ws.WriteMessage(websocket.TextMessage, jsonData)
+	if err != nil {
+		return fmt.Errorf("WebSocketNotifier write error: %w", err)
+	}
+
+	return nil
+}
+
+// DBusNotifier is a notifier that sends DBus notifications.
+type DBusNotifier struct {
+	NotifierImpl
+}
+
+// NewDBusNotifier creates a new DBusNotifier instance.
+func NewDBusNotifier() *DBusNotifier {
+	notifier := &DBusNotifier{
+		NotifierImpl: NotifierImpl{
+			EnabledFlag: true, // Habilitado por padrão
+		},
+	}
+	// Inicializar NotifierManager padrão se necessário
+	if notifier.NotifierManager == nil {
+		notifier.NotifierManager = NewNotifierManager(nil)
+	}
+	return notifier
+}
+
+// Notify sends a DBus notification.
+func (n *DBusNotifier) Notify(entry LogzEntry) error {
+	if !n.EnabledFlag {
+		return nil
+	}
+
+	// Tentar conectar ao DBus
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		return fmt.Errorf("DBusNotifier connection error: %w", err)
+	}
+	defer conn.Close()
+
+	// Preparar dados da notificação
+	appName := "logz"
+	iconName := ""
+	summary := fmt.Sprintf("Log %s", entry.GetLevel())
+	body := entry.GetMessage()
+	actions := []string{}
+	hints := map[string]dbus.Variant{}
+	timeout := int32(5000)
+
+	// Enviar notificação
+	dbusObj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
+	call := dbusObj.Call("org.freedesktop.Notifications.Notify", 0,
+		appName, uint32(0), iconName, summary, body, actions, hints, timeout)
+
+	if call.Err != nil {
+		return fmt.Errorf("DBusNotifier call error: %w", call.Err)
+	}
+
+	return nil
+}
+
+func GetLogPath() string {
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		home, homeErr = os.UserConfigDir()
+		if homeErr != nil {
+			home, homeErr = os.UserCacheDir()
+			if homeErr != nil {
+				home = "/tmp"
+			}
+		}
+	}
+	configPath := filepath.Join(home, ".kubex", "logz", "VConfig.json")
+	if mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return ""
+	}
+	return configPath
+}
+
+/// internal/core/notifier_manager.go ///
+package core
+
+import (
+	"context"
+	"crypto/tls"
+	"net"
+	"time"
+
+	"github.com/godbus/dbus/v5"
+	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
+
+	"fmt"
+	"net/http"
+	"net/url"
+	"sync"
+)
+
+type NotifierWebSocketConfig struct {
+	TLSClientConfig  *tls.Config
+	HandshakeTimeout time.Duration
+	Jar              http.CookieJar
+
+	WriteBufferPool                 websocket.BufferPool
+	ReadBufferSize, WriteBufferSize int
+	Subprotocols                    []string
+
+	EnableCompression bool
+
+	NetDial           func(network, addr string) (net.Conn, error)
+	NetDialContext    func(ctx context.Context, network, addr string) (net.Conn, error)
+	NetDialTLSContext func(ctx context.Context, network, addr string) (net.Conn, error)
+	Proxy             func(*http.Request) (*url.URL, error)
+}
+
+// NotifierManager defines the interface for managing notifiers.
+type NotifierManager interface {
+	// WebServer returns the HTTP server instance.
+	WebServer() *http.Server
+
+	// Websocket returns the Gorilla WebSocket connection instance.
+	Websocket() *websocket.Conn
+
+	// WebClient returns the HTTP client instance.
+	WebClient() *http.Client
+
+	// DBusClient returns the DBus connection instance.
+	DBusClient() *dbus.Conn
+
+	// AddNotifier adds or updates a notifier with the given name.
+	AddNotifier(name string, notifier Notifier)
+
+	// RemoveNotifier removes the notifier with the given name.
+	RemoveNotifier(name string)
+
+	// GetNotifier retrieves the notifier with the given name.
+	GetNotifier(name string) (Notifier, bool)
+
+	// ListNotifiers lists all registered notifier names.
+	ListNotifiers() []string
+
+	// UpdateFromConfig updates notifiers dynamically based on the provided configuration.
+	UpdateFromConfig() error
+}
+
+// NotifierManagerImpl is the implementation of the NotifierManager interface.
+type NotifierManagerImpl struct {
+	webServer  *http.Server
+	websocket  *websocket.Conn
+	webClient  *http.Client
+	dbusClient *dbus.Conn
+	notifiers  map[string]Notifier
+	mu         sync.RWMutex
+}
+
+// NewNotifierManager creates a new instance of NotifierManagerImpl.
+func NewNotifierManager(notifiers map[string]Notifier) NotifierManager {
+	if notifiers == nil {
+		notifiers = make(map[string]Notifier)
+	}
+	return &NotifierManagerImpl{
+		notifiers: notifiers,
+	}
+}
+
+// AddNotifier adds or updates a notifier with the given name.
+func (nm *NotifierManagerImpl) AddNotifier(name string, notifier Notifier) {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	nm.notifiers[name] = notifier
+	fmt.Printf("Notifier '%s' added/updated.\n", name)
+}
+
+// RemoveNotifier removes the notifier with the given name.
+func (nm *NotifierManagerImpl) RemoveNotifier(name string) {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	delete(nm.notifiers, name)
+	fmt.Printf("Notifier '%s' removed.\n", name)
+}
+
+// GetNotifier retrieves the notifier with the given name.
+func (nm *NotifierManagerImpl) GetNotifier(name string) (Notifier, bool) {
+	nm.mu.RLock()
+	defer nm.mu.RUnlock()
+	notifier, ok := nm.notifiers[name]
+	return notifier, ok
+}
+
+// ListNotifiers lists all registered notifier names.
+func (nm *NotifierManagerImpl) ListNotifiers() []string {
+	nm.mu.RLock()
+	defer nm.mu.RUnlock()
+	keys := make([]string, 0, len(nm.notifiers))
+	for name := range nm.notifiers {
+		keys = append(keys, name)
+	}
+	return keys
+}
+
+// UpdateFromConfig updates notifiers dynamically based on the provided configuration.
+func (nm *NotifierManagerImpl) UpdateFromConfig() error {
+	var configNotifiers map[string]map[string]interface{}
+	if err := viper.UnmarshalKey("notifiers", &configNotifiers); err != nil {
+		return fmt.Errorf("failed to parse notifiers VConfig: %w", err)
+	}
+
+	// Update or recreate notifiers dynamically
+	for name, conf := range configNotifiers {
+		typ, ok := conf["type"].(string)
+		if !ok {
+			fmt.Printf("Notifier '%s' does not specify a type and will be ignored.\n", name)
+			continue
+		}
+
+		switch typ {
+		case "http":
+			webhookURL, _ := conf["webhookURL"].(string)
+			authToken, _ := conf["authToken"].(string)
+			notifier := NewHTTPNotifier(webhookURL, authToken)
+			nm.AddNotifier(name, notifier)
+		case "websocket":
+			endpoint, _ := conf["endpoint"].(string)
+			notifier := NewWebSocketNotifier(endpoint)
+			nm.AddNotifier(name, notifier)
+		case "dbus":
+			notifier := NewDBusNotifier()
+			nm.AddNotifier(name, notifier)
+		default:
+			fmt.Printf("Unknown notifier type '%s' for notifier '%s'.\n", typ, name)
+		}
+	}
+	return nil
+}
+
+// WebServer returns the HTTP server instance.
+func (nm *NotifierManagerImpl) WebServer() *http.Server {
+	if nm.webServer == nil {
+		nm.webServer = Server()
+	}
+	return nm.webServer
+}
+
+// Websocket returns the Gorilla WebSocket connection instance.
+// If the WebSocket connection is not initialized, it will create a new one.
+// If the connection fails, it will return nil and log the error.
+// This is useful for lazy initialization of the WebSocket connection.
+func (nm *NotifierManagerImpl) Websocket() *websocket.Conn {
+	if nm.websocket == nil {
+		var err error
+		dialer := websocket.Dialer{
+			// Configure the WebSocket dialer if needed
+		}
+		nm.websocket, _, err = dialer.Dial("ws://localhost:8080/ws", nil)
+		if err != nil {
+			fmt.Printf("Failed to initialize WebSocket: %v\n", err)
+			return nil
+		}
+	}
+	return nm.websocket
+}
+
+// WebClient returns the HTTP client instance.
+func (nm *NotifierManagerImpl) WebClient() *http.Client {
+	if nm.webClient == nil {
+		nm.webClient = Client()
+	}
+	return nm.webClient
+}
+
+// DBusClient returns the DBus connection instance.
+func (nm *NotifierManagerImpl) DBusClient() *dbus.Conn {
+	if nm.dbusClient == nil {
+		nm.dbusClient = DBus()
+	}
+	return nm.dbusClient
+}
+
+/// internal/core/prometheus.go ///
+package core
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+)
+
+// Regular expression to validate metric names
+var metricNameRegex = regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
+
+// validateMetricName checks if the given metric name is valid according to the Prometheus naming conventions.
+func validateMetricName(name string) error {
+	if !metricNameRegex.MatchString(name) {
+		return fmt.Errorf("invalid metric name '%s': must match [a-zA-Z_:][a-zA-Z0-9_:]*", name)
+	}
+	return nil
+}
+
+// Metric represents a single Prometheus metric with a value and optional VMetadata.
+type Metric struct {
+	Value    float64           `json:"value"`
+	Metadata map[string]string `json:"VMetadata,omitempty"`
+}
+
+// PrometheusManager manages Prometheus metrics, including enabling/disabling the HTTP server,
+// loading/saving metrics, and handling metric operations.
+type PrometheusManager struct {
+	enabled         bool
+	Metrics         map[string]Metric
+	mutex           sync.RWMutex
+	MetricsFile     string          // path to the persistence file
+	exportWhitelist map[string]bool // If not empty, only these metrics will be exported to Prometheus
+	httpServer      *http.Server    // HTTP server to expose metrics
+}
+
+// Singleton instance of PrometheusManager
+var prometheusManagerInstance *PrometheusManager
+
+// getMetricsFilePath returns the path to the metrics persistence file, using an environment variable if set,
+// or a default location in the user's cache directory.
+func getMetricsFilePath() string {
+	if envPath := os.Getenv("LOGZ_METRICS_FILE"); envPath != "" {
+		return envPath
+	}
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheDir = "/tmp"
+	}
+	dir := filepath.Join(cacheDir, "kubex", "logz")
+	_ = os.MkdirAll(dir, 0755)
+	return filepath.Join(dir, "metrics.json")
+}
+
+// GetPrometheusManager returns the singleton instance of PrometheusManager, initializing it if necessary.
+func GetPrometheusManager() *PrometheusManager {
+	if prometheusManagerInstance == nil {
+		prometheusManagerInstance = &PrometheusManager{
+			enabled:         false,
+			Metrics:         make(map[string]Metric),
+			MetricsFile:     getMetricsFilePath(),
+			exportWhitelist: make(map[string]bool),
+		}
+		if err := prometheusManagerInstance.LoadMetrics(); err != nil {
+			fmt.Printf("Warning: could not load metrics: %v\n", err)
+		}
+	}
+	return prometheusManagerInstance
+}
+
+// LoadMetrics loads metrics from the persistence file into the PrometheusManager instance.
+func (pm *PrometheusManager) LoadMetrics() error {
+	pm.mutex.Lock()
+	defer pm.mutex.Unlock()
+	data, err := os.ReadFile(pm.MetricsFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			pm.Metrics = make(map[string]Metric)
+			return nil
+		}
+		return err
+	}
+	var loaded map[string]Metric
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		return err
+	}
+	pm.Metrics = loaded
+	return nil
+}
+
+// SaveMetrics saves the current metrics to the persistence file.
+func (pm *PrometheusManager) SaveMetrics() error {
+	pm.mutex.RLock()
+	defer pm.mutex.RUnlock()
+	data, err := json.MarshalIndent(pm.Metrics, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(pm.MetricsFile, data, 0644)
+}
+
+// Enable starts the Prometheus HTTP server on the specified port to expose metrics.
+func (pm *PrometheusManager) Enable(port string) {
+	pm.mutex.Lock()
+	defer pm.mutex.Unlock()
+	if pm.enabled {
+		fmt.Println("Prometheus metrics are already enabled.")
+		return
+	}
+	pm.enabled = true
+
+	// Start the HTTP server to expose metrics
+	mux := http.NewServeMux()
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		metrics := pm.GetMetrics()
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		for name, value := range metrics {
+			_, fPrintFErr := fmt.Fprintf(w, "# TYPE %s gauge\n%s %f\n", name, name, value)
+			if fPrintFErr != nil {
+				return
+			}
+		}
+	})
+	pm.httpServer = &http.Server{
+		Addr:    fmt.Sprintf(":%s", port),
+		Handler: mux,
+	}
+	go func() {
+		if err := pm.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Printf("ErrorCtx starting Prometheus metrics server: %v\n", err)
+		}
+	}()
+	fmt.Println("Prometheus metrics enabled.")
+}
+
+// Disable stops the Prometheus HTTP server and disables metric exposure.
+func (pm *PrometheusManager) Disable() {
+	pm.mutex.Lock()
+	defer pm.mutex.Unlock()
+	if !pm.enabled {
+		fmt.Println("Prometheus metrics are already disabled.")
+		return
+	}
+	pm.enabled = false
+	if pm.httpServer != nil {
+		_ = pm.httpServer.Close()
+	}
+	fmt.Println("Prometheus metrics disabled.")
+}
+
+// GetMetrics returns the current metrics, filtered by the export whitelist if defined.
+func (pm *PrometheusManager) GetMetrics() map[string]float64 {
+	pm.mutex.RLock()
+	defer pm.mutex.RUnlock()
+	filteredMetrics := make(map[string]float64)
+	for name, metric := range pm.Metrics {
+		// Respect the exportWhitelist, if defined
+		if len(pm.exportWhitelist) > 0 && !pm.exportWhitelist[name] {
+			continue
+		}
+		filteredMetrics[name] = metric.Value
+	}
+	return filteredMetrics
+}
+
+// SetExportWhitelist sets the list of metrics that are allowed to be exported to Prometheus.
+func (pm *PrometheusManager) SetExportWhitelist(metrics []string) {
+	pm.mutex.Lock()
+	defer pm.mutex.Unlock()
+	pm.exportWhitelist = make(map[string]bool)
+	for _, m := range metrics {
+		pm.exportWhitelist[m] = true
+	}
+	fmt.Println("Export whitelist updated for Prometheus metrics.")
+}
+
+// IsEnabled returns whether the Prometheus metrics exposure is enabled.
+func (pm *PrometheusManager) IsEnabled() bool {
+	pm.mutex.RLock()
+	defer pm.mutex.RUnlock()
+	return pm.enabled
+}
+
+// AddMetric adds or updates a metric with the given name, value, and VMetadata.
+func (pm *PrometheusManager) AddMetric(name string, value float64, metadata map[string]string) {
+	if err := validateMetricName(name); err != nil {
+		fmt.Printf("ErrorCtx adding metric: %v\n", err)
+		return
+	}
+	pm.mutex.Lock()
+	pm.Metrics[name] = Metric{
+		Value:    value,
+		Metadata: metadata,
+	}
+	pm.mutex.Unlock()
+
+	fmt.Printf("Metric '%s' added/updated with value: %f\n", name, value)
+	if err := pm.SaveMetrics(); err != nil {
+		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
+	}
+}
+
+// RemoveMetric removes a metric with the given name.
+func (pm *PrometheusManager) RemoveMetric(name string) {
+	pm.mutex.Lock()
+	delete(pm.Metrics, name)
+	pm.mutex.Unlock()
+
+	fmt.Printf("Metric '%s' removed.\n", name)
+	if err := pm.SaveMetrics(); err != nil {
+		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
+	}
+}
+
+// IncrementMetric increments the value of a metric by the given delta.
+func (pm *PrometheusManager) IncrementMetric(name string, delta float64) {
+	if err := validateMetricName(name); err != nil {
+		fmt.Printf("ErrorCtx incrementing metric: %v\n", err)
+		return
+	}
+	pm.mutex.Lock()
+	metric, exists := pm.Metrics[name]
+	if !exists {
+		metric = Metric{Value: 0, Metadata: nil}
+	}
+	metric.Value += delta
+	pm.Metrics[name] = metric
+	pm.mutex.Unlock()
+
+	fmt.Printf("Metric '%s' incremented by %f, new value: %f\n", name, delta, metric.Value)
+	if err := pm.SaveMetrics(); err != nil {
+		fmt.Printf("ErrorCtx saving metrics: %v\n", err)
+	}
+}
+
+// ListMetrics prints all registered metrics to the console.
+func (pm *PrometheusManager) ListMetrics() {
+	pm.mutex.RLock()
+	defer pm.mutex.RUnlock()
+	if len(pm.Metrics) == 0 {
+		fmt.Println("No metrics registered.")
+		return
+	}
+	fmt.Println("Registered metrics:")
+	for name, metric := range pm.Metrics {
+		fmt.Printf("- %s: %f", name, metric.Value)
+		if len(metric.Metadata) > 0 {
+			metadataJSON, _ := json.Marshal(metric.Metadata)
+			fmt.Printf(" (VMetadata: %s)", string(metadataJSON))
+		}
+		fmt.Println()
+	}
+}
+
+// setPrometheusSysConfig configures the Prometheus system to scrape metrics from this application.
+func (pm *PrometheusManager) setPrometheusSysConfig() error {
+	// Logz specific configuration for Prometheus
+	prometheusConfig := `
+scrape_configs:
+  - job_name: 'logz'
+    static_configs:
+      - targets: ['localhost:2112']
+`
+
+	configFilePath := "/etc/prometheus/prometheus.yml"
+
+	// Check if the configuration file exists
+	_, err := os.Stat(configFilePath)
+	if os.IsNotExist(err) {
+		// Create the configuration file if it does not exist
+		if err := os.WriteFile(configFilePath, []byte(prometheusConfig), 0644); err != nil {
+			return fmt.Errorf("failed to create Prometheus configuration file: %w", err)
+		}
+		fmt.Println("Prometheus configuration file created successfully.")
+	} else if err == nil {
+		// Check if there is already a configuration for 'logz'
+		configContent, readErr := os.ReadFile(configFilePath)
+		if readErr != nil {
+			return fmt.Errorf("failed to read Prometheus configuration file: %w", readErr)
+		}
+
+		if strings.Contains(string(configContent), "job_name: 'logz'") {
+			fmt.Println("Prometheus configuration for 'logz' already exists.")
+		} else {
+			// Add the configuration to the existing file
+			f, openErr := os.OpenFile(configFilePath, os.O_APPEND|os.O_WRONLY, 0644)
+			if openErr != nil {
+				return fmt.Errorf("failed to open Prometheus configuration file: %w", openErr)
+			}
+			defer func(f *os.File) {
+				_ = f.Close()
+			}(f)
+
+			if _, writeErr := f.WriteString(prometheusConfig); writeErr != nil {
+				return fmt.Errorf("failed to append to Prometheus configuration file: %w", writeErr)
+			}
+			fmt.Println("Prometheus configuration for 'logz' added successfully.")
+		}
+	} else {
+		return fmt.Errorf("failed to check Prometheus configuration file: %w", err)
+	}
+
+	return nil
+}
+
+// initPrometheus initializes the Prometheus metrics and system configuration.
+func (pm *PrometheusManager) initPrometheus() error {
+	if !pm.IsEnabled() {
+		return fmt.Errorf("prometheus is not enabled")
+	}
+
+	defaultMetrics := []string{"infoCount", "warnCount", "errorCount", "debugCount", "successCount"}
+	for _, metric := range defaultMetrics {
+		if err := validateMetricName(metric); err != nil {
+			fmt.Printf("ErrorCtx initializing metric '%s': %v\n", metric, err)
+			continue
+		}
+		pm.AddMetric(metric, 0, nil) // Initialize with value 0 and no VMetadata
+	}
+
+	if err := pm.setPrometheusSysConfig(); err != nil {
+		return fmt.Errorf("failed to configure Prometheus system: %w", err)
+	}
+
+	fmt.Println("Prometheus initialized successfully with default metrics.")
+	return nil
+}
+
+/// internal/core/prometheus_test.go ///
+package core
+
+import (
+	"testing"
+)
+
+// TestPrometheusBasic testa funcionalidades básicas do Prometheus sem HTTP server
+func TestPrometheusBasic(t *testing.T) {
+	// Criar instância sem inicializar singleton global (evitar problemas)
+	pm := &PrometheusManager{
+		enabled:         false,
+		Metrics:         make(map[string]Metric),
+		exportWhitelist: make(map[string]bool),
+	}
+
+	// Testar adição de métricas
+	pm.AddMetric("test_counter", 42.0, map[string]string{"type": "test"})
+	pm.AddMetric("test_gauge", 3.14159, map[string]string{"unit": "float"})
+
+	// Testar incremento
+	pm.IncrementMetric("test_counter", 8.0)
+
+	// Obter métricas
+	metrics := pm.GetMetrics()
+
+	// Verificar valores
+	if metrics["test_counter"] != 50.0 {
+		t.Errorf("Expected test_counter to be 50.0, got %f", metrics["test_counter"])
+	}
+
+	if metrics["test_gauge"] != 3.14159 {
+		t.Errorf("Expected test_gauge to be 3.14159, got %f", metrics["test_gauge"])
+	}
+
+	// Testar remoção
+	pm.RemoveMetric("test_gauge")
+	updatedMetrics := pm.GetMetrics()
+
+	if _, exists := updatedMetrics["test_gauge"]; exists {
+		t.Error("test_gauge should have been removed")
+	}
+
+	t.Logf("Basic Prometheus metrics test completed successfully")
+}
+
+// TestPrometheusValidation testa validação de nomes de métricas
+func TestPrometheusValidation(t *testing.T) {
+	pm := &PrometheusManager{
+		enabled: false,
+		Metrics: make(map[string]Metric),
+	}
+
+	// Testar nomes válidos
+	validNames := []string{
+		"valid_metric",
+		"http_requests_total",
+		"cpu_usage_percent",
+		"_private_metric",
+		"metric_with_numbers_123",
+	}
+
+	for _, name := range validNames {
+		pm.AddMetric(name, 1.0, nil)
+		if _, exists := pm.Metrics[name]; !exists {
+			t.Errorf("Valid metric name '%s' was rejected", name)
+		}
+	}
+
+	// Testar nomes inválidos (devem ser rejeitados)
+	invalidNames := []string{
+		"123invalid",
+		"invalid-metric",
+		"invalid.metric",
+		"invalid metric",
+	}
+
+	initialCount := len(pm.Metrics)
+	for _, name := range invalidNames {
+		pm.AddMetric(name, 1.0, nil)
+	}
+
+	// Nenhuma métrica inválida deve ter sido adicionada
+	if len(pm.Metrics) != initialCount {
+		t.Errorf("Invalid metric names were accepted")
+	}
+
+	t.Logf("Prometheus validation test completed successfully")
+}
+
+// TestPrometheusWhitelist testa funcionalidade de whitelist
+func TestPrometheusWhitelist(t *testing.T) {
+	pm := &PrometheusManager{
+		enabled:         false,
+		Metrics:         make(map[string]Metric),
+		exportWhitelist: make(map[string]bool),
+	}
+
+	// Adicionar várias métricas
+	pm.AddMetric("metric_a", 1.0, nil)
+	pm.AddMetric("metric_b", 2.0, nil)
+	pm.AddMetric("metric_c", 3.0, nil)
+
+	// Definir whitelist para apenas duas métricas
+	pm.SetExportWhitelist([]string{"metric_a", "metric_c"})
+
+	// Obter métricas (deve respeitar whitelist)
+	metrics := pm.GetMetrics()
+
+	if len(metrics) != 2 {
+		t.Errorf("Expected 2 metrics in whitelist, got %d", len(metrics))
+	}
+
+	if _, exists := metrics["metric_a"]; !exists {
+		t.Error("metric_a should be in whitelist")
+	}
+
+	if _, exists := metrics["metric_c"]; !exists {
+		t.Error("metric_c should be in whitelist")
+	}
+
+	if _, exists := metrics["metric_b"]; exists {
+		t.Error("metric_b should not be in whitelist")
+	}
+
+	t.Logf("Prometheus whitelist test completed successfully")
+}
+
+/// internal/core/reader.go ///
+// Package core provides the core functionality for reading logs from files.
+package core
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"strconv"
+	"time"
+)
+
+// LogReader defines the contract for reading logs.
+type LogReader interface {
+	// Tail reads the log file in real-time and sends the new lines to the
+	// provided VWriter or prints them to the terminal. The operation can be interrupted
+	// by sending a signal through the stopChan channel.
+	Tail(filePath string, stopChan <-chan struct{}) error
+}
+
+// FileLogReader implements the LogReader interface by reading from a file.
+type FileLogReader struct {
+	// pollInterval is the polling interval to check for new lines.
+	pollInterval time.Duration
+}
+
+// NewFileLogReader creates a new instance of FileLogReader.
+// The polling interval is read from the LOGZ_TAIL_POLL_INTERVAL environment variable (in milliseconds),
+// or defaults to 500ms.
+func NewFileLogReader() *FileLogReader {
+	intervalMs := 500 // default in milliseconds
+	if val := os.Getenv("LOGZ_TAIL_POLL_INTERVAL"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
+			intervalMs = parsed
+		} else {
+			log.Printf("Invalid LOGZ_TAIL_POLL_INTERVAL value, using default 500ms: %v", err)
+		}
+	}
+	return &FileLogReader{
+		pollInterval: time.Duration(intervalMs) * time.Millisecond,
+	}
+}
+
+// Tail follows the log file from the end and prints new lines as they are added.
+// The stopChan channel allows interrupting the operation (e.g., via Ctrl+C).
+func (fr *FileLogReader) Tail(filePath string, stopChan <-chan struct{}) error {
+	// Open the log file
+	f, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %w", err)
+	}
+	defer f.Close()
+
+	// Position the pointer at the end of the file to read only new lines
+	_, err = f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return fmt.Errorf("failed to seek to the end of the file: %w", err)
+	}
+
+	reader := bufio.NewReader(f)
+
+	// Main loop to read new lines
+	for {
+		select {
+		case <-stopChan:
+			log.Println("Tail operation interrupted by stop signal")
+			return nil
+		default:
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					time.Sleep(fr.pollInterval)
+					continue
+				}
+				return fmt.Errorf("error reading log file: %w", err)
+			}
+			// Print the line immediately; can be adapted to send to another channel if needed.
+			fmt.Print(line)
+		}
+	}
+}
+
+/// internal/core/service.go ///
+package core
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/godbus/dbus/v5"
+	"github.com/spf13/viper"
+)
+
+const (
+	// pidFile is the name of the PID file used to track the running service.
+	pidFile = "logz_srv.pid"
+)
+
+var (
+	lSrv    *http.Server
+	lClient *http.Client
+	// Temporarily disabled due to external dependency on zmq4
+	// Uncomment and ensure the required libraries are installed if needed in the future
+	//lSocket      *zmq4.Socket
+	lDBus        *dbus.Conn
+	globalLogger LogzLogger // Global core for the service
+	startTime    = time.Now()
+	mu           sync.RWMutex
+)
+
+// Run starts the logging service.
+func Run() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Check if the service is already running to avoid multiple instances
+	if IsRunning() {
+		if stopErr := shutdown(); stopErr != nil {
+			return stopErr
+		}
+	}
+
+	// Initialize the ConfigManager and load the configuration
+	configManager := NewConfigManager()
+	if configManager == nil {
+		return errors.New("failed to initialize VConfig manager")
+	}
+	cfgMgr := *configManager
+
+	config, err := cfgMgr.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load VConfig: %w", err)
+	}
+
+	// Initialize the global core with the configuration
+	initializeGlobalLogger(config)
+
+	// Set up the HTTP server
+	mux := http.NewServeMux()
+	if err := registerHandlers(mux); err != nil {
+		return err
+	}
+
+	lSrv = &http.Server{
+		Addr:         config.Address(),
+		Handler:      loggingMiddleware(mux),
+		ReadTimeout:  config.ReadTimeout(),
+		WriteTimeout: config.WriteTimeout(),
+		IdleTimeout:  config.IdleTimeout(),
+	}
+
+	// Start the HTTP server
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		globalLogger.InfoCtx(fmt.Sprintf("Service running on %s", config.Address()), nil)
+		if err := lSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			globalLogger.ErrorCtx(fmt.Sprintf("Service encountered an error: %v", err), nil)
+		}
+	}()
+
+	<-stop
+	return shutdown()
+}
+
+// Start initiates the logging service on the specified port.
+func Start(port string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if IsRunning() {
+		return errors.New("service already running (pid file exists: " + getPidPath() + ")")
+	}
+
+	// Use Viper to load runtime configuration
+	vpr := viper.GetViper()
+	if vpr == nil {
+		return errors.New("viper not initialized")
+	}
+
+	cmd := exec.Command(os.Args[0], "service", "spawn", "-c", vpr.ConfigFileUsed())
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start service: %w", err)
+	}
+
+	file, err := os.OpenFile(getPidPath(), os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open PID file: %w", err)
+	}
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+
+	//if runtime.GOOS != "windows" {
+	//	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	//		return errors.New("another process is writing to the PID file")
+	//	}
+	//}
+
+	pid := cmd.Process.Pid
+	pidData := fmt.Sprintf("%d\n%s", pid, port)
+	if _, writeErr := file.Write([]byte(pidData)); writeErr != nil {
+		return fmt.Errorf("failed to write PID data: %w", writeErr)
+	}
+
+	globalLogger.InfoCtx(fmt.Sprintf("Service started with pid %d", pid), nil)
+	return nil
+}
+
+// Stop terminates the running logging service.
+func Stop() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	pid, port, pidPath, err := GetServiceInfo()
+	if err != nil {
+		return err
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("failed to find process: %w", err)
+	}
+
+	if err := process.Signal(syscall.SIGTERM); err != nil {
+		return fmt.Errorf("failed to stop process: %w", err)
+	}
+
+	time.Sleep(1 * time.Second)
+	if err := os.Remove(pidPath); err != nil {
+		return err
+	}
+
+	globalLogger.InfoCtx(fmt.Sprintf("Service with pid %d and port %s stopped", pid, port), nil)
+	return nil
+}
+
+// Server returns the HTTP server instance.
+func Server() *http.Server {
+	return lSrv
+}
+
+// Client returns the HTTP client instance.
+func Client() *http.Client {
+	if lClient == nil {
+		lClient = &http.Client{}
+	}
+	return lClient
+}
+
+// Temporarily disabled due to external dependency on zmq4
+// Uncomment and ensure the required libraries are installed if needed in the future
+// Socket returns the ZMQ socket instance.
+//func Socket() *zmq4.Socket {
+//	if lSocket == nil {
+//		lSocket, _ = zmq4.NewSocket(zmq4.PUB)
+//	}
+//	return lSocket
+//}
+
+// DBus returns the DBus connection instance.
+func DBus() *dbus.Conn {
+	if lDBus == nil {
+		lDBus, _ = dbus.SystemBus()
+	}
+	return lDBus
+}
+
+// getPidPath returns the path to the PID file.
+func getPidPath() string {
+	if envPath := os.Getenv("LOGZ_PID_PATH"); envPath != "" {
+		return envPath
+	}
+	cacheDir, cacheDirErr := os.UserCacheDir()
+	if cacheDirErr != nil {
+		cacheDir = "/tmp"
+	}
+	cacheDir = filepath.Join(cacheDir, "logz", pidFile)
+	if mkdirErr := os.MkdirAll(filepath.Dir(cacheDir), 0755); mkdirErr != nil && !os.IsExist(mkdirErr) {
+		return ""
+	}
+	return cacheDir
+}
+
+// IsRunning checks if the service is currently running.
+func IsRunning() bool {
+	_, err := os.Stat(getPidPath())
+	return err == nil
+}
+
+// GetServiceInfo retrieves the PID, port, and PID file path of the running service.
+func GetServiceInfo() (int, string, string, error) {
+	pidPath := getPidPath()
+
+	data, err := os.ReadFile(pidPath)
+	if err != nil {
+		return 0, "", "", os.ErrNotExist
+	}
+
+	lines := strings.Split(string(data), "\n")
+	pid, pidErr := strconv.Atoi(lines[0])
+	if pidErr != nil {
+		return 0, "", "", os.ErrInvalid
+	}
+
+	port := "unknown"
+	if len(lines) > 1 {
+		port = lines[1]
+	}
+
+	return pid, port, pidPath, nil
+}
+
+// registerHandlers registers HTTP handlers for the service.
+func registerHandlers(mux *http.ServeMux) error {
+	integrations := viper.GetStringMap("integrations")
+	if integrations == nil {
+		return errors.New("no integrations configured")
+	}
+
+	for path := range integrations {
+		if !viper.GetBool("integrations." + path + ".enabled") {
+			continue
+		}
+
+		healthPath, _ := url.JoinPath("/", path, "/health")
+		metricsPath, _ := url.JoinPath("/", path, "/metrics")
+		callbackPath, _ := url.JoinPath("/", path, "/receive")
+
+		mux.HandleFunc(healthPath, healthHandler)
+		mux.HandleFunc(metricsPath, metricsHandler)
+		mux.HandleFunc(callbackPath, callbackHandler)
+	}
+
+	return nil
+}
+
+// callbackHandler handles incoming callback requests.
+func callbackHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Limit the payload size to prevent abuse
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	var payload map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	if _, ok := payload["message"]; !ok {
+		http.Error(w, "Missing 'message' in payload", http.StatusBadRequest)
+		return
+	}
+
+	globalLogger.InfoCtx(fmt.Sprintf("Callback received: %v", payload), nil)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"success","message":"Callback processed"}`))
+}
+
+// healthHandler handles health check requests.
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	uptime := time.Since(startTime).String()
+	response := fmt.Sprintf("OK\nUptime: %s\n", uptime)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(response))
+}
+
+// metricsHandler handles metrics requests.
+func metricsHandler(w http.ResponseWriter, _ *http.Request) {
+	pm := GetPrometheusManager()
+	if !pm.IsEnabled() {
+		http.Error(w, "Prometheus integration is not enabled", http.StatusForbidden)
+		return
+	}
+
+	metrics := pm.GetMetrics()
+	if len(metrics) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+	for name, value := range metrics {
+		if _, err := fmt.Fprintf(w, "# HELP %s Custom metric from Logz\n# TYPE %s gauge\n%s %f\n", name, name, name, value); err != nil {
+			fmt.Println(fmt.Printf("ErrorCtx writing metric '%s': %v", name, err))
+		}
+	}
+}
+
+// loggingMiddleware logs incoming HTTP requests.
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Received %s request for %s from %s\n", r.Method, r.URL.Path, r.RemoteAddr)
+		next.ServeHTTP(w, r)
+	})
+}
+
+// shutdown gracefully shuts down the service.
+func shutdown() error {
+	globalLogger.InfoCtx("Shutting down service gracefully...", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := lSrv.Shutdown(ctx); err != nil {
+		globalLogger.ErrorCtx(fmt.Sprintf("Service shutdown failed: %v", err), nil)
+		return fmt.Errorf("shutdown process failed: %w", err)
+	}
+
+	globalLogger.InfoCtx("Service stopped gracefully.", nil)
+	return nil
+}
+
+// initializeGlobalLogger initializes the global core with the provided configuration.
+func initializeGlobalLogger(config Config) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if globalLogger == nil {
+		globalLogger = NewLogger("Logz")
+	}
+}
+
+/// internal/core/writer.go ///
+package core
+
+import (
+	"fmt"
+	"io"
+)
+
+// LogWriter defines the contract for writing logs.
+type LogWriter[T any] interface {
+	Write(entry T) error
+}
+
+// DefaultWriter is a generic writer that implements the LogWriter interface.
+// It can write log entries of any type T to an io.Writer.
+// It uses a LogFormatter to format the log entries before writing them.
+type DefaultWriter[T any] struct {
+	out       io.Writer
+	formatter LogFormatter
+}
+
+// NewDefaultWriter cria um novo VWriter usando generics.
+func NewDefaultWriter[T any](out io.Writer, formatter LogFormatter) *DefaultWriter[T] {
+	return &DefaultWriter[T]{
+		out:       out,
+		formatter: formatter,
+	}
+}
+
+// Write aceita qualquer tipo de entrada T e a processa.
+func (w *DefaultWriter[T]) Write(entry T) error {
+	var formatted string
+	var err error
+
+	// Verifique se a entrada é do tipo LogzEntry
+	switch v := any(entry).(type) {
+	case LogzEntry:
+		formatted, err = w.formatter.Format(v)
+	case []byte:
+		// Converta o []byte em LogzEntry antes de formatar (exemplo simplificado)
+		entry := NewLogEntry().WithMessage(string(v))
+		formatted, err = w.formatter.Format(entry)
+	default:
+		return fmt.Errorf("unsupported log entry type: %T", entry)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintln(w.out, formatted)
+	return err
+}
+
+// formatMetadata converts VMetadata to a JSON string.
+// Returns the JSON string or an empty string if marshalling fails.
+func formatMetadata(entry LogzEntry) string {
+	metadata := entry.GetMetadata()
+	if len(metadata) == 0 {
+		return ""
+	}
+	prefix := "Context:\n"
+	for k, v := range metadata {
+		if k == "showContext" {
+			continue
+		}
+		prefix += fmt.Sprintf("  - %s: %v\n", k, v)
+	}
+	return prefix
+}
+
+/// internal/utils/logz_table.go ///
+// Package utils provides utility functions for handling tables.
+package utils
+
+import (
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
+
+	"os"
+	"path/filepath"
+)
+
+// Table represents a simple table.
+type Table struct {
+	data [][]string
+}
+
+// NewTable creates a new simple table.
+func NewTable(data [][]string) Table {
+	return Table{data}
+}
+
+func getDefaultConfig() *tablewriter.Config {
+	config := tablewriter.NewConfigBuilder().
+		WithAutoHide(tw.On).
+		WithHeaderAlignment(tw.AlignLeft).
+		WithRowAlignment(tw.AlignLeft).
+		Build()
+
+	return &config
+}
+
+// PrintTable prints the simple table in the shell with side and vertical borders.
+func (t Table) PrintTable() {
+	config := getDefaultConfig()
+
+	table := tablewriter.NewTable(
+		os.Stdout,
+		tablewriter.WithConfig(*config),
+	)
+
+	for _, row := range t.data {
+		table.Append(row)
+	}
+
+	table.Render()
+}
+
+// FormattedTable represents a formatted table.
+type FormattedTable struct {
+	data   [][]string
+	header []string
+}
+
+// NewFormattedTable creates a new formatted table.
+func NewFormattedTable(header []string, data [][]string) FormattedTable {
+	return FormattedTable{header: header, data: data}
+}
+
+// SaveFormattedTable saves the formatted table to a file.
+func (ft FormattedTable) SaveFormattedTable(filename string) error {
+	file, err := os.Create(filepath.Clean(filename))
+	if err != nil {
+		return err
+	}
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+
+	table := tablewriter.NewWriter(file)
+
+	table.Header(ft.header)
+
+	for _, row := range ft.data {
+		table.Append(row)
+	}
+	table.Render()
+	return nil
+}
+
+/// logger/loggz.go ///
+// Package logger provides a unified interface for logging with various configurations and formats.
+package logger
+
+import (
+	"log"
+	"os"
+
+	il "github.com/kubex-ecosystem/logz/internal/core"
+)
+
+// LogLevel represents the level of the log entry.
+type LogLevel = il.LogLevel
+
+// LogFormat represents the format of the log entry.
+type LogFormat = il.LogFormat
+
+// LogWriter represents the writer of the log entry.
+type LogWriter[T any] interface{ il.LogWriter[T] }
+
+// Config represents the configuration of the il.
+type Config interface{ il.Config }
+
+// LogzEntry represents a single log entry with various attributes.
+type LogzEntry interface{ il.LogzEntry }
+
+// LogFormatter defines the contract for formatting log entries.
+type LogFormatter interface{ il.LogFormatter }
+
+type LogzCore interface{ il.LogzCore }
+
+type LogzLogger interface{ il.LogzLogger }
+
+type Logger struct {
+	// il.LogzCoreImpl is the logz core logger
+	log.Logger
+	// il.LogzLogger is the logz logger
+	LogzLogger
+}
+
+// logzLogger is the implementation of the LoggerInterface, unifying the new LogzCoreImpl and the old one.
+type logzLogger struct {
+	// logger is the logz logger.
+	//logger LogzLogger
+	*Logger
+
+	//il.LogzLogger
+
+	// coreLogger is the LogzCore logger.
+	//LogzCore
+}
+
+// NewLogger creates a new instance of logzLogger with an optional prefix.
+func NewLogger(prefix string) LogzLogger {
+	lgzR := &Logger{
+		*log.New(
+			os.Stdout,
+			prefix,
+			log.LstdFlags,
+		),
+		il.NewLogger(prefix),
+	}
+	lgz := &logzLogger{
+		lgzR,
+	}
+	lgz.SetPrefix(prefix)
+	lgz.SetFlags(log.LstdFlags)
+	lgz.SetOutput(os.Stdout)
+	lgz.SetLevel(il.INFO)
+	return lgz
+}
+
+func NewDefaultWriter(out *os.File, formatter LogFormatter) *il.DefaultWriter[any] {
+	return il.NewDefaultWriter[any](out, formatter)
+}
+
+/// logz.go ///
+// Package logz provides a global logging utility with configurable settings.
+package logz
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"sync"
+
+	"github.com/kubex-ecosystem/logz/internal/core"
+	logz "github.com/kubex-ecosystem/logz/logger"
+	vs "github.com/kubex-ecosystem/logz/version"
+)
+
+var (
+	pfx    = "Logz" // Default prefix
+	logger Logger   // Global logger instance
+	//mu             sync.RWMutex // Mutex for concurrency control
+	once           sync.Once // Ensure single initialization
+	versionService vs.Service
+)
+
+type LogLevel = core.LogLevel
+type LogFormat = core.LogFormat
+
+type Config interface{ core.Config }
+
+// type ConfigManager interface{ core.LogzConfigManager }
+
+type NotifierManager interface{ core.NotifierManager }
+type Notifier interface{ core.Notifier }
+type Logger interface{ logz.LogzLogger }
+
+type JSONFormatter = core.JSONFormatter
+type TextFormatter = core.TextFormatter
+
+type Writer struct{ core.LogWriter[any] }
+
+func (w Writer) Write(p []byte) (n int, err error) {
+	var decodedMessage map[string]interface{}
+	if jsonErr := json.Unmarshal(p, &decodedMessage); jsonErr == nil {
+		entry := core.NewLogEntry().
+			WithMessage(decodedMessage["message"].(string)).
+			WithLevel(GetLogLevel()).
+			AddMetadata("original", decodedMessage)
+
+		writeErr := w.LogWriter.Write(entry)
+		if writeErr != nil {
+			return 0, writeErr
+		}
+	} else {
+		entry := core.NewLogEntry().
+			WithMessage(string(p)).
+			WithLevel(GetLogLevel())
+		writeErr := w.LogWriter.Write(entry)
+		if writeErr != nil {
+			return 0, writeErr
+		}
+	}
+
+	return len(p), nil
+}
+
+// SetLogWriter sets the log writer for the global core.
+func SetLogWriter(writer interface{}) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	if logger != nil {
+		nWriter := core.NewDefaultWriter[any](writer.(Writer), &TextFormatter{})
+		logger.SetWriter(nWriter)
+	}
+}
+
+// GetLogWriter returns the log writer of the global core.
+func GetLogWriter() *Writer {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger == nil {
+		return nil
+	}
+	writer := logger.GetWriter().(logz.LogWriter[any])
+	return &Writer{LogWriter: writer}
+}
+
+func NewWriter(out *os.File, formatter core.LogFormatter) Writer {
+	if out == nil {
+		out = os.Stdout
+	}
+	return Writer{LogWriter: core.NewDefaultWriter[any](out, formatter)}
+}
+
+// initializeLogger initializes the global logger with the given prefix.
+func initializeLogger(prefix string) {
+	//	once.Do(func() {
+	if prefix == "" {
+		prefix = pfx
+	}
+	if logger != nil {
+		return
+	}
+
+	logger = logz.NewLogger(prefix).(Logger)
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel != "" {
+		logger.SetLevel(core.LogLevel(logLevel))
+	} else {
+		logger.SetLevel(core.INFO)
+	}
+
+	logFormat := os.Getenv("LOG_FORMAT")
+	//config := logger.GetConfig().(*core.Config)
+	if logFormat != "" {
+		logger.SetFormat(core.LogFormat(logFormat))
+		// } else {
+		// 	//logger.GetConfig().SetFormat(core.TEXT)
+	}
+
+	// logOutput := os.Getenv("LOG_OUTPUT")
+	// if logOutput != "" {
+	//logger.GetConfig().SetOutput(logOutput)
+	// } else {
+	//logger.GetConfig().SetOutput(os.Stdout.Name())
+	// }
+	//	})
+}
+
+// GetLogger returns the global core instance, initializing it if necessary.
+func GetLogger(prefix string) Logger {
+	initializeLogger(prefix)
+
+	////mu.RLock()
+	//defer mu.RUnlock()
+	return logger
+}
+
+// NewLogger creates a new core instance with the given prefix.
+func NewLogger(prefix string) Logger {
+	return logz.NewLogger(prefix)
+}
+
+// SetLogger sets the global core instance to the provided core.
+func SetLogger(newLogger Logger) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	logger = newLogger
+}
+
+// SetPrefix sets the global prefix for the core.
+func SetPrefix(prefix string) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	pfx = prefix
+}
+
+// GetPrefix returns the global prefix for the core.
+func GetPrefix() string {
+	////mu.RLock()
+	//defer mu.RUnlock()
+	return pfx
+}
+
+// SetLogLevel sets the log level for the global core.
+func SetLogLevel(level LogLevel) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	if logger != nil {
+		logger.SetLevel(level)
+	}
+}
+
+// GetLogLevel returns the log level of the global core.
+func GetLogLevel() LogLevel {
+	if logger == nil {
+		return core.DEBUG
+	}
+	return LogLevel(logger.GetLevel().(string))
+}
+
+// SetLogConfig sets the configuration for the global core.
+func SetLogConfig(config Config) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	if logger != nil {
+		logger.SetConfig(config)
+	}
+}
+
+// GetLogConfig returns the configuration of the global core.
+func GetLogConfig() Config {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger == nil {
+		return nil
+	}
+	return logger.GetConfig().(core.Config)
+}
+
+// SetMetadata sets a metadata key-value pair for the global core.
+func SetMetadata(key string, value interface{}) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	if logger != nil {
+		logger.SetMetadata(key, value)
+	}
+}
+
+// Trace logs a trace message with the given context.
+
+func TraceCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.TraceCtx(msg, ctx)
+	}
+}
+
+// Notice logs a notice message with the given context.
+
+func NoticeCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.NoticeCtx(msg, ctx)
+	}
+}
+
+// Success logs a success message with the given context.
+
+func SuccessCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.SuccessCtx(msg, ctx)
+	}
+}
+
+// Debug logs a debug message with the given context.
+
+func DebugCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.DebugCtx(msg, ctx)
+	}
+}
+
+// InfoCtx logs an info message with the given context.
+
+func InfoCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.InfoCtx(msg, ctx)
+	}
+}
+
+// Warn logs a warning message with the given context.
+
+func WarnCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.WarnCtx(msg, ctx)
+	}
+}
+
+// Error logs an error message with the given context.
+
+func ErrorCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.ErrorCtx(msg, ctx)
+	}
+}
+
+// FatalC logs a fatal message with the given context and exits the application.
+
+func FatalCtx(msg string, ctx map[string]interface{}) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger != nil {
+		logger.FatalCtx(msg, ctx)
+	}
+}
+
+// AddNotifier adds a notifier to the global core's configuration.
+
+func AddNotifier(name string, notifier Notifier) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	if logger != nil {
+		logger.
+			GetConfig() /*.
+			NotifierManager().
+			AddNotifier(name, notifier)*/
+	}
+}
+
+// GetNotifier returns the notifier with the given name from the global core's configuration.
+
+func GetNotifier(name string) (interface{}, bool) { //(Notifier, bool) {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger == nil {
+		return nil, false
+	}
+	return logger.GetConfig(), true
+}
+
+// ListNotifiers returns a list of all notifier names in the global core's configuration.
+func ListNotifiers() []string {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger == nil {
+		return nil
+	}
+	return nil /*logger.
+	GetConfig().
+	NotifierManager().
+	ListNotifiers()*/
+}
+
+// SetLogFormat sets the log format for the global core.
+func SetLogFormat(format LogFormat) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	// if logger != nil {
+	// 	/*logger.
+	// 	GetConfig().
+	// 	SetFormat(format)*/
+	// }
+}
+
+// GetLogFormat returns the log format of the global core.
+func GetLogFormat() string {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger == nil {
+		return "text"
+	}
+	cfg := logger.GetConfig()
+	if cfg == nil {
+		return "text"
+	} else {
+		return "json"
+	}
+
+	//return logger.GetConfig().Format()
+}
+
+// SetLogOutput sets the log output for the global core.
+func SetLogOutput(output string) {
+	//mu.Lock()
+	//defer mu.Unlock()
+	if logger != nil {
+		cfg := logger.GetConfig()
+		ccc := cfg.(*core.Config)
+		cc := *ccc
+		cc.SetOutput(output)
+		logger.SetConfig(ccc)
+
+	}
+}
+
+// GetLogOutput returns the log output of the global core.
+func GetLogOutput() string {
+	//mu.RLock()
+	//defer mu.RUnlock()
+	if logger == nil {
+		return os.Stdout.Name()
+	}
+	cfg := logger.GetConfig()
+	if cfg == nil {
+		return os.Stdout.Name()
+	} else {
+		return cfg.(core.Config).Output()
+	}
+}
+
+// CheckVersion checks the version of the core.
+func CheckVersion() string {
+	if versionService == nil {
+		versionService = vs.NewVersionService()
+	}
+	if isLatest, err := versionService.IsLatestVersion(); err != nil {
+		return "error checking version"
+	} else {
+		if isLatest {
+			return "latest version"
+		}
+	}
+	if latestVersion, err := versionService.GetLatestVersion(); err != nil {
+		return "error getting latest version"
+	} else {
+		return fmt.Sprintf("latest version: %s\nYou are using version: %s", latestVersion, versionService.GetCurrentVersion())
+	}
+}
+
+// Version returns the current version of the core.
+func Version() string {
+	if versionService == nil {
+		versionService = vs.NewVersionService()
+	}
+	return versionService.GetCurrentVersion()
+}
+
+// Info returns the log output of the global core.
+func Info(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.InfoCtx(fmt.Sprint(args...), nil)
+}
+
+// Debug returns the log output of the global core.
+func Debug(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.DebugCtx(fmt.Sprint(args...), nil)
+}
+
+// Warn returns the log output of the global core.
+func Warn(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.WarnCtx(fmt.Sprint(args...), nil)
+}
+
+// Error returns the log output of the global core.
+func Error(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.ErrorCtx(fmt.Sprint(args...), nil)
+}
+
+// Fatal returns the log output of the global core.
+func Fatal(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.FatalCtx(fmt.Sprint(args...), nil)
+}
+
+// Trace returns the log output of the global core.
+func Trace(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.TraceCtx(fmt.Sprint(args...), nil)
+}
+
+// Notice returns the log output of the global core.
+func Notice(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.NoticeCtx(fmt.Sprint(args...), nil)
+}
+
+// Success returns the log output of the global core.
+func Success(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.SuccessCtx(fmt.Sprint(args...), nil)
+}
+
+// Panic returns the log output of the global core.
+func Panic(args ...any) {
+	if logger == nil {
+		logger = logz.NewLogger(pfx)
+	}
+	logger.FatalCtx(fmt.Sprint(args...), nil)
+}
+
+/// tests/integration_test.go ///
+package core
+
+//func TestIntegrationLogger(t *testing.T) {
+//	configManager := NewConfigManager()
+//	if configManager == nil {
+//		t.Fatal("ErrorCtx initializing ConfigManager.")
+//	}
+//	cfgMgr := *configManager
+//	config, err := cfgMgr.LoadConfig()
+//	if err != nil {
+//		t.Fatalf("ErrorCtx loading configuration: %v", err)
+//	}
+//	logger := NewLogger(config)
+//	if logger == nil {
+//		t.Fatal("ErrorCtx creating core.")
+//	}
+//
+//	var buf bytes.Buffer
+//	logger.SetWriter(NewDefaultWriter(&buf, &TextFormatter{}))
+//
+//	logger.DebugCtx("debug message", nil)
+//	if !bytes.Contains(buf.Bytes(), []byte("DEBUG")) {
+//		t.Errorf("Expected 'DEBUG' log entry, got '%s'", buf.String())
+//	}
+//
+//	logger.InfoCtx("info message", nil)
+//	if !bytes.Contains(buf.Bytes(), []byte("INFO")) {
+//		t.Errorf("Expected 'INFO' log entry, got '%s'", buf.String())
+//	}
+//
+//	logger.WarnCtx("warn message", nil)
+//	if !bytes.Contains(buf.Bytes(), []byte("WARN")) {
+//		t.Errorf("Expected 'WARN' log entry, got '%s'", buf.String())
+//	}
+//
+//	logger.ErrorCtx("error message", nil)
+//	if !bytes.Contains(buf.Bytes(), []byte("ERROR")) {
+//		t.Errorf("Expected 'ERROR' log entry, got '%s'", buf.String())
+//	}
+//}
+//
+//func TestIntegrationConcurrentAccess(t *testing.T) {
+//	configManager := NewConfigManager()
+//	if configManager == nil {
+//		t.Fatal("ErrorCtx initializing ConfigManager.")
+//	}
+//	cfgMgr := *configManager
+//	config, err := cfgMgr.LoadConfig()
+//	if err != nil {
+//		t.Fatalf("ErrorCtx loading configuration: %v", err)
+//	}
+//	logger := NewLogger(config)
+//	if logger == nil {
+//		t.Fatal("ErrorCtx creating core.")
+//	}
+//
+//	var wg sync.WaitGroup
+//	for i := 0; i < 100; i++ {
+//		wg.Add(1)
+//		go func(i int) {
+//			defer wg.Done()
+//			logger.SetMetadata("key", i)
+//			logger.DebugCtx("concurrent message", nil)
+//		}(i)
+//	}
+//	wg.Wait()
+//}
+//
+//func TestIntegrationLogRotation(t *testing.T) {
+//	configManager := NewConfigManager()
+//	if configManager == nil {
+//		t.Fatal("ErrorCtx initializing ConfigManager.")
+//	}
+//	cfgMgr := *configManager
+//	config, err := cfgMgr.LoadConfig()
+//	if err != nil {
+//		t.Fatalf("ErrorCtx loading configuration: %v", err)
+//	}
+//	logger := NewLogger(config)
+//	if logger == nil {
+//		t.Fatal("ErrorCtx creating core.")
+//	}
+//
+//	logFile := config.Output()
+//	defer os.Remove(logFile)
+//
+//	for i := 0; i < 1000; i++ {
+//		logger.InfoCtx("log rotation test message", nil)
+//	}
+//
+//	err = CheckLogSize(config)
+//	if err != nil {
+//		t.Fatalf("ErrorCtx checking log size: %v", err)
+//	}
+//
+//	_, err = os.Stat(logFile + ".tar.gz")
+//	if os.IsNotExist(err) {
+//		t.Errorf("Expected log rotation to create archive, but it did not.")
+//	}
+//}
+//
+//func TestIntegrationDynamicConfigChanges(t *testing.T) {
+//	configManager := NewConfigManager()
+//	if configManager == nil {
+//		t.Fatal("ErrorCtx initializing ConfigManager.")
+//	}
+//	cfgMgr := *configManager
+//	config, err := cfgMgr.LoadConfig()
+//	if err != nil {
+//		t.Fatalf("ErrorCtx loading configuration: %v", err)
+//	}
+//	logger := NewLogger(config)
+//	if logger == nil {
+//		t.Fatal("ErrorCtx creating core.")
+//	}
+//
+//	viper.Set("logLevel", "DEBUG")
+//	time.Sleep(1 * time.Second)
+//
+//	if logger.GetLevel() != DEBUG {
+//		t.Errorf("Expected log VLevel to be 'DEBUG', got '%v'", logger.GetLevel())
+//	}
+//}
+//
+//func TestIntegrationNotifierManager(t *testing.T) {
+//	configManager := NewConfigManager()
+//	if configManager == nil {
+//		t.Fatal("ErrorCtx initializing ConfigManager.")
+//	}
+//	cfgMgr := *configManager
+//	config, err := cfgMgr.LoadConfig()
+//	if err != nil {
+//		t.Fatalf("ErrorCtx loading configuration: %v", err)
+//	}
+//	logger := NewLogger(config)
+//	if logger == nil {
+//		t.Fatal("ErrorCtx creating core.")
+//	}
+//
+//	notifierManager := config.NotifierManager()
+//	if notifierManager == nil {
+//		t.Fatal("ErrorCtx initializing NotifierManager.")
+//	}
+//
+//	notifierManager.AddNotifier("testNotifier", NewHTTPNotifier("http://example.com", ""))
+//	if _, ok := notifierManager.GetNotifier("testNotifier"); !ok {
+//		t.Errorf("Expected 'testNotifier' to be added, but it was not.")
+//	}
+//
+//	notifierManager.RemoveNotifier("testNotifier")
+//	if _, ok := notifierManager.GetNotifier("testNotifier"); ok {
+//		t.Errorf("Expected 'testNotifier' to be removed, but it was not.")
+//	}
+//}
+//
+//func TestIntegrationService(t *testing.T) {
+//	go func() {
+//		if err := Run(); err != nil {
+//			t.Fatalf("ErrorCtx running service: %v", err)
+//		}
+//	}()
+//	time.Sleep(1 * time.Second)
+//
+//	resp, err := http.Get("http://localhost:9999/health")
+//	if err != nil {
+//		t.Fatalf("ErrorCtx making HTTP request: %v", err)
+//	}
+//	defer resp.Body.Close()
+//
+//	if resp.StatusCode != http.StatusOK {
+//		t.Errorf("Expected status code 200, got %d", resp.StatusCode)
+//	}
+//
+//	if err := Stop(); err != nil {
+//		t.Fatalf("ErrorCtx stopping service: %v", err)
+//	}
+//}
+
+/// tests/logger_test.go ///
+package core
+
+/*func TestNewLogger(t *testing.T) {
+	configManager := NewConfigManager()
+	if configManager == nil {
+		t.Fatal("ErrorCtx initializing ConfigManager.")
+	}
+	cfgMgr := *configManager
+	config, err := cfgMgr.LoadConfig()
+	if err != nil {
+		t.Fatalf("ErrorCtx loading configuration: %v", err)
+	}
+	logger := NewLogger(config)
+	if logger == nil {
+		t.Fatal("ErrorCtx creating core.")
+	}
+}
+
+func TestSetMetadata(t *testing.T) {
+	configManager := NewConfigManager()
+	if configManager == nil {
+		t.Fatal("ErrorCtx initializing ConfigManager.")
+	}
+	cfgMgr := *configManager
+	config, err := cfgMgr.LoadConfig()
+	if err != nil {
+		t.Fatalf("ErrorCtx loading configuration: %v", err)
+	}
+	logger := NewLogger(config)
+	if logger == nil {
+		t.Fatal("ErrorCtx creating core.")
+	}
+
+	logger.SetMetadata("key", "value")
+	if logger.metadata["key"] != "value" {
+		t.Errorf("Expected VMetadata 'key' to be 'value', got '%v'", logger.metadata["key"])
+	}
+}
+
+func TestLogMethods(t *testing.T) {
+	configManager := NewConfigManager()
+	if configManager == nil {
+		t.Fatal("ErrorCtx initializing ConfigManager.")
+	}
+	cfgMgr := *configManager
+	config, err := cfgMgr.LoadConfig()
+	if err != nil {
+		t.Fatalf("ErrorCtx loading configuration: %v", err)
+	}
+	logger := NewLogger(config)
+	if logger == nil {
+		t.Fatal("ErrorCtx creating core.")
+	}
+
+	var buf bytes.Buffer
+	logger.SetWriter(NewDefaultWriter[any](&buf, &TextFormatter{}))
+
+	logger.DebugCtx("debug message", nil)
+	if !bytes.Contains(buf.Bytes(), []byte("DEBUG")) {
+		t.Errorf("Expected 'DEBUG' log entry, got '%s'", buf.String())
+	}
+
+	logger.InfoCtx("info message", nil)
+	if !bytes.Contains(buf.Bytes(), []byte("INFO")) {
+		t.Errorf("Expected 'INFO' log entry, got '%s'", buf.String())
+	}
+
+	logger.WarnCtx("warn message", nil)
+	if !bytes.Contains(buf.Bytes(), []byte("WARN")) {
+		t.Errorf("Expected 'WARN' log entry, got '%s'", buf.String())
+	}
+
+	logger.ErrorCtx("error message", nil)
+	if !bytes.Contains(buf.Bytes(), []byte("ERROR")) {
+		t.Errorf("Expected 'ERROR' log entry, got '%s'", buf.String())
+	}
+}
+
+func TestConcurrentAccess(t *testing.T) {
+	configManager := NewConfigManager()
+	if configManager == nil {
+		t.Fatal("ErrorCtx initializing ConfigManager.")
+	}
+	cfgMgr := *configManager
+	config, err := cfgMgr.LoadConfig()
+	if err != nil {
+		t.Fatalf("ErrorCtx loading configuration: %v", err)
+	}
+	logger := NewLogger(config)
+	if logger == nil {
+		t.Fatal("ErrorCtx creating core.")
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			logger.SetMetadata("key", i)
+			logger.DebugCtx("concurrent message", nil)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func TestLogRotation(t *testing.T) {
+	configManager := NewConfigManager()
+	if configManager == nil {
+		t.Fatal("ErrorCtx initializing ConfigManager.")
+	}
+	cfgMgr := *configManager
+	config, err := cfgMgr.LoadConfig()
+	if err != nil {
+		t.Fatalf("ErrorCtx loading configuration: %v", err)
+	}
+	logger := NewLogger(config)
+	if logger == nil {
+		t.Fatal("ErrorCtx creating core.")
+	}
+
+	logFile := config.Output()
+	defer os.Remove(logFile)
+
+	for i := 0; i < 1000; i++ {
+		logger.InfoCtx("log rotation test message", nil)
+	}
+
+	err = CheckLogSize(config)
+	if err != nil {
+		t.Fatalf("ErrorCtx checking log size: %v", err)
+	}
+
+	_, err = os.Stat(logFile + ".tar.gz")
+	if os.IsNotExist(err) {
+		t.Errorf("Expected log rotation to create archive, but it did not.")
+	}
+}
+
+func TestDynamicConfigChanges(t *testing.T) {
+	configManager := NewConfigManager()
+	if configManager == nil {
+		t.Fatal("ErrorCtx initializing ConfigManager.")
+	}
+	cfgMgr := *configManager
+	config, err := cfgMgr.LoadConfig()
+	if err != nil {
+		t.Fatalf("ErrorCtx loading configuration: %v", err)
+	}
+	logger := NewLogger(config)
+	if logger == nil {
+		t.Fatal("ErrorCtx creating core.")
+	}
+
+	viper.Set("logLevel", "DEBUG")
+	time.Sleep(1 * time.Second)
+
+	if logger.GetLevel() != DEBUG {
+		t.Errorf("Expected log VLevel to be 'DEBUG', got '%v'", logger.GetLevel())
+	}
+}
+*/
+
+/// version/semantic.go ///
+// Package version provides functionality to manage and check the version of the Kubex Horizon CLI tool.
+// It includes methods to retrieve the current version, check for the latest version,
+package version
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	manifest "github.com/kubex-ecosystem/logz/info"
+	"github.com/kubex-ecosystem/logz/logger"
+	"github.com/spf13/cobra"
+)
+
+var gl = logger.NewLogger("Logz")
+var (
+	info manifest.Manifest
+	vrs  Service
+	err  error
+)
+
+func init() {
+	if info == nil {
+		info, err = manifest.GetManifest()
+		if err != nil {
+			gl.ErrorCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{
+				"error": err,
+			})
+		}
+	}
+}
+
+type Service interface {
+	// GetLatestVersion retrieves the latest version from the Git repository.
+	GetLatestVersion() (string, error)
+	// GetCurrentVersion returns the current version of the service.
+	GetCurrentVersion() string
+	// IsLatestVersion checks if the current version is the latest version.
+	IsLatestVersion() (bool, error)
+	// GetName returns the name of the service.
+	GetName() string
+	// GetVersion returns the current version of the service.
+	GetVersion() string
+	// GetRepository returns the Git repository URL of the service.
+	GetRepository() string
+	// setLastCheckedAt sets the last checked time for the version.
+	setLastCheckedAt(time.Time)
+	// updateLatestVersion updates the latest version from the Git repository.
+	updateLatestVersion() error
+}
+type ServiceImpl struct {
+	manifest.Manifest
+	gitModelURL    string
+	latestVersion  string
+	lastCheckedAt  time.Time
+	currentVersion string
+}
+
+func init() {
+	if info == nil {
+		var err error
+		info, err = manifest.GetManifest()
+		if err != nil {
+			gl.ErrorCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{
+				"error": err,
+			})
+		}
+	}
+	if vrs == nil {
+		vrs = NewVersionService()
+	}
+}
+
+func getLatestTag(repoURL string) (string, error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			gl.ErrorCtx(fmt.Sprintf("Recovered from panic in getLatestTag: %v", rec), map[string]interface{}{
+				"error": rec,
+			})
+			err = fmt.Errorf("panic occurred while fetching latest tag: %v", rec)
+		}
+	}()
+
+	defer func() {
+		if vrs == nil {
+			vrs = NewVersionService()
+		}
+		vrs.setLastCheckedAt(time.Now())
+	}()
+
+	if info == nil {
+		var err error
+		info, err = manifest.GetManifest()
+		if err != nil {
+			return "", fmt.Errorf("failed to get manifest: %w", err)
+		}
+	}
+	if info.IsPrivate() {
+		return "", fmt.Errorf("cannot fetch latest tag for private repositories")
+	}
+
+	if repoURL == "" {
+		repoURL = info.GetRepository()
+		if repoURL == "" {
+			return "", fmt.Errorf("repository URL is not set")
+		}
+	}
+
+	apiURL := fmt.Sprintf("%s/tags", repoURL)
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return "", err
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch tags: %s", resp.Status)
+	}
+	type Tag struct {
+		Name string `json:"name"`
+	}
+
+	// Decode the JSON response into a slice of Tag structs
+	// This assumes the API returns a JSON array of tags.
+	// Adjust the decoding logic based on the actual API response structure.
+	if resp.Header.Get("Content-Type") != "application/json" {
+		return "", fmt.Errorf("expected application/json, got %s", resp.Header.Get("Content-Type"))
+	}
+
+	var tags []Tag
+	if err := json.NewDecoder(resp.Body).Decode(&tags); err != nil {
+		return "", err
+	}
+
+	if len(tags) == 0 {
+		return "", fmt.Errorf("no tags found")
+	}
+	return tags[0].Name, nil
+}
+func (v *ServiceImpl) updateLatestVersion() error {
+	if info.IsPrivate() {
+		return fmt.Errorf("cannot fetch latest version for private repositories")
+	}
+	repoURL := strings.TrimSuffix(v.gitModelURL, ".git")
+	tag, err := getLatestTag(repoURL)
+	if err != nil {
+		return err
+	}
+	v.latestVersion = tag
+	return nil
+}
+func (v *ServiceImpl) vrsCompare(v1, v2 []int) (int, error) {
+	compare := 0
+	for i := 0; i < len(v1) && i < len(v2); i++ {
+		if v1[i] < v2[i] {
+			compare = -1
+			break
+		}
+		if v1[i] > v2[i] {
+			compare = 1
+			break
+		}
+	}
+	return compare, nil
+}
+func (v *ServiceImpl) versionAtMost(versionAtMostArg, max []int) (bool, error) {
+	if comp, err := v.vrsCompare(versionAtMostArg, max); err != nil {
+		return false, err
+	} else if comp == 1 {
+		return false, nil
+	}
+	return true, nil
+}
+func (v *ServiceImpl) parseVersion(versionToParse string) []int {
+	if versionToParse == "" {
+		return nil
+	}
+	if strings.Contains(versionToParse, "-") {
+		versionToParse = strings.Split(versionToParse, "-")[0]
+	}
+	if strings.Contains(versionToParse, "v") {
+		versionToParse = strings.TrimPrefix(versionToParse, "v")
+	}
+	parts := strings.Split(versionToParse, ".")
+	parsedVersion := make([]int, len(parts))
+	for i, part := range parts {
+		if num, err := strconv.Atoi(part); err != nil {
+			return nil
+		} else {
+			parsedVersion[i] = num
+		}
+	}
+	return parsedVersion
+}
+func (v *ServiceImpl) IsLatestVersion() (bool, error) {
+	if info.IsPrivate() {
+		return false, fmt.Errorf("cannot check version for private repositories")
+	}
+	if v.latestVersion == "" {
+		if err := v.updateLatestVersion(); err != nil {
+			return false, err
+		}
+	}
+
+	currentVersionParts := v.parseVersion(v.currentVersion)
+	latestVersionParts := v.parseVersion(v.latestVersion)
+
+	if len(currentVersionParts) == 0 || len(latestVersionParts) == 0 {
+		return false, fmt.Errorf("invalid version format")
+	}
+
+	if len(currentVersionParts) != len(latestVersionParts) {
+		return false, fmt.Errorf("version parts length mismatch")
+	}
+
+	return v.versionAtMost(currentVersionParts, latestVersionParts)
+}
+func (v *ServiceImpl) GetLatestVersion() (string, error) {
+	if info.IsPrivate() {
+		return "", fmt.Errorf("cannot fetch latest version for private repositories")
+	}
+	if v.latestVersion == "" {
+		if err := v.updateLatestVersion(); err != nil {
+			return "", err
+		}
+	}
+	return v.latestVersion, nil
+}
+func (v *ServiceImpl) GetCurrentVersion() string {
+	if v.currentVersion == "" {
+		v.currentVersion = info.GetVersion()
+	}
+	return v.currentVersion
+}
+func (v *ServiceImpl) GetName() string {
+	if info == nil {
+		return "Unknown Service"
+	}
+	return info.GetName()
+}
+func (v *ServiceImpl) GetVersion() string {
+	if info == nil {
+		return "Unknown version"
+	}
+	return info.GetVersion()
+}
+func (v *ServiceImpl) GetRepository() string {
+	if info == nil {
+		return "No repository URL set in the manifest."
+	}
+	return info.GetRepository()
+}
+func (v *ServiceImpl) setLastCheckedAt(t time.Time) {
+	v.lastCheckedAt = t
+	gl.DebugCtx(fmt.Sprintf("Last checked at: %v", t), map[string]interface{}{})
+}
+
+func NewVersionService() Service {
+	return &ServiceImpl{
+		Manifest:       info,
+		gitModelURL:    info.GetRepository(),
+		currentVersion: info.GetVersion(),
+		latestVersion:  "",
+	}
+}
+
+var (
+	versionCmd   *cobra.Command
+	subLatestCmd *cobra.Command
+	subCmdCheck  *cobra.Command
+	updCmd       *cobra.Command
+	getCmd       *cobra.Command
+	restartCmd   *cobra.Command
+)
+
+func init() {
+	if versionCmd == nil {
+		versionCmd = &cobra.Command{
+			Use:   "version",
+			Short: "Print the version number of " + info.GetName(),
+			Long:  "Print the version number of " + info.GetName() + " and other related information.",
+			Run: func(cmd *cobra.Command, args []string) {
+				if info.IsPrivate() {
+					gl.WarnCtx("The information shown may not be accurate for private repositories.", map[string]interface{}{})
+					gl.InfoCtx(fmt.Sprintf("Current version: %v", GetVersion()), map[string]interface{}{})
+					gl.InfoCtx(fmt.Sprintf("Git repository: %v", GetGitRepositoryModelURL()), map[string]interface{}{})
+					return
+				}
+				GetVersionInfo()
+			},
+		}
+	}
+	if subLatestCmd == nil {
+		subLatestCmd = &cobra.Command{
+			Use:   "latest",
+			Short: "Print the latest version number of " + info.GetName(),
+			Long:  "Print the latest version number of " + info.GetName() + " from the Git repository.",
+			Run: func(cmd *cobra.Command, args []string) {
+				if info.IsPrivate() {
+					gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
+					return
+				}
+				GetLatestVersionInfo()
+			},
+		}
+	}
+	if subCmdCheck == nil {
+		subCmdCheck = &cobra.Command{
+			Use:   "check",
+			Short: "Check if the current version is the latest version of " + info.GetName(),
+			Long:  "Check if the current version is the latest version of " + info.GetName() + " and print the version information.",
+			Run: func(cmd *cobra.Command, args []string) {
+				if info.IsPrivate() {
+					gl.ErrorCtx("Cannot check version for private repositories.", map[string]interface{}{})
+					return
+				}
+				GetVersionInfoWithLatestAndCheck()
+			},
+		}
+	}
+	if updCmd == nil {
+		updCmd = &cobra.Command{
+			Use:   "update",
+			Short: "Update the version information of " + info.GetName(),
+			Long:  "Update the version information of " + info.GetName() + " by fetching the latest version from the Git repository.",
+			Run: func(cmd *cobra.Command, args []string) {
+				if info.IsPrivate() {
+					gl.ErrorCtx("Cannot update version for private repositories.", map[string]interface{}{})
+					return
+				}
+				if err := vrs.updateLatestVersion(); err != nil {
+					gl.ErrorCtx(fmt.Sprintf("Failed to update version: %v", err), map[string]interface{}{})
+				} else {
+					latestVersion, err := vrs.GetLatestVersion()
+					if err != nil {
+						gl.ErrorCtx(fmt.Sprintf("Failed to get latest version: %v", err), map[string]interface{}{})
+					} else {
+						gl.InfoCtx(fmt.Sprintf("Current version: %v", vrs.GetCurrentVersion()), map[string]interface{}{})
+						gl.InfoCtx(fmt.Sprintf("Latest version: %v", latestVersion), map[string]interface{}{})
+					}
+					vrs.setLastCheckedAt(time.Now())
+				}
+			},
+		}
+	}
+	if getCmd == nil {
+		getCmd = &cobra.Command{
+			Use:   "get",
+			Short: "Get the current version of " + info.GetName(),
+			Long:  "Get the current version of " + info.GetName() + " from the manifest.",
+			Run: func(cmd *cobra.Command, args []string) {
+				gl.InfoCtx(fmt.Sprintf("Current version: %v", vrs.GetCurrentVersion()), map[string]interface{}{})
+			},
+		}
+	}
+	if restartCmd == nil {
+		restartCmd = &cobra.Command{
+			Use:   "restart",
+			Short: "Restart the " + info.GetName() + " service",
+			Long:  "Restart the " + info.GetName() + " service to apply any changes made.",
+			Run: func(cmd *cobra.Command, args []string) {
+				gl.InfoCtx("Restarting the service...", map[string]interface{}{})
+				// Logic to restart the service can be added here
+				gl.InfoCtx("Service restarted successfully", map[string]interface{}{})
+			},
+		}
+	}
+
+}
+func GetVersion() string {
+	if info == nil {
+		_, err := manifest.GetManifest()
+		if err != nil {
+			gl.ErrorCtx(fmt.Sprintf("Failed to get manifest: %v", err), map[string]interface{}{})
+			return "Unknown version"
+		}
+	}
+	return info.GetVersion()
+}
+func GetGitRepositoryModelURL() string {
+	if info.GetRepository() == "" {
+		return "No repository URL set in the manifest."
+	}
+	return info.GetRepository()
+}
+func GetVersionInfo() string {
+	gl.InfoCtx(fmt.Sprintf("Version: %v", GetVersion()), map[string]interface{}{})
+	gl.InfoCtx(fmt.Sprintf("Git repository: %v", GetGitRepositoryModelURL()), map[string]interface{}{})
+	return fmt.Sprintf("Version: %s\nGit repository: %s", GetVersion(), GetGitRepositoryModelURL())
+}
+func GetLatestVersionFromGit() string {
+	if info.IsPrivate() {
+		gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
+		return "Cannot fetch latest version for private repositories."
+	}
+
+	netClient := &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	gitURLWithoutGit := strings.TrimSuffix(GetGitRepositoryModelURL(), ".git")
+	if gitURLWithoutGit == "" {
+		gl.ErrorCtx("No repository URL set in the manifest.", map[string]interface{}{})
+		return "No repository URL set in the manifest."
+	}
+
+	response, err := netClient.Get(gitURLWithoutGit + "/releases/latest")
+	if err != nil {
+		gl.ErrorCtx(fmt.Sprintf("Error fetching latest version: %v", err), map[string]interface{}{})
+		gl.ErrorCtx(gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		return err.Error()
+	}
+
+	if response.StatusCode != 200 {
+		gl.ErrorCtx(fmt.Sprintf("Error fetching latest version: %v", response.Status), map[string]interface{}{})
+		gl.ErrorCtx(gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		body, _ := io.ReadAll(response.Body)
+		return fmt.Sprintf("Error: %s\nResponse: %s", response.Status, string(body))
+	}
+
+	tag := strings.Split(response.Request.URL.Path, "/")
+
+	return tag[len(tag)-1]
+}
+func GetLatestVersionInfo() string {
+	if info.IsPrivate() {
+		gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
+		return "Cannot fetch latest version for private repositories."
+	}
+	gl.InfoCtx(fmt.Sprintf("Latest version: %v", GetLatestVersionFromGit()), map[string]interface{}{})
+	return "Latest version: " + GetLatestVersionFromGit()
+}
+func GetVersionInfoWithLatestAndCheck() string {
+	if info.IsPrivate() {
+		gl.ErrorCtx("Cannot check version for private repositories.", map[string]interface{}{})
+		return "Cannot check version for private repositories."
+	}
+	if GetVersion() == GetLatestVersionFromGit() {
+		gl.InfoCtx("You are using the latest version.", map[string]interface{}{})
+		return fmt.Sprintf("You are using the latest version.\n%s\n%s", GetVersionInfo(), GetLatestVersionInfo())
+	} else {
+		gl.WarnCtx("You are using an outdated version.", map[string]interface{}{})
+		return fmt.Sprintf("You are using an outdated version.\n%s\n%s", GetVersionInfo(), GetLatestVersionInfo())
+	}
+}
+func CliCommand() *cobra.Command {
+	versionCmd.AddCommand(subLatestCmd)
+	versionCmd.AddCommand(subCmdCheck)
+	versionCmd.AddCommand(updCmd)
+	versionCmd.AddCommand(getCmd)
+	versionCmd.AddCommand(restartCmd)
+	return versionCmd
+}

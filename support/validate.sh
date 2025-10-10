@@ -29,9 +29,9 @@ validate_versions() {
 
         local go_installation_output
         if [[ -t 0 ]]; then
-            go_installation_output="$(bash -c "$(curl -sSfL "${go_setup_url}")" -s --version "$required_version" 2>&1)"
+            go_installation_output="$(bash -c "$(curl -sSfL "${go_setup_url}")" -s install "$required_version" 2>&1)"
         else
-            go_installation_output="$(export NON_INTERACTIVE=true; bash -c "$(curl -sSfL "${go_setup_url}")" -s --version "$required_version" 2>&1)"
+            go_installation_output="$(export NON_INTERACTIVE=true; bash -c "$(curl -sSfL "${go_setup_url}")" -s install "$required_version" 2>&1)"
         fi
 
         # shellcheck disable=SC2181

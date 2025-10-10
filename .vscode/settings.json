@@ -1,7 +1,8 @@
 {
-    "files.autoSave": "onWindowChange",
-    "editor.foldingImportsByDefault": true,
-    "git.alwaysSignOff": true,
-    "git.enableCommitSigning": true,
-    "remoteHub.gitProtocol": "ssh"
+  "files.autoSave": "onWindowChange",
+  "editor.foldingImportsByDefault": true,
+  "git.alwaysSignOff": true,
+  "git.enableCommitSigning": true,
+  "remoteHub.gitProtocol": "ssh",
+  "editor.tabCompletion": "on"
 }

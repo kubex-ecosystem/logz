@@ -54,3 +54,9 @@ tests/**/*
 *_linux_amd64*
 */docs/mcp_implementation
 *.sarif
+.codex/config.toml
+.kubex/main-instructions.md
+.notes/logz-full_d.lkt.txt
+.claude/
+CLAUDE.md
+.venv-hooks
