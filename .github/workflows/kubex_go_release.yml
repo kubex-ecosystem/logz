@@ -26,7 +26,7 @@ on:
         default: false
         type: boolean
       go_version:
-        description: "Override Go version (e.g., 1.25.1)"
+        description: "Override Go version (e.g., 1.25.3)"
         required: false
         default: ""
         type: string
@@ -100,12 +100,12 @@ jobs:
               # Check if it has at least major.minor
               if [[ "$GO_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
                 echo "⚠️  go.mod Go version '$GO_VERSION' is missing patch version, defaulting to .1"
-                GO_VERSION="${GO_VERSION}.1"
+                GO_VERSION="${GO_VERSION}"
               else
                 echo "❌ Unable to determine Go version from go.mod"
                 exit 1
               fi
-              GO_VERSION="${GO_VERSION%.*}.1"
+              GO_VERSION="${GO_VERSION%.*}"
             fi
           fi
 
