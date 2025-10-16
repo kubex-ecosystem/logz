@@ -8,9 +8,6 @@ import (
 	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
-// LogLevel represents the level of the log entry.
-type LogLevel = il.LogLevel
-
 // LogFormat represents the format of the log entry.
 type LogFormat = il.LogFormat
 
