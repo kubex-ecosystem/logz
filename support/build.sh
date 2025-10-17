@@ -10,7 +10,7 @@ IFS=$'\n\t'
 # ====== Configuration from manifest.json ======
 load_manifest_config() {
   local _root_dir="${_ROOT_DIR:-${ROOT_DIR:-$(git rev-parse --show-toplevel)}}"
-  local _manifest_path="${_root_dir}/info/manifest.json"
+  local _manifest_path="${_root_dir}/internal/module/info/manifest.json"
 
   if [[ -f "${_manifest_path}" ]]; then
     export _APP_NAME="${_APP_NAME:-$(jq -r '.application // .bin // .name' "${_manifest_path}" 2>/dev/null || echo "")}"
@@ -70,7 +70,7 @@ validate_go_version() {
 # ====== Load platforms from manifest.json ======
 load_platforms_from_manifest() {
   local _root_dir="${_ROOT_DIR:-${ROOT_DIR:-$(git rev-parse --show-toplevel)}}"
-  local _manifest_path="${_root_dir}/info/manifest.json"
+  local _manifest_path="${_root_dir}/internal/module/info/manifest.json"
 
   if [[ -f "${_manifest_path}" ]] && command -v jq >/dev/null 2>&1; then
     local platforms=()

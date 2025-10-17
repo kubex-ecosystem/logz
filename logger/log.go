@@ -8,66 +8,66 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	il "github.com/kubex-ecosystem/logz/internal/core"
 )
 
-type GLog[T Logger] interface {
-	GetLogger() *Logger
-	GetLogLevel() LogLevel
+type Logger interface {
+	// Embedding the LogzLogger interface
+	LogzLogger
+
+	GetLogger() *LoggerImpl
 	GetShowTrace() bool
 	GetDebug() bool
-	SetLogLevel(string)
-	SetDebug(bool)
-	SetShowTrace(bool)
-	ObjLog(*Logger, string, ...any)
-	Log(string, ...any)
+	SetLogLevel(logLevel string)
+	SetShowTrace(showTrace bool)
+	SetDebug(d bool)
+	Log(logType string, messages ...any)
+	ObjLog(obj any, logType string, messages ...any)
+
+	Notice(m ...any)
+	Info(m ...any)
+	Debug(m ...any)
+	Warn(m ...any)
+	Error(m ...any)
+	Fatal(m ...any)
+	Panic(m ...any)
+	Success(m ...any)
+	Silent(m ...any)
+	Answer(m ...any)
 }
 
-type gLog[T Logger] struct {
-	*Logger
-	gLogLevel  LogLevel // Global log level
-	gShowTrace bool     // Flag to show trace in logs
-	gDebug     bool     // Flag to show debug messages
+type logzLogger struct {
+	// Embedding the LogzCore implementation
+	*il.LogzCoreImpl
+}
+
+type LoggerImpl struct {
+	*logzLogger
+
+	gLogLevel    LogLevel    // Global log level
+	gLogLevelInt LogLevelInt // Global log level
+	gShowTrace   bool        // Flag to show trace in logs
+	gDebug       bool        // Flag to show debug messages
 }
 
 type LogType string
-type LogLevel int
+type LogLevel = il.LogLevel
+type LogLevelInt int
 
 var (
 	// info      m.Manifest
 	debug     bool
 	showTrace bool
 	logLevel  string
-	g         *gLog[Logger] // Global logger instance
-	LoggerG   GLog[Logger]
+	g         *LoggerImpl
+	LoggerG   Logger
 	err       error
 )
 
 const (
-	// LogTypeDebug is the log type for debug messages.
-	LogTypeDebug LogType = "debug"
-	// LogTypeNotice is the log type for notice messages.
-	LogTypeNotice LogType = "notice"
-	// LogTypeInfo is the log type for informational messages.
-	LogTypeInfo LogType = "info"
-	// LogTypeWarn is the log type for warning messages.
-	LogTypeWarn LogType = "warn"
-	// LogTypeError is the log type for error messages.
-	LogTypeError LogType = "error"
-	// LogTypeFatal is the log type for fatal error messages.
-	LogTypeFatal LogType = "fatal"
-	// LogTypePanic is the log type for panic messages.
-	LogTypePanic LogType = "panic"
-	// LogTypeSuccess is the log type for success messages.
-	LogTypeSuccess LogType = "success"
-	// LogTypeAnswer is the log type for answer messages.
-	LogTypeAnswer LogType = "answer"
-	// LogTypeSilent is the log type for silent messages.
-	LogTypeSilent LogType = "silent"
-)
-
-const (
 	// LogLevelDebug 0
-	LogLevelDebug LogLevel = iota
+	LogLevelDebug LogLevelInt = iota
 	// LogLevelNotice 1
 	LogLevelNotice
 	// LogLevelInfo 2
@@ -102,23 +102,13 @@ func getEnvOrDefault[T string | int | bool](key string, defaultValue T) T {
 }
 
 func init() {
-	// if info == nil {
-	// 	info, err = m.GetManifest()
-	// 	if err != nil {
-	// 		fmt.Fprintf(os.Stderr, "Failed to get info manifest: %v\n", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	// GetLogger(info.GetBin())
-	// }
 	if LoggerG == nil {
-		// LoggerG = GetLogger[Logger](NewLoggerG())
-		if logger, ok := LoggerG.(*gLog[Logger]); ok {
+		if logger, ok := LoggerG.(*LoggerImpl); ok {
 			g = logger
 			logLevel = getEnvOrDefault("GOBE_LOG_LEVEL", "error")
 			debug = getEnvOrDefault("GOBE_DEBUG", false)
 			showTrace = getEnvOrDefault("GOBE_SHOW_TRACE", false)
-			//g.gLogLevel = LogLevelError
-			g.gLogLevel = LogLevelInfo
+			g.gLogLevel = il.INFO
 			g.gShowTrace = showTrace
 			g.gDebug = debug
 		}
@@ -127,44 +117,53 @@ func init() {
 
 func setLogLevel(logLevel string) {
 	if g == nil || LoggerG == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	switch strings.ToLower(logLevel) {
 	case "debug":
-		g.gLogLevel = LogLevelDebug
+		g.gLogLevel = il.DEBUG
+		g.gLogLevelInt = LogLevelDebug
 		g.SetLevel("debug")
 	case "info":
-		g.gLogLevel = LogLevelInfo
+		g.gLogLevel = il.INFO
+		g.gLogLevelInt = LogLevelInfo
 		g.SetLevel("info")
 	case "warn":
-		g.gLogLevel = LogLevelWarn
+		g.gLogLevel = il.WARN
+		g.gLogLevelInt = LogLevelWarn
 		g.SetLevel("warn")
 	case "error":
-		g.gLogLevel = LogLevelError
+		g.gLogLevel = il.ERROR
+		g.gLogLevelInt = LogLevelError
 		g.SetLevel("error")
 	case "fatal":
-		g.gLogLevel = LogLevelFatal
+		g.gLogLevel = il.FATAL
+		g.gLogLevelInt = LogLevelFatal
 		g.SetLevel("fatal")
 	case "panic":
-		g.gLogLevel = LogLevelPanic
+		g.gLogLevel = il.PANIC
+		g.gLogLevelInt = LogLevelPanic
 		g.SetLevel("panic")
 	case "notice":
-		g.gLogLevel = LogLevelNotice
+		g.gLogLevel = il.NOTICE
+		g.gLogLevelInt = LogLevelNotice
 		g.SetLevel("notice")
 	case "success":
-		g.gLogLevel = LogLevelSuccess
+		g.gLogLevel = il.SUCCESS
+		g.gLogLevelInt = LogLevelSuccess
 		g.SetLevel("success")
 	case "silent":
-		g.gLogLevel = LogLevelSilent
+		g.gLogLevel = il.SILENT
+		g.gLogLevelInt = LogLevelSilent
 		g.SetLevel("silent")
 	case "answer":
-		g.gLogLevel = LogLevelAnswer
+		g.gLogLevel = il.ANSWER
+		g.gLogLevelInt = LogLevelAnswer
 		g.SetLevel("answer")
 	default:
-		// logLevel = "error"
-		// g.gLogLevel = LogLevelError
 		logLevel = "info"
-		g.gLogLevel = LogLevelInfo
+		g.gLogLevel = il.INFO
+		g.gLogLevelInt = LogLevelInfo
 		g.SetLevel(logLevel)
 	}
 }
@@ -209,7 +208,8 @@ func willPrintLog(logType string) bool {
 		default:
 			lTypeInt = LogLevelError
 		}
-		return lTypeInt >= g.gLogLevel
+
+		return lTypeInt >= g.gLogLevelInt
 	}
 }
 func getCtxMessageMap(logType, funcName, file string, line int) map[string]any {
@@ -233,7 +233,7 @@ func getCtxMessageMap(logType, funcName, file string, line int) map[string]any {
 	// }
 	return ctxMessageMap
 }
-func getFuncNameMessage(lgr *Logger) (string, int, string) {
+func getFuncNameMessage(lgr Logger) (string, int, string) {
 	if getShowTrace() {
 		pc, file, line, ok := runtime.Caller(4)
 		if !ok {
@@ -275,7 +275,7 @@ func getFullMessage(messages ...any) string {
 
 func SetDebug(d bool) {
 	if g == nil || LoggerG == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.gDebug = d
 	if d {
@@ -283,7 +283,7 @@ func SetDebug(d bool) {
 		debug = true
 		g.SetLevel("debug")
 	} else {
-		switch g.gLogLevel {
+		switch g.gLogLevelInt {
 		case LogLevelDebug:
 			g.SetLevel("debug")
 		case LogLevelInfo:
@@ -313,7 +313,7 @@ func LogObjLogger[T any](obj *T, logType string, messages ...any) {
 	defer func() {
 		if r := recover(); r != nil {
 			if g == nil || LoggerG == nil {
-				_ = GetLogger[Logger](nil)
+				_ = GetLogger[LoggerImpl](nil)
 			}
 			g.ErrorCtx(fmt.Sprintf("LogObjLogger panic: %v", r), map[string]any{
 				"context":  "LogObjLogger",
@@ -325,7 +325,7 @@ func LogObjLogger[T any](obj *T, logType string, messages ...any) {
 		}
 	}()
 	if g == nil || LoggerG == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	if obj == nil {
 		g.ErrorCtx("LogObjLogger: obj is nil", map[string]any{
@@ -367,7 +367,7 @@ func LogObjLogger[T any](obj *T, logType string, messages ...any) {
 	}
 }
 func Log(logType string, messages ...any) {
-	funcName, line, file := getFuncNameMessage(g.Logger)
+	funcName, line, file := getFuncNameMessage(g)
 	fullMessage := getFullMessage(messages...)
 	logType = strings.ToLower(logType)
 	ctxMessageMap := getCtxMessageMap(logType, funcName, file, line)
@@ -375,40 +375,40 @@ func Log(logType string, messages ...any) {
 		if reflect.TypeOf(logType).ConvertibleTo(reflect.TypeFor[LogType]()) {
 			lType := LogType(logType)
 			ctxMessageMap["logType"] = logType
-			logging(g.Logger, lType, fullMessage, ctxMessageMap)
+			logging(g, lType, fullMessage, ctxMessageMap)
 		} else {
 			g.ErrorCtx(fmt.Sprintf("logType (%s) is not valid", logType), ctxMessageMap)
 		}
 	} else {
-		logging(g.Logger, LogTypeInfo, fullMessage, ctxMessageMap)
+		logging(g, LogType(il.INFO), fullMessage, ctxMessageMap)
 	}
 }
-func logging(lgr *Logger, lType LogType, fullMessage string, ctxMessageMap map[string]any) {
+func logging(lgr *LoggerImpl, lType LogType, fullMessage string, ctxMessageMap map[string]any) {
 	lt := strings.ToLower(string(lType))
 	if _, exist := ctxMessageMap["showData"]; !exist {
 		ctxMessageMap["showData"] = getShowTrace()
 	}
 	if willPrintLog(lt) {
 		switch lType {
-		case LogTypeInfo:
+		case LogType(il.INFO):
 			lgr.InfoCtx(fullMessage, ctxMessageMap)
-		case LogTypeDebug:
+		case LogType(il.DEBUG):
 			lgr.DebugCtx(fullMessage, ctxMessageMap)
-		case LogTypeError:
+		case LogType(il.ERROR):
 			lgr.ErrorCtx(fullMessage, ctxMessageMap)
-		case LogTypeWarn:
+		case LogType(il.WARN):
 			lgr.WarnCtx(fullMessage, ctxMessageMap)
-		case LogTypeNotice:
+		case LogType(il.NOTICE):
 			lgr.NoticeCtx(fullMessage, ctxMessageMap)
-		case LogTypeSuccess:
+		case LogType(il.SUCCESS):
 			lgr.SuccessCtx(fullMessage, ctxMessageMap)
-		case LogTypeFatal:
+		case LogType(il.FATAL):
 			lgr.FatalCtx(fullMessage, ctxMessageMap)
-		case LogTypePanic:
+		case LogType(il.PANIC):
 			lgr.FatalCtx(fullMessage, ctxMessageMap)
-		case LogTypeSilent:
+		case LogType(il.SILENT):
 			lgr.SilentCtx(fullMessage, ctxMessageMap)
-		case LogTypeAnswer:
+		case LogType(il.ANSWER):
 			lgr.AnswerCtx(fullMessage, ctxMessageMap)
 		default:
 			lgr.InfoCtx(fullMessage, ctxMessageMap)
@@ -420,104 +420,119 @@ func logging(lgr *Logger, lType LogType, fullMessage string, ctxMessageMap map[s
 	}
 }
 
-func (g *gLog[T]) GetLogger() *Logger                  { return g.Logger }
-func (g *gLog[T]) GetLogLevel() LogLevel               { return g.gLogLevel }
-func (g *gLog[T]) GetShowTrace() bool                  { return g.gShowTrace }
-func (g *gLog[T]) GetDebug() bool                      { return g.gDebug }
-func (g *gLog[T]) SetLogLevel(logLevel string)         { setLogLevel(logLevel) }
-func (g *gLog[T]) SetShowTrace(showTrace bool)         { g.gShowTrace = showTrace }
-func (g *gLog[T]) SetDebug(d bool)                     { SetDebug(d); g.gDebug = d }
-func (g *gLog[T]) Log(logType string, messages ...any) { Log(logType, messages...) }
-func (g *gLog[T]) ObjLog(obj *T, logType string, messages ...any) {
-	LogObjLogger(obj, logType, messages...)
+func (g *LoggerImpl) GetLogger() *LoggerImpl              { return g }
+func (g *LoggerImpl) GetLogLevel() LogLevel               { return g.gLogLevel }
+func (g *LoggerImpl) GetShowTrace() bool                  { return g.gShowTrace }
+func (g *LoggerImpl) GetDebug() bool                      { return g.gDebug }
+func (g *LoggerImpl) SetLogLevel(logLevel string)         { setLogLevel(logLevel) }
+func (g *LoggerImpl) SetShowTrace(showTrace bool)         { g.gShowTrace = showTrace }
+func (g *LoggerImpl) SetDebug(d bool)                     { SetDebug(d); g.gDebug = d }
+func (g *LoggerImpl) Log(logType string, messages ...any) { Log(logType, messages...) }
+func (g *LoggerImpl) ObjLog(obj any, logType string, messages ...any) {
+	var T *LoggerImpl
+	var ok bool
+	if T, ok = obj.(*LoggerImpl); !ok {
+		g.ErrorCtx("ObjLog: obj is not of type *Logger", map[string]any{
+			"context":  "ObjLog",
+			"logType":  logType,
+			"object":   obj,
+			"msg":      messages,
+			"showData": getShowTrace(),
+		})
+		return
+	}
+	LogObjLogger[LoggerImpl](T, logType, messages...)
 }
 
-func (g *gLog[T]) Notice(m ...any) {
+func (g *LoggerImpl) Notice(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("notice", m...)
 }
-func (g *gLog[T]) Info(m ...any) {
+func (g *LoggerImpl) Info(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("info", m...)
 }
-func (g *gLog[T]) Debug(m ...any) {
+func (g *LoggerImpl) Debug(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("debug", m...)
 }
-func (g *gLog[T]) Warn(m ...any) {
+func (g *LoggerImpl) Warn(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("warn", m...)
 }
-func (g *gLog[T]) Error(m ...any) {
+func (g *LoggerImpl) Error(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("error", m...)
 }
-func (g *gLog[T]) Fatal(m ...any) {
+func (g *LoggerImpl) Fatal(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("fatal", m...)
 }
-func (g *gLog[T]) Panic(m ...any) {
+func (g *LoggerImpl) Panic(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("fatal", m...)
 }
-func (g *gLog[T]) Success(m ...any) {
+func (g *LoggerImpl) Success(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("success", m...)
 }
-func (g *gLog[T]) Silent(m ...any) {
+func (g *LoggerImpl) Silent(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("silent", m...)
 }
-func (g *gLog[T]) Answer(m ...any) {
+func (g *LoggerImpl) Answer(m ...any) {
 	if g == nil {
-		_ = GetLogger[Logger](nil)
+		_ = GetLogger[LoggerImpl](nil)
 	}
 	g.Log("answer", m...)
 }
 
-func NewLoggerG[T Logger](prefix string) GLog[T] {
-	// logger := NewLogger(prefix)
-
-	return &gLog[Logger]{
+func NewLoggerG(prefix string) Logger {
+	return &LoggerImpl{
 		// Logger:     ,
-		gLogLevel:  LogLevelError,
-		gShowTrace: false,
-		gDebug:     false,
+		gLogLevel:    LogLevel(il.ERROR),
+		gLogLevelInt: LogLevelError,
+		gShowTrace:   false,
+		gDebug:       false,
 	}
 }
 
-func GetLogger[T any](obj *T) GLog[Logger] {
+func GetLogger[T any](obj *T) Logger {
 	if g == nil || LoggerG == nil {
-		g = &gLog[Logger]{
+		g = &LoggerImpl{
 			// Logger:     GetLogger(info.GetBin()),
-			gLogLevel:  LogLevelInfo,
-			gShowTrace: showTrace,
-			gDebug:     debug,
+			gLogLevel:    LogLevel(il.INFO),
+			gLogLevelInt: LogLevelInfo,
+			gShowTrace:   showTrace,
+			gDebug:       debug,
 		}
 		LoggerG = g
 	}
 	if obj == nil {
+		if LoggerG == nil {
+			return g
+		}
 		return LoggerG
 	}
-	var lgr *Logger
+	var lgr *LoggerImpl
 	if objValueLogger := reflect.ValueOf(obj).Elem().MethodByName("GetLogger"); !objValueLogger.IsValid() {
 		// check if is interface, if so, try another approach
 		if reflect.TypeOf(obj).Kind() == reflect.Interface {
@@ -564,10 +579,10 @@ func GetLogger[T any](obj *T) GLog[Logger] {
 			return g
 		}
 		if lgrC[0].IsNil() {
-			lgr = g.Logger
+			lgr = g
 		} else {
-			if lgrC[0].Type().ConvertibleTo(reflect.TypeFor[*Logger]()) {
-				lgr = lgrC[0].Convert(reflect.TypeFor[*Logger]()).Interface().(*Logger)
+			if lgrC[0].Type().ConvertibleTo(reflect.TypeFor[*LoggerImpl]()) {
+				lgr = lgrC[0].Convert(reflect.TypeFor[*LoggerImpl]()).Interface().(*LoggerImpl)
 			} else {
 				g.ErrorCtx(fmt.Sprintf("log object (%s) GetLogger method returned invalid type", reflect.TypeFor[T]()), map[string]any{
 					"context":  "Log",
@@ -592,10 +607,10 @@ func GetLogger[T any](obj *T) GLog[Logger] {
 			return g
 		}
 		if lgrC[0].IsNil() {
-			lgr = g.Logger
+			lgr = g
 		} else {
-			if lgrC[0].Type().ConvertibleTo(reflect.TypeFor[*Logger]()) {
-				lgr = lgrC[0].Convert(reflect.TypeFor[*Logger]()).Interface().(*Logger)
+			if lgrC[0].Type().ConvertibleTo(reflect.TypeFor[*LoggerImpl]()) {
+				lgr = lgrC[0].Convert(reflect.TypeFor[*LoggerImpl]()).Interface().(*LoggerImpl)
 			} else {
 				g.ErrorCtx(fmt.Sprintf("log object (%s) GetLogger method returned invalid type", reflect.TypeFor[T]()), map[string]any{
 					"context":  "Log",
@@ -618,8 +633,8 @@ func GetLogger[T any](obj *T) GLog[Logger] {
 		})
 		return LoggerG
 	}
-	return &gLog[Logger]{
-		Logger:     lgr,
+	return &LoggerImpl{
+		logzLogger: lgr.logzLogger,
 		gLogLevel:  g.gLogLevel,
 		gShowTrace: g.gShowTrace,
 		gDebug:     g.gDebug,
@@ -628,9 +643,9 @@ func GetLogger[T any](obj *T) GLog[Logger] {
 
 // ----------------------------- Logz Prometheus and WS implementation -----------------------------
 
-func (g *gLog[T]) Init() error {
+func (g *LoggerImpl) Init() error {
 	if g.Logger == nil {
-		_ = GetLogger[*Logger](nil)
+		_ = GetLogger[*LoggerImpl](nil)
 	}
 	return nil
 }
@@ -647,7 +662,7 @@ func SetLogTrace(enable bool) {
 	LoggerG.SetShowTrace(enable)
 }
 
-func SetLogger(logger *Logger) {
+func SetLogger(logger *LoggerImpl) {
 	// gl.SetLogger(logger)
 	// TODO: Implement this function properly
 }

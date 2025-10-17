@@ -3,10 +3,10 @@ package core
 import (
 	"fmt"
 	"io"
+	"log"
 	"sync/atomic"
 
 	//"io"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -47,7 +47,7 @@ type LogzCoreImpl struct {
 	LogzLogger
 
 	// Logger is a promoted global Go Logger
-	log.Logger
+	*log.Logger
 
 	out       io.Writer                   // destination for output
 	prefix    atomic.Pointer[string]      // prefix on each line to identify the logger (but see Lmsgprefix)
@@ -64,59 +64,9 @@ type LogzCoreImpl struct {
 }
 
 // NewLogger creates a new instance of LogzCoreImpl with the provided configuration.
-func NewLogger(prefix string) LogzLogger { //VConfig Config) LogzLogger {
+func NewLogger(prefix string) LogzLogger {
 	level := INFO // Default log VLevel
 
-	//if VConfig == nil {
-	// If no VConfig is provided, create a new default VConfig
-	// Create a new ConfigManager
-	//if cfgMgr := NNewConfigManager(); cfgMgr != nil {
-	//	configMgr := *cfgMgr
-	//	VConfig = configMgr.GetConfig()
-	//} else {
-	//	log.Println("ErrorCtx creating ConfigManager")
-	//	return nil
-	//}
-	//}
-
-	// Set the log VLevel from the Config
-	//VLevel = LogLevel(VConfig.Level()) // Method VConfig.Level() returns the log VLevel as a string
-
-	//var out *os.File
-	//var err error
-	//// Set the output to stdout if not specified or if the output is invalid
-	//if strings.ToLower(VConfig.Output()) == "stdout" || VConfig.Output() == "" || VConfig.Output() == os.Stdout.Name() {
-	//	out = os.Stdout
-	//} else {
-	//	fmt.Println("Output: ", VConfig.Output())
-	//	// Ensure the log file exists and has the correct permissions
-	//	if _, err = os.Stat(VConfig.Output()); os.IsNotExist(err) {
-	//		if err = os.MkdirAll(filepath.Dir(VConfig.Output()), 0755); err != nil {
-	//			log.Printf("ErrorCtx creating log directory: %v\nRedirecting to stdout...\n", err)
-	//			out = os.Stdout
-	//		} else {
-	//			out, err = os.OpenFile(VConfig.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	//			if err != nil {
-	//				log.Printf("ErrorCtx opening log file: %v\nRedirecting to stdout...\n", err)
-	//				out = os.Stdout
-	//			}
-	//		}
-	//	} else {
-	//		out, err = os.OpenFile(VConfig.Output(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	//		if err != nil {
-	//			log.Printf("ErrorCtx opening log file: %v\nRedirecting to stdout...\n", err)
-	//			out = os.Stdout
-	//		}
-	//	}
-	//}
-	//
-	//// Initialize the formatter (JSON or text)
-	//var formatter LogFormatter
-	//if VConfig.Format() == "json" {
-	//	formatter = &JSONFormatter{}
-	//} else {
-	//	formatter = &TextFormatter{}
-	//}
 	writer := NewDefaultWriter[any](os.Stdout, &TextFormatter{}) //out, formatter)
 
 	// Read the VMode from Config
@@ -126,6 +76,11 @@ func NewLogger(prefix string) LogzLogger { //VConfig Config) LogzLogger {
 	//}
 
 	lgr := &LogzCoreImpl{
+		Logger: log.New(
+			os.Stdout,
+			prefix,
+			log.LstdFlags,
+		),
 		VLevel:  level,
 		VWriter: writer,
 		//VConfig:   VConfig,
@@ -180,20 +135,6 @@ func (l *LogzCoreImpl) log(level LogLevel, msg string, ctx map[string]interface{
 			log.Printf("ErrorCtx writing log: %v", err)
 		}
 	}
-
-	// Only in service VMode, notify via Notifiers
-	//if l.VMode == ModeService && l.VConfig != nil {
-	// for _, name := range l.VConfig.NotifierManager().ListNotifiers() {
-	//	if notifier, ok := l.VConfig.NotifierManager().GetNotifier(name); ok {
-	//		if notifier != nil {
-	//			ntf := notifier
-	//			if ntfErr := ntf.Notify(entry); ntfErr != nil {
-	//				log.Printf("ErrorCtx notifying %s: %v", name, ntfErr)
-	//			}
-	//		}
-	//	}
-	// }
-	//}
 
 	// Update metrics in PrometheusManager, if enabled
 	if l.VMode == ModeService {
@@ -253,7 +194,6 @@ func (l *LogzCoreImpl) Answer(msg ...any) {
 		l.log(ANSWER, fmt.Sprint(msg...), nil)
 	}
 }
-
 func (l *LogzCoreImpl) SetLevel(level interface{}) {
 	l.Mu.Lock()
 	defer l.Mu.Unlock()
@@ -274,7 +214,6 @@ func (l *LogzCoreImpl) GetLevel() interface{} {
 	}
 	return l.VLevel
 }
-
 func (l *LogzCoreImpl) SetWriter(writer any) {
 	l.Mu.Lock()
 	defer l.Mu.Unlock()
@@ -294,7 +233,6 @@ func (l *LogzCoreImpl) GetWriter() interface{} {
 	}
 	return l.VWriter
 }
-
 func (l *LogzCoreImpl) GetMode() interface{} {
 	l.Mu.RLock()
 	defer l.Mu.RUnlock()
@@ -303,7 +241,6 @@ func (l *LogzCoreImpl) GetMode() interface{} {
 	}
 	return l.VMode
 }
-
 func (l *LogzCoreImpl) SetConfig(config interface{}) {
 	l.Mu.Lock()
 	defer l.Mu.Unlock()

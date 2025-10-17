@@ -24,7 +24,7 @@ _VERSION_GO="${_VERSION_GO:-}"
 _PLATFORMS_SUPPORTED="${_PLATFORMS_SUPPORTED:-}"
 
 # _MANIFEST_SUBPATH=${_MANIFEST_SUBPATH:-'info/manifest.json'}
-_MANIFEST_SUBPATH=${_MANIFEST_SUBPATH:-'info/manifest.json'}
+_MANIFEST_SUBPATH=${_MANIFEST_SUBPATH:-'internal/module/info/manifest.json'}
 
 __get_values_from_manifest() {
   # # Define the root directory (assuming this script is in lib/ under the root)

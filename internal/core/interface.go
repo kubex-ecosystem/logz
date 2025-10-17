@@ -12,8 +12,17 @@ type LogzLogger interface {
 	// SetLevel(VLevel interface{})
 	// The VLevel is an LogLevel type or string.
 	SetLevel(interface{})
-
+	// Silent logs a message without any output.
+	// Method signature:
+	// Silent(message string, args ...any)
+	// The message is a string.
+	// The args are optional arguments.
 	Silent(...any)
+	// Answer logs an answer message.
+	// Method signature:
+	// Answer(message string, args ...any)
+	// The message is a string.
+	// The args are optional arguments.
 	Answer(...any)
 }
 
@@ -111,5 +120,21 @@ type LogzCore interface {
 	//// Method signature:
 	//// SetLevel(VLevel interface{})
 	//// The VLevel is an LogLevel type or string.
+	// SetLevel sets the log VLevel.
 	//SetLevel(interface{})
+
+	// GetLogLevel returns the current log level.
+	GetLogLevel() LogLevel
+	// GetShowTrace returns the current show trace flag.
+	GetShowTrace() bool
+	// GetDebug returns the current debug flag.
+	GetDebug() bool
+	// SetLogLevel sets the log level.
+	SetLogLevel(string)
+	// SetDebug sets the debug flag.
+	SetDebug(bool)
+	// SetShowTrace sets the show trace flag.
+	SetShowTrace(bool)
+	// Log logs a message with the given log level.
+	Log(string, ...any)
 }

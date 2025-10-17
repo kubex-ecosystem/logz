@@ -19,6 +19,7 @@ const (
 	WARN    LogLevel = "WARN"
 	ERROR   LogLevel = "ERROR"
 	FATAL   LogLevel = "FATAL"
+	PANIC   LogLevel = "PANIC"
 	SILENT  LogLevel = "SILENT"
 	ANSWER  LogLevel = "ANSWER"
 )

@@ -2,7 +2,6 @@
 package logger
 
 import (
-	"log"
 	"os"
 
 	il "github.com/kubex-ecosystem/logz/internal/core"
@@ -23,47 +22,13 @@ type LogzEntry interface{ il.LogzEntry }
 // LogFormatter defines the contract for formatting log entries.
 type LogFormatter interface{ il.LogFormatter }
 
-type LogzCore interface{ il.LogzCore }
+type logxLogger = il.LogzCoreImpl
 
-type LogzLogger interface{ il.LogzLogger }
-
-type Logger struct {
-	// il.LogzCoreImpl is the logz core logger
-	log.Logger
-	// il.LogzLogger is the logz logger
-	LogzLogger
-}
-
-// logzLogger is the implementation of the LoggerInterface, unifying the new LogzCoreImpl and the old one.
-type logzLogger struct {
-	// logger is the logz logger.
-	//logger LogzLogger
-	*Logger
-
-	//il.LogzLogger
-
-	// coreLogger is the LogzCore logger.
-	//LogzCore
-}
+type LogzLogger = il.LogzLogger
 
 // NewLogger creates a new instance of logzLogger with an optional prefix.
 func NewLogger(prefix string) LogzLogger {
-	lgzR := &Logger{
-		*log.New(
-			os.Stdout,
-			prefix,
-			log.LstdFlags,
-		),
-		il.NewLogger(prefix),
-	}
-	lgz := &logzLogger{
-		lgzR,
-	}
-	lgz.SetPrefix(prefix)
-	lgz.SetFlags(log.LstdFlags)
-	lgz.SetOutput(os.Stdout)
-	lgz.SetLevel(il.INFO)
-	return lgz
+	return il.NewLogger(prefix)
 }
 
 func NewDefaultWriter(out *os.File, formatter LogFormatter) *il.DefaultWriter[any] {
