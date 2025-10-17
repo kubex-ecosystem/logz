@@ -65,6 +65,10 @@ type LogzCoreImpl struct {
 
 // NewLogger creates a new instance of LogzCoreImpl with the provided configuration.
 func NewLogger(prefix string) LogzLogger {
+	return NewLoggerImpl(prefix)
+}
+
+func NewLoggerImpl(prefix string) *LogzCoreImpl {
 	level := INFO // Default log VLevel
 
 	writer := NewDefaultWriter[any](os.Stdout, &TextFormatter{}) //out, formatter)
@@ -75,19 +79,22 @@ func NewLogger(prefix string) LogzLogger {
 	mode := ModeStandalone // Default to standalone if not specified
 	//}
 
+	logg := log.New(
+		writer.out,
+		prefix,
+		log.LstdFlags,
+	)
+
 	lgr := &LogzCoreImpl{
-		Logger: log.New(
-			os.Stdout,
-			prefix,
-			log.LstdFlags,
-		),
-		VLevel:  level,
-		VWriter: writer,
-		//VConfig:   VConfig,
+		Logger:    logg,
+		VLevel:    level,
+		VWriter:   writer,
 		VMetadata: make(map[string]interface{}),
 		VMode:     mode,
 	}
+
 	lgr.prefix.Store(&prefix)
+
 	return lgr
 }
 

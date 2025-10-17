@@ -103,6 +103,9 @@ func getEnvOrDefault[T string | int | bool](key string, defaultValue T) T {
 
 func init() {
 	if LoggerG == nil {
+
+		LoggerG = NewLoggerG("")
+
 		if logger, ok := LoggerG.(*LoggerImpl); ok {
 			g = logger
 			logLevel = getEnvOrDefault("GOBE_LOG_LEVEL", "error")
@@ -369,7 +372,7 @@ func LogObjLogger[T any](obj *T, logType string, messages ...any) {
 func Log(logType string, messages ...any) {
 	funcName, line, file := getFuncNameMessage(g)
 	fullMessage := getFullMessage(messages...)
-	logType = strings.ToLower(logType)
+	logType = strings.ToUpper(logType)
 	ctxMessageMap := getCtxMessageMap(logType, funcName, file, line)
 	if logType != "" {
 		if reflect.TypeOf(logType).ConvertibleTo(reflect.TypeFor[LogType]()) {
@@ -380,7 +383,7 @@ func Log(logType string, messages ...any) {
 			g.ErrorCtx(fmt.Sprintf("logType (%s) is not valid", logType), ctxMessageMap)
 		}
 	} else {
-		logging(g, LogType(il.INFO), fullMessage, ctxMessageMap)
+		logging(g, LogType(logType), fullMessage, ctxMessageMap)
 	}
 }
 func logging(lgr *LoggerImpl, lType LogType, fullMessage string, ctxMessageMap map[string]any) {
@@ -507,7 +510,7 @@ func (g *LoggerImpl) Answer(m ...any) {
 
 func NewLoggerG(prefix string) Logger {
 	return &LoggerImpl{
-		// Logger:     ,
+		logzLogger:   &logzLogger{LogzCoreImpl: il.NewLoggerImpl(prefix)},
 		gLogLevel:    LogLevel(il.ERROR),
 		gLogLevelInt: LogLevelError,
 		gShowTrace:   false,
