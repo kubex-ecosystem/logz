@@ -1,7 +1,7 @@
 {
   "name": "Kubex Logz",
   "application": "logz",
-  "version": "1.5.1",
+  "version": "1.5.5",
   "private": false,
   "published": true,
   "aliases": [
@@ -11,6 +11,7 @@
   "homepage": "https://github.com/kubex-ecosystem/logz",
   "description": "Kubex Logz: A complete logging solution for your applications.",
   "main": "cmd/main.go",
+  "go_version": "1.25.3",
   "bin": "logz",
   "author": "Rafael Mori <faelmori@gmail.com>",
   "organization": "kubex-ecosystem",
@@ -25,8 +26,11 @@
   ],
   "platforms": [
     "linux/amd64",
+    "linux/arm64",
     "darwin/amd64",
-    "darwin/arm64"
+    "darwin/arm64",
+    "windows/amd64",
+    "windows/386"
   ],
   "dependencies": [
     "tar",

@@ -5,7 +5,7 @@
 
 # Define the application name and root directory
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-TARGET_MANIFEST = $(ROOT_DIR)info/manifest.json
+TARGET_MANIFEST = $(ROOT_DIR)internal/module/info/manifest.json
 APP_NAME := $(shell jq -r '.name' < $(TARGET_MANIFEST))
 _RUN_PRE_SCRIPTS := $(shell echo "true")
 _RUN_POST_SCRIPTS := $(shell echo "true")

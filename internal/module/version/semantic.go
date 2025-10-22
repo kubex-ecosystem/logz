@@ -407,13 +407,13 @@ func GetLatestVersionFromGit() string {
 	response, err := netClient.Get(gitURLWithoutGit + "/releases/latest")
 	if err != nil {
 		gl.ErrorCtx("Error fetching latest version: "+err.Error(), map[string]interface{}{})
-		gl.ErrorCtx("Url: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		gl.ErrorCtx("URL: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
 		return err.Error()
 	}
 
 	if response.StatusCode != 200 {
 		gl.ErrorCtx("Error fetching latest version: "+response.Status, map[string]interface{}{})
-		gl.ErrorCtx("Url: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		gl.ErrorCtx("URL: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
 		body, _ := io.ReadAll(response.Body)
 		return fmt.Sprintf("Error: %s\nResponse: %s", response.Status, string(body))
 	}

@@ -11,7 +11,7 @@ shopt -s inherit_errexit # Inherit the errexit option in functions
 IFS=$'\n\t'
 
 # Define the relative path to the manifest file
-_MANIFEST_SUBPATH=${_MANIFEST_SUBPATH:-'info/manifest.json'}
+_MANIFEST_SUBPATH=${_MANIFEST_SUBPATH:-'internal/module/info/manifest.json'}
 
 # Define environment variables for the current platform and architecture
 # Converts to lowercase for compatibility
