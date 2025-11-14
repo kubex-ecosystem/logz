@@ -10,36 +10,40 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	il "github.com/kubex-ecosystem/logz/internal/core"
+	// "github.com/kubex-ecosystem/logz/internal/config"
+	interfaces "github.com/kubex-ecosystem/logz/internal/interfaces"
+
+	apiC "github.com/kubex-ecosystem/logz/api/config"
 )
 
-type Config = il.Config
-type ConfigImpl = il.ConfigImpl
+type Config = interfaces.Config
+type ConfigImpl = interfaces.ConfigManager
 
-type ConfigManager = il.ConfigManager
-type ConfigManagerImpl = il.ConfigManagerImpl
+type ConfigManager = interfaces.ConfigManager
+
+// type ConfigManagerImpl = interfaces.ConfigManagerImpl
 
 func NewLogzConfigManager() ConfigManager {
-	return *il.NewConfigManager()
+	return interfaces.NewConfigManager()
 }
 
-type NotifierManager = il.NotifierManager
-type NotifierManagerImpl = il.NotifierManagerImpl
+type NotifierManager = interfaces.NotifierManager
+type NotifierManagerImpl = interfaces.NotifierManagerImpl
 
 // NewLogzNotifierManager creates a new instance of LogzNotifierManager.
 func NewLogzNotifierManager(notifiers map[string]Notifier) NotifierManager {
 	if notifiers == nil {
 		notifiers = make(map[string]Notifier)
 	}
-	return il.NewNotifierManager(notifiers)
+	return NewNotifierManager(notifiers)
 }
 
-type Notifier = il.Notifier
-type NotifierImpl = il.NotifierImpl
+type Notifier = apiC.Notifier
+type NotifierImpl = apiC.NotifierImpl
 
 // NewNotifier creates a new Notifier service instance.
 func NewNotifier(
-	manager il.NotifierManager,
+	manager apiC.NotifierManager,
 	enabled bool,
 	webhookURL string,
 	HTTPMethod string,
@@ -48,26 +52,26 @@ func NewNotifier(
 	wsEndpoint string,
 	whitelist []string,
 ) Notifier {
-	return il.NewNotifier(manager, enabled, webhookURL, HTTPMethod, authToken, logLevel, wsEndpoint, whitelist)
+	return apiC.NewNotifier(manager, enabled, webhookURL, HTTPMethod, authToken, logLevel, wsEndpoint, whitelist)
 }
 
-type HTTPNotifier = il.HTTPNotifier
+type HTTPNotifier = apiC.HTTPNotifier
 
 func NewHTTPNotifier(webhookURL string, authToken string) HTTPNotifier {
-	return *il.NewHTTPNotifier(webhookURL, authToken)
+	return *apiC.NewHTTPNotifier(webhookURL, authToken)
 }
 
-type WebSocketNotifier = il.WebSocketNotifier
+type WebSocketNotifier = apiC.WebSocketNotifier
 
 func NewWebSocketNotifierWithConfig(config *NotifierWebSocketConfig) WebSocketNotifier {
-	return *il.NewWebSocketNotifierWithConfig(config)
+	return *apiC.NewWebSocketNotifierWithConfig(config)
 }
 
 func NewWebSocketNotifier(endpoint string, authToken string) WebSocketNotifier {
-	return *il.NewWebSocketNotifier(endpoint)
+	return *apiC.NewWebSocketNotifier(endpoint, authToken)
 }
 
-type NotifierWebSocketConfig = il.NotifierWebSocketConfig
+type NotifierWebSocketConfig = apiC.NotifierWebSocketConfig
 
 func NewNotifierWebSocketConfig(
 	TLSClientConfig *tls.Config,
@@ -82,7 +86,7 @@ func NewNotifierWebSocketConfig(
 	NetDialTLSContext func(ctx context.Context, network, addr string) (net.Conn, error),
 	Proxy func(*http.Request) (*url.URL, error),
 ) *NotifierWebSocketConfig {
-	return &il.NotifierWebSocketConfig{
+	return &apiC.NotifierWebSocketConfig{
 		TLSClientConfig:   TLSClientConfig,
 		HandshakeTimeout:  HandshakeTimeout,
 		Jar:               Jar,
@@ -98,8 +102,8 @@ func NewNotifierWebSocketConfig(
 	}
 }
 
-type DBusNotifier = il.DBusNotifier
+type DBusNotifier = apiC.DBusNotifier
 
 func NewDBusNotifier() DBusNotifier {
-	return *il.NewDBusNotifier()
+	return *apiC.NewDBusNotifier()
 }

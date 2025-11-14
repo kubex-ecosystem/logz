@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/godbus/dbus/v5"
-	core "github.com/kubex-ecosystem/logz/internal/core"
+	core "github.com/kubex-ecosystem/logz/internal/loggerz"
 )
 
 func Run() error { return core.Run() }

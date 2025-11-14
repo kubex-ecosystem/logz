@@ -4,12 +4,15 @@ package logz
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/kubex-ecosystem/logz/internal/core"
 	vs "github.com/kubex-ecosystem/logz/internal/module/version"
-	logz "github.com/kubex-ecosystem/logz/logger"
+	"github.com/kubex-ecosystem/logz/internal/utils"
+	kbx "github.com/kubex-ecosystem/logz/logger"
 )
 
 var (
@@ -23,18 +26,22 @@ var (
 type LogLevel = core.LogLevel
 type LogFormat = core.LogFormat
 
-type Config interface{ core.Config }
+type Config = core.Config
 
 // type ConfigManager interface{ core.LogzConfigManager }
 
-type NotifierManager interface{ core.NotifierManager }
-type Notifier interface{ core.Notifier }
-type Logger interface{ logz.LogzLogger }
+type NotifierManager = core.NotifierManager
+type Notifier = core.Notifier
+type Logger = kbx.LogzLogger
 
 type JSONFormatter = core.JSONFormatter
 type TextFormatter = core.TextFormatter
 
-type Writer struct{ core.LogWriter[any] }
+type Writer struct {
+	io.Writer
+	Formatter  core.LogFormatter
+	LogzWriter core.LogzWriter[any, core.WriteLogz[any]]
+}
 
 func (w Writer) Write(p []byte) (n int, err error) {
 	var decodedMessage map[string]interface{}
@@ -44,7 +51,7 @@ func (w Writer) Write(p []byte) (n int, err error) {
 			WithLevel(GetLogLevel()).
 			AddMetadata("original", decodedMessage)
 
-		writeErr := w.LogWriter.Write(entry)
+		_, writeErr := w.LogzWriter.Write([]byte(entry.String()))
 		if writeErr != nil {
 			return 0, writeErr
 		}
@@ -52,7 +59,7 @@ func (w Writer) Write(p []byte) (n int, err error) {
 		entry := core.NewLogEntry().
 			WithMessage(string(p)).
 			WithLevel(GetLogLevel())
-		writeErr := w.LogWriter.Write(entry)
+		_, writeErr := w.LogzWriter.Write([]byte(entry.String()))
 		if writeErr != nil {
 			return 0, writeErr
 		}
@@ -62,12 +69,11 @@ func (w Writer) Write(p []byte) (n int, err error) {
 }
 
 // SetLogWriter sets the log writer for the global core.
-func SetLogWriter(writer interface{}) {
+func SetLogWriter(writer io.Writer) {
 	//mu.Lock()
 	//defer mu.Unlock()
 	if logger != nil {
-		nWriter := core.NewDefaultWriter[any](writer.(Writer), &TextFormatter{})
-		logger.SetWriter(nWriter)
+		logger.SetWriter(writer)
 	}
 }
 
@@ -78,15 +84,21 @@ func GetLogWriter() *Writer {
 	if logger == nil {
 		return nil
 	}
-	writer := logger.GetWriter().(logz.LogWriter[any])
-	return &Writer{LogWriter: writer}
+	// writer := logger.GetWriter().(logz.LogzWriter[any, core.WriteLogz[any]])
+	writer := logger.GetWriter().(kbx.LogzWriter[any, core.WriteLogz[any]])
+	return &Writer{
+		LogzWriter: writer,
+	}
 }
 
 func NewWriter(out *os.File, formatter core.LogFormatter) Writer {
 	if out == nil {
 		out = os.Stdout
 	}
-	return Writer{LogWriter: core.NewDefaultWriter[any](out, formatter)}
+	return Writer{
+		Writer:    out,
+		Formatter: formatter,
+	}
 }
 
 // initializeLogger initializes the global logger with the given prefix.
@@ -99,29 +111,20 @@ func initializeLogger(prefix string) {
 		return
 	}
 
-	logger = logz.NewLogger(prefix).(Logger)
-	logLevel := os.Getenv("LOG_LEVEL")
+	// logLevel := kbx.getEnvOrDefault(os.Getenv("LOG_LEVEL"), "info")
+	logger = kbx.NewLogger(prefix)
+
+	logLevel := strings.ToUpper(utils.GetEnvOrDefault(os.Getenv("LOG_LEVEL"), "info"))
 	if logLevel != "" {
-		logger.SetLevel(core.LogLevel(logLevel))
+		logger.SetLevel(logLevel)
 	} else {
-		logger.SetLevel(core.INFO)
+		logger.SetLevel(string(core.INFO))
 	}
 
 	logFormat := os.Getenv("LOG_FORMAT")
-	//config := logger.GetConfig().(*core.Config)
 	if logFormat != "" {
-		logger.SetFormat(core.LogFormat(logFormat))
-		// } else {
-		// 	//logger.GetConfig().SetFormat(core.TEXT)
+		logger.SetFormat(logFormat)
 	}
-
-	// logOutput := os.Getenv("LOG_OUTPUT")
-	// if logOutput != "" {
-	//logger.GetConfig().SetOutput(logOutput)
-	// } else {
-	//logger.GetConfig().SetOutput(os.Stdout.Name())
-	// }
-	//	})
 }
 
 // GetLogger returns the global core instance, initializing it if necessary.
@@ -135,7 +138,7 @@ func GetLogger(prefix string) Logger {
 
 // NewLogger creates a new core instance with the given prefix.
 func NewLogger(prefix string) Logger {
-	return logz.NewLogger(prefix)
+	return kbx.NewLogger(prefix)
 }
 
 // SetLogger sets the global core instance to the provided core.
@@ -160,7 +163,7 @@ func GetPrefix() string {
 }
 
 // SetLogLevel sets the log level for the global core.
-func SetLogLevel(level LogLevel) {
+func SetLogLevel(level string) {
 	//mu.Lock()
 	//defer mu.Unlock()
 	if logger != nil {
@@ -169,11 +172,11 @@ func SetLogLevel(level LogLevel) {
 }
 
 // GetLogLevel returns the log level of the global core.
-func GetLogLevel() LogLevel {
+func GetLogLevel() string {
 	if logger == nil {
-		return core.DEBUG
+		return string(core.DEBUG)
 	}
-	return LogLevel(logger.GetLevel().(string))
+	return logger.GetLevel()
 }
 
 // SetLogConfig sets the configuration for the global core.
@@ -192,7 +195,7 @@ func GetLogConfig() Config {
 	if logger == nil {
 		return nil
 	}
-	return logger.GetConfig().(core.Config)
+	return logger.GetConfig()
 }
 
 // SetMetadata sets a metadata key-value pair for the global core.
@@ -322,14 +325,12 @@ func ListNotifiers() []string {
 }
 
 // SetLogFormat sets the log format for the global core.
-func SetLogFormat(format LogFormat) {
+func SetLogFormat(format string) {
 	//mu.Lock()
 	//defer mu.Unlock()
-	// if logger != nil {
-	// 	/*logger.
-	// 	GetConfig().
-	// 	SetFormat(format)*/
-	// }
+	if logger != nil {
+		logger.SetFormat(format)
+	}
 }
 
 // GetLogFormat returns the log format of the global core.
@@ -355,8 +356,8 @@ func SetLogOutput(output string) {
 	//defer mu.Unlock()
 	if logger != nil {
 		cfg := logger.GetConfig()
-		ccc := cfg.(*core.Config)
-		cc := *ccc
+		ccc := cfg
+		cc := ccc
 		cc.SetOutput(output)
 		logger.SetConfig(ccc)
 
@@ -374,7 +375,7 @@ func GetLogOutput() string {
 	if cfg == nil {
 		return os.Stdout.Name()
 	} else {
-		return cfg.(core.Config).Output()
+		return cfg.Output()
 	}
 }
 
@@ -408,7 +409,7 @@ func Version() string {
 // Info returns the log output of the global core.
 func Info(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.InfoCtx(fmt.Sprint(args...), nil)
 }
@@ -416,7 +417,7 @@ func Info(args ...any) {
 // Debug returns the log output of the global core.
 func Debug(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.DebugCtx(fmt.Sprint(args...), nil)
 }
@@ -424,7 +425,7 @@ func Debug(args ...any) {
 // Warn returns the log output of the global core.
 func Warn(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.WarnCtx(fmt.Sprint(args...), nil)
 }
@@ -432,7 +433,7 @@ func Warn(args ...any) {
 // Error returns the log output of the global core.
 func Error(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.ErrorCtx(fmt.Sprint(args...), nil)
 }
@@ -440,7 +441,7 @@ func Error(args ...any) {
 // Fatal returns the log output of the global core.
 func Fatal(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.FatalCtx(fmt.Sprint(args...), nil)
 }
@@ -448,7 +449,7 @@ func Fatal(args ...any) {
 // Trace returns the log output of the global core.
 func Trace(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.TraceCtx(fmt.Sprint(args...), nil)
 }
@@ -456,7 +457,7 @@ func Trace(args ...any) {
 // Notice returns the log output of the global core.
 func Notice(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.NoticeCtx(fmt.Sprint(args...), nil)
 }
@@ -464,7 +465,7 @@ func Notice(args ...any) {
 // Success returns the log output of the global core.
 func Success(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.SuccessCtx(fmt.Sprint(args...), nil)
 }
@@ -472,7 +473,7 @@ func Success(args ...any) {
 // Panic returns the log output of the global core.
 func Panic(args ...any) {
 	if logger == nil {
-		logger = logz.NewLogger(pfx)
+		logger = kbx.NewLogger(pfx)
 	}
 	logger.FatalCtx(fmt.Sprint(args...), nil)
 }

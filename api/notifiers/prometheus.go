@@ -1,5 +1,5 @@
 // Package integrations provides integration with various external services.
-package integrations
+package notifiers
 
 import (
 	"github.com/kubex-ecosystem/logz/internal/core"

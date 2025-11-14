@@ -1,12 +1,14 @@
-package core
+package formatters
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
-	"runtime"
 	"strings"
+
+	li "github.com/kubex-ecosystem/logz/internal/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -16,15 +18,15 @@ import (
 type LogFormatter interface {
 	// Format converts a log entry to a formatted string.
 	// Returns the formatted string and an error if formatting fails.
-	Format(entry LogzEntry) (string, error)
+	Format(entry li.LogzEntry) (string, error)
 }
 
-// JSONFormatter formats the log in JSON format.
-type JSONFormatter struct{}
+// JSONFormatterImpl formats the log in JSON format.
+type JSONFormatterImpl struct{}
 
 // Format converts the log entry to JSON.
 // Returns the JSON string and an error if marshalling fails.
-func (f *JSONFormatter) Format(entry LogzEntry) (string, error) {
+func (f *JSONFormatterImpl) Format(entry li.LogzEntry) (string, error) {
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return "", err
@@ -32,76 +34,40 @@ func (f *JSONFormatter) Format(entry LogzEntry) (string, error) {
 	return string(data), nil
 }
 
-// TextFormatter formats the log in plain text.
-type TextFormatter struct{}
+// TextFormatterImpl formats the log in plain text.
+type TextFormatterImpl struct{}
 
 // Format converts the log entry to a formatted string with colors and icons.
 // Returns the formatted string and an error if formatting fails.
-func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
+func (f TextFormatterImpl) Format(entry li.LogzEntry) (string, error) {
 
-	// Check for environment variables
-	noColor := os.Getenv("LOGZ_NO_COLOR") != "" || runtime.GOOS == "windows"
-	noIcon := os.Getenv("LOGZ_NO_ICON") != ""
-
-	icon, levelStr := "", ""
-
-	if !noIcon {
-		switch entry.GetLevel() {
-		case NOTICE:
-			icon = "\033[33m📝\033[0m "
-		case TRACE:
-			icon = "\033[36m🔍\033[0m "
-		case SUCCESS:
-			icon = "\033[32m✅\033[0m "
-		case DEBUG:
-			icon = "\033[34m🐛\033[0m "
-		case INFO:
-			icon = "\033[32mℹ️\033[0m "
-		case WARN:
-			icon = "\033[33m⚠️\033[0m "
-		case ERROR:
-			icon = "\033[31m❌\033[0m "
-		case FATAL:
-			icon = "\033[35m💀\033[0m "
-		case SILENT:
-			icon = ""
-		case ANSWER:
-			icon = ""
+	if !kbx.NoColor {
+		switch kbx.LogLevel(entry.GetLevel()) {
+		case kbx.NOTICE:
+			kbx.LevelStr = "\033[33mNOTICE\033[0m"
+		case kbx.TRACE:
+			kbx.LevelStr = "\033[36mTRACE\033[0m"
+		case kbx.SUCCESS:
+			kbx.LevelStr = "\033[32mSUCCESS\033[0m"
+		case kbx.DEBUG:
+			kbx.LevelStr = "\033[34mDEBUG\033[0m"
+		case kbx.INFO:
+			kbx.LevelStr = "\033[32mINFO\033[0m"
+		case kbx.WARN:
+			kbx.LevelStr = "\033[33mWARN\033[0m"
+		case kbx.ERROR:
+			kbx.LevelStr = "\033[31mERROR\033[0m"
+		case kbx.FATAL:
+			kbx.LevelStr = "\033[35mFATAL\033[0m"
+		case kbx.SILENT:
+			kbx.LevelStr = ""
+		case kbx.ANSWER:
+			kbx.LevelStr = ""
 		default:
-			icon = ""
+			kbx.LevelStr = string(entry.GetLevel())
 		}
 	} else {
-		icon = ""
-	}
-
-	// Configure colors and icons by VLevel
-	if !noColor {
-		switch entry.GetLevel() {
-		case NOTICE:
-			levelStr = "\033[33mNOTICE\033[0m"
-		case TRACE:
-			levelStr = "\033[36mTRACE\033[0m"
-		case SUCCESS:
-			levelStr = "\033[32mSUCCESS\033[0m"
-		case DEBUG:
-			levelStr = "\033[34mDEBUG\033[0m"
-		case INFO:
-			levelStr = "\033[32mINFO\033[0m"
-		case WARN:
-			levelStr = "\033[33mWARN\033[0m"
-		case ERROR:
-			levelStr = "\033[31mERROR\033[0m"
-		case FATAL:
-			levelStr = "\033[35mFATAL\033[0m"
-		case SILENT:
-			levelStr = ""
-		case ANSWER:
-			levelStr = ""
-		default:
-			levelStr = string(entry.GetLevel())
-		}
-	} else {
-		levelStr = string(entry.GetLevel())
+		kbx.LevelStr = string(entry.GetLevel())
 	}
 
 	systemLocale := os.Getenv("LANG")
@@ -123,11 +89,11 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 				}
 			} else if tp.Kind() == reflect.String {
 				if sc.(string) == "true" {
-					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+					metadata = fmt.Sprintf("\n%s", FormatMetadata(entry))
 				}
 			}
 
-		} else if map[LogLevel]bool{DEBUG: true, INFO: true}[entry.GetLevel()] {
+		} else if map[li.LogLevel]bool{li.DEBUG: true, li.INFO: true}[li.LogLevel(entry.GetLevel())] {
 			if c, exists := entry.GetMetadata()["context"]; exists {
 				context = c.(string)
 			}
@@ -136,15 +102,15 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 			tp := reflect.TypeOf(smd)
 			if tp.Kind() == reflect.Bool {
 				if smd.(bool) {
-					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+					metadata = fmt.Sprintf("\n%s", FormatMetadata(entry))
 				}
 			} else if tp.Kind() == reflect.String {
 				if smd.(string) == "true" {
-					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+					metadata = fmt.Sprintf("\n%s", FormatMetadata(entry))
 				}
 			}
-		} else if entry.GetLevel() == DEBUG {
-			metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+		} else if entry.GetLevel() == string(li.DEBUG) {
+			metadata = fmt.Sprintf("\n%s", FormatMetadata(entry))
 		}
 		if stp, exist := entry.GetMetadata()["showTimestamp"]; exist {
 			tp := reflect.TypeOf(stp)
@@ -154,15 +120,15 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 				}
 			} else if tp.Kind() == reflect.String {
 				if stp.(string) == "true" {
-					metadata = fmt.Sprintf("\n%s", formatMetadata(entry))
+					metadata = fmt.Sprintf("\n%s", FormatMetadata(entry))
 				}
 			}
 		}
 	}
 	var header string
-	if levelStr != "" && icon != "" {
+	if LevelStr != "" && icon != "" {
 		// Construct the header
-		header = fmt.Sprintf("%s [%s] %s %s - ", timestamp, levelStr, context, icon)
+		header = fmt.Sprintf("%s [%s] %s %s - ", timestamp, LevelStr, context, icon)
 	} else {
 		header = strings.TrimSpace(fmt.Sprintf("%s %s", timestamp, context))
 	}
@@ -171,11 +137,11 @@ func (f *TextFormatter) Format(entry LogzEntry) (string, error) {
 	return fmt.Sprintf("%s%s%s", header, entry.GetMessage(), metadata), nil
 }
 
-type TableFormatter struct{}
+type TableFormatterImpl struct{}
 
 // Format formats the log entry as a table string.
 // It uses the FormatRow method to get the rows and then constructs a string representation.
-func (f *TableFormatter) Format(entry LogzEntry) (string, error) {
+func (f *TableFormatterImpl) Format(entry li.LogzEntry) (string, error) {
 	rows, err := f.FormatRow(entry)
 	if err != nil {
 		return "", err
@@ -191,7 +157,7 @@ func (f *TableFormatter) Format(entry LogzEntry) (string, error) {
 }
 
 // FormatRow formats the log entry as a table.
-func (f *TableFormatter) FormatRow(entry LogzEntry) ([][]string, error) {
+func (f *TableFormatterImpl) FormatRow(entry li.LogzEntry) ([][]string, error) {
 	level := entry.GetLevel()
 	context := entry.GetContext()
 	message := entry.GetMessage()
@@ -204,4 +170,21 @@ func (f *TableFormatter) FormatRow(entry LogzEntry) ([][]string, error) {
 	}
 
 	return table, nil
+}
+
+// FormatMetadata converts VMetadata to a JSON string.
+// Returns the JSON string or an empty string if marshalling fails.
+func FormatMetadata(entry li.LogzEntry) string {
+	metadata := entry.GetMetadata()
+	if len(metadata) == 0 {
+		return ""
+	}
+	prefix := "Context:\n"
+	for k, v := range metadata {
+		if k == "showContext" {
+			continue
+		}
+		prefix += fmt.Sprintf("  - %s: %v\n", k, v)
+	}
+	return prefix
 }

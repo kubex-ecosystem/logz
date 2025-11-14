@@ -1,11 +1,13 @@
 package cli
 
 import (
-	il "github.com/kubex-ecosystem/logz/internal/core"
+	// il "github.com/kubex-ecosystem/logz/internal/interfaces"
+
+	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"fmt"
+	il "github.com/kubex-ecosystem/logz/internal/interfaces"
 )
 
 // ServiceCmd creates the main command for managing the web service.
@@ -26,6 +28,7 @@ func ServiceCmd() *cobra.Command {
 
 // startServiceCmd creates the command to start the web service.
 func startServiceCmd() *cobra.Command {
+
 	return &cobra.Command{
 		Use:    "start",
 		Short:  "Start the web service",
@@ -36,7 +39,7 @@ func startServiceCmd() *cobra.Command {
 				fmt.Println("ErrorCtx initializing ConfigManager.")
 				return
 			}
-			cfgMgr := *configManager
+			cfgMgr := configManager
 
 			_, err := cfgMgr.LoadConfig()
 			if err != nil {
@@ -44,7 +47,7 @@ func startServiceCmd() *cobra.Command {
 				return
 			}
 
-			if err := il.Start("9999"); err != nil {
+			if err := il..Start("9999"); err != nil {
 				fmt.Printf("ErrorCtx starting service: %v\n", err)
 			} else {
 				fmt.Println("Service started successfully.")
@@ -93,7 +96,7 @@ func spawnServiceCmd() *cobra.Command {
 		Use:    "spawn",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := il.Run(); err != nil {
+			if err := il.Spawn(configPath); err != nil {
 				return err
 			}
 			return nil

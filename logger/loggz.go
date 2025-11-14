@@ -1,36 +1,26 @@
 // Package logger provides a unified interface for logging with various configurations and formats.
 package logger
 
-import (
-	"os"
+// import (
+// 	"os"
 
-	il "github.com/kubex-ecosystem/logz/internal/core"
-)
+// 	apiW "github.com/kubex-ecosystem/logz/api/writers"
+// 	il "github.com/kubex-ecosystem/logz/"
+// )
 
-// LogFormat represents the format of the log entry.
-type LogFormat = il.LogFormat
+// // type ILogWriter[T any, W il.WriteLog[T]] interface{ il.LogWriter[T,W] }
 
-// LogWriter represents the writer of the log entry.
-type LogWriter[T any] interface{ il.LogWriter[T] }
+// // type LogFormat = LogFormat
+// type LogWriter[T any, W apiW.WriteLogz[T]] = il.LogzWriter[T, W]
+// type LogzWriter[E any, W WriteLogz[E]] = il.LogzWriter[E, W]
+// type Writer = il.Writer
+// type Config = il.Config
+// type LogzEntry = il.LogzEntry
+// type LogFormatter = il.LogFormatter
+// type logxLogger = il.LogzCoreImpl
+// type LogzLogger = il.LogzLogger
 
-// Config represents the configuration of the il.
-type Config interface{ il.Config }
-
-// LogzEntry represents a single log entry with various attributes.
-type LogzEntry interface{ il.LogzEntry }
-
-// LogFormatter defines the contract for formatting log entries.
-type LogFormatter interface{ il.LogFormatter }
-
-type logxLogger = il.LogzCoreImpl
-
-type LogzLogger = il.LogzLogger
-
-// NewLogger creates a new instance of logzLogger with an optional prefix.
-func NewLogger(prefix string) LogzLogger {
-	return il.NewLogger(prefix)
-}
-
-func NewDefaultWriter(out *os.File, formatter LogFormatter) *il.DefaultWriter[any] {
-	return il.NewDefaultWriter[any](out, formatter)
-}
+// func NewLogger(prefix string) LogzLogger { return il.NewLogger(prefix) }
+// func NewDefaultWriter(out *os.File, formatter LogFormatter) *il.DefaultWriter[any] {
+// 	return il.NewDefaultWriter[any](out, formatter)
+// }

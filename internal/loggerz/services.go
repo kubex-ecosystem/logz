@@ -1,4 +1,4 @@
-package core
+package loggerz
 
 import (
 	"context"
@@ -19,6 +19,11 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
+
+	"github.com/kubex-ecosystem/logz/api/notifiers"
+	"github.com/kubex-ecosystem/logz/internal/interfaces"
+	li "github.com/kubex-ecosystem/logz/internal/interfaces"
+
 	"github.com/spf13/viper"
 )
 
@@ -34,7 +39,7 @@ var (
 	// Uncomment and ensure the required libraries are installed if needed in the future
 	//lSocket      *zmq4.Socket
 	lDBus        *dbus.Conn
-	globalLogger LogzLogger // Global core for the service
+	globalLogger li.LogzLogger // Global core for the service
 	startTime    = time.Now()
 	mu           sync.RWMutex
 )
@@ -52,11 +57,11 @@ func Run() error {
 	}
 
 	// Initialize the ConfigManager and load the configuration
-	configManager := NewConfigManager()
+	configManager := interfaces.NewConfigManager()
 	if configManager == nil {
 		return errors.New("failed to initialize VConfig manager")
 	}
-	cfgMgr := *configManager
+	cfgMgr := configManager
 
 	config, err := cfgMgr.LoadConfig()
 	if err != nil {
@@ -305,7 +310,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 
 // metricsHandler handles metrics requests.
 func metricsHandler(w http.ResponseWriter, _ *http.Request) {
-	pm := GetPrometheusManager()
+	pm := notifiers.GetPrometheusManager()
 	if !pm.IsEnabled() {
 		http.Error(w, "Prometheus integration is not enabled", http.StatusForbidden)
 		return
@@ -349,7 +354,7 @@ func shutdown() error {
 }
 
 // initializeGlobalLogger initializes the global core with the provided configuration.
-func initializeGlobalLogger(config Config) {
+func initializeGlobalLogger(config li.Config) {
 	mu.Lock()
 	defer mu.Unlock()
 

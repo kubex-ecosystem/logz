@@ -1,261 +1,274 @@
+// Package cli provides the command-line interface for the Logz Logger.
 package cli
 
 import (
-	il "github.com/kubex-ecosystem/logz/internal/core"
-
 	"github.com/spf13/cobra"
 
-	"fmt"
-	"os"
-	"os/signal"
-	"path/filepath"
+	gl "github.com/kubex-ecosystem/logz/logger"
+
 	"sync"
-	"syscall"
-	"time"
 )
 
-// LogzCmds returns the CLI commands for different log levels and management.
-func LogzCmds() []*cobra.Command {
-	return []*cobra.Command{
-		newLogCmd("debug", []string{"dbg"}),
-		newLogCmd("notice", []string{"not"}),
-		newLogCmd("success", []string{"suc"}),
-		newLogCmd("info", []string{"inf"}),
-		newLogCmd("warn", []string{"wrn"}),
-		newLogCmd("error", []string{"err"}),
-		newLogCmd("fatal", []string{"ftl"}),
-		watchLogsCmd(),
-		startServiceCmd(),
-		stopServiceCmd(),
-		rotateLogsCmd(),
-		checkLogSizeCmd(),
-		archiveLogsCmd(),
+var (
+	logCmdMap = map[string][]string{
+		"debug":   []string{"dbg"},
+		"notice":  []string{"not"},
+		"success": []string{"suc"},
+		"info":    []string{"inf"},
+		"warn":    []string{"wrn"},
+		"error":   []string{"err"},
+		"answer":  []string{"ans"},
+		"trace":   []string{"trc"},
+		"fatal":   []string{"ftl"},
 	}
+
+	metaData, ctx map[string]string
+
+	msg, output, format string
+
+	logLevel, configFile string
+
+	debugMode, quiet, hideBanner bool
+
+	logger = gl.LoggerG.GetLogger()
+
+	mu sync.RWMutex
+)
+
+func init() {
+	gl.LoggerG.GetLogger()
 }
 
-// newLogCmd configures a command for a specific log level.
-func newLogCmd(level string, aliases []string) *cobra.Command {
-	var metaData, ctx map[string]string
-	var msg, output, format string
-	var mu sync.RWMutex
+// LogzCmds returns the CLI commands for different log levels and management.
+func LogzCmds() *cobra.Command {
+	short := "Logz Logger CLI - Your versatile logging tool"
+	long := "Logz Logger CLI - Your versatile logging tool, supporting multiple log levels, formats, platforms, and log management features."
 
 	cmd := &cobra.Command{
-		Use:     level,
-		Aliases: aliases,
+		Use:     "log",
+		Short:   short,
+		Long:    long,
+		Aliases: []string{"log", "logs", "logger", "logging", "logz", "loggerz"},
 		Annotations: GetDescriptions(
-			[]string{"Logs a " + level + " level message"},
+			[]string{
+				long,
+				short,
+			},
 			false,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			configManager := il.NewConfigManager()
-			if configManager == nil {
-				fmt.Println("ErrorCtx initializing ConfigManager.")
-				return
-			}
-			cfgMgr := *configManager
-
-			config, err := cfgMgr.LoadConfig()
-			if err != nil {
-				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
-				return
-			}
-
-			if format != "" {
-				config.SetFormat(il.LogFormat(format))
-			}
-
-			if output != "" {
-				config.SetOutput(output)
-			}
-			logr := il.NewLogger("logz")
-			for k, v := range metaData {
-				logr.SetMetadata(k, v)
-			}
-			ctxInterface := make(map[string]interface{})
-			for k, v := range ctx {
-				ctxInterface[k] = v
-				mu.Lock()
-				defer mu.Unlock()
-			}
-			switch level {
-			case "debug":
-				logr.DebugCtx(msg, ctxInterface)
-			case "notice":
-				logr.NoticeCtx(msg, ctxInterface)
-			case "info":
-				logr.InfoCtx(msg, ctxInterface)
-			case "success":
-				logr.SuccessCtx(msg, ctxInterface)
-			case "warn":
-				logr.WarnCtx(msg, ctxInterface)
-			case "error":
-				logr.ErrorCtx(msg, ctxInterface)
-			case "fatal":
-				logr.FatalCtx(msg, ctxInterface)
-			default:
-				logr.InfoCtx(msg, ctxInterface)
-			}
+			cmd.Help()
 		},
 	}
 
-	cmd.Flags().StringVarP(&msg, "msg", "M", "", "Log message")
+	for level, aliases := range logCmdMap {
+		cmd.AddCommand(newLogCmd(level, aliases))
+	}
+
+	cmd.Flags().StringVarP(&logLevel, "level", "l", "", "Log level")
+	cmd.Flags().StringVarP(&configFile, "config", "c", "", "Configuration file")
+	cmd.Flags().StringVarP(&msg, "msg", "m", "", "Log message")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "Output file")
 	cmd.Flags().StringVarP(&format, "format", "f", "", "Output format")
-	cmd.Flags().StringToStringVarP(&metaData, "metadata", "m", nil, "Metadata to include")
-	cmd.Flags().StringToStringVarP(&ctx, "context", "c", nil, "Context for the log")
+	cmd.Flags().StringToStringVarP(&metaData, "metadata", "M", nil, "Metadata to include")
+	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Quiet mode")
+	cmd.Flags().StringToStringVarP(&ctx, "context", "C", nil, "Context for the log")
 
 	return cmd
 }
 
-// rotateLogsCmd allows manual log rotation.
-func rotateLogsCmd() *cobra.Command {
-	var mu sync.RWMutex
-
-	return &cobra.Command{
-		Use: "rotate",
+// newLogCmd configures a command for a specific log level.
+func newLogCmd(level string, aliases []string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     level,
+		Aliases: aliases,
+		Short:   "Log " + level + " level message",
+		Long:    "Logs a " + level + " level message with optional metadata and context.",
+		Example: "logz log " + level + " --msg 'This is a " + level + " message' --output 'logfile.log' --format 'json' --metadata key1=value1,key2=value2 --context user=admin,session=xyz",
 		Annotations: GetDescriptions(
-			[]string{"Rotates logs that exceed the configured size"},
-			false,
+			[]string{"Logs a " + level + " level message"},
+			hideBanner,
 		),
 		Run: func(cmd *cobra.Command, args []string) {
-			mu.Lock()
-			defer mu.Unlock()
-
-			configManager := il.NewConfigManager()
-			if configManager == nil {
-				fmt.Println("ErrorCtx initializing ConfigManager.")
-				return
+			if logLevel != "" {
+				logger.SetLevel(logLevel)
 			}
-			cfgMgr := *configManager
-
-			config, err := cfgMgr.LoadConfig()
-			if err != nil {
-				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
-				return
+			if debugMode {
+				logger.SetDebug(true)
+			}
+			if quiet {
+				logger.SetLogLevel("error")
+			}
+			if format != "" {
+				// lFmt := gl.LogFormat(format)
+				logger.SetFormat(format)
 			}
 
-			err = il.CheckLogSize(config)
-			if err != nil {
-				fmt.Printf("ErrorCtx rotating logs: %v\n", err)
-			} else {
-				fmt.Println("Logs rotated successfully!")
-			}
+			logger.Log(level, msg, output, metaData, ctx)
 		},
 	}
+
+	cmd.Flags().StringVarP(&logLevel, "level", "l", "", "Log level")
+	cmd.Flags().StringVarP(&configFile, "config", "c", "", "Configuration file")
+	cmd.Flags().StringVarP(&msg, "msg", "m", "", "Log message")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "Output file")
+	cmd.Flags().StringVarP(&format, "format", "f", "", "Output format")
+	cmd.Flags().StringToStringVarP(&metaData, "metadata", "M", nil, "Metadata to include")
+	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Quiet mode")
+	cmd.Flags().StringToStringVarP(&ctx, "context", "C", nil, "Context for the log")
+
+	return cmd
 }
 
-// checkLogSizeCmd checks the current log size.
-func checkLogSizeCmd() *cobra.Command {
-	var mu sync.RWMutex
+// // rotateLogsCmd allows manual log rotation.
+// func rotateLogsCmd() *cobra.Command {
+// 	var mu sync.RWMutex
 
-	return &cobra.Command{
-		Use: "check-size",
-		Annotations: GetDescriptions(
-			[]string{"Checks the log size without taking any action"},
-			false,
-		),
-		Run: func(cmd *cobra.Command, args []string) {
-			mu.Lock()
-			defer mu.Unlock()
+// 	return &cobra.Command{
+// 		Use: "rotate",
+// 		Annotations: GetDescriptions(
+// 			[]string{"Rotates logs that exceed the configured size"},
+// 			false,
+// 		),
+// 		Run: func(cmd *cobra.Command, args []string) {
+// 			mu.Lock()
+// 			defer mu.Unlock()
 
-			configManager := il.NewConfigManager()
-			if configManager == nil {
-				fmt.Println("ErrorCtx initializing ConfigManager.")
-				return
-			}
-			cfgMgr := *configManager
+// 			configManager := il.NewConfigManager()
+// 			if configManager == nil {
+// 				fmt.Println("ErrorCtx initializing ConfigManager.")
+// 				return
+// 			}
+// 			cfgMgr := *configManager
 
-			config, err := cfgMgr.LoadConfig()
-			if err != nil {
-				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
-				return
-			}
+// 			config, err := cfgMgr.LoadConfig()
+// 			if err != nil {
+// 				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
+// 				return
+// 			}
 
-			logDir := config.Output()
-			logSize, err := il.GetLogDirectorySize(filepath.Dir(logDir)) // Add this function to core
-			if err != nil {
-				fmt.Printf("ErrorCtx calculating log size: %v\n", err)
-				return
-			}
+// 			err = il.CheckLogSize(config)
+// 			if err != nil {
+// 				fmt.Printf("ErrorCtx rotating logs: %v\n", err)
+// 			} else {
+// 				fmt.Println("Logs rotated successfully!")
+// 			}
+// 		},
+// 	}
+// }
 
-			sizeInMB := logSize / (1024 * 1024)
+// // checkLogSizeCmd checks the current log size.
+// func checkLogSizeCmd() *cobra.Command {
+// 	var mu sync.RWMutex
 
-			fmt.Printf("The total log size in directory '%s' is: %d MB\n", filepath.Dir(logDir), sizeInMB)
-		},
-	}
-}
+// 	return &cobra.Command{
+// 		Use: "check-size",
+// 		Annotations: GetDescriptions(
+// 			[]string{"Checks the log size without taking any action"},
+// 			false,
+// 		),
+// 		Run: func(cmd *cobra.Command, args []string) {
+// 			mu.Lock()
+// 			defer mu.Unlock()
 
-// archiveLogsCmd allows manual log archiving.
-func archiveLogsCmd() *cobra.Command {
-	var mu sync.RWMutex
+// 			configManager := il.NewConfigManager()
+// 			if configManager == nil {
+// 				fmt.Println("ErrorCtx initializing ConfigManager.")
+// 				return
+// 			}
+// 			cfgMgr := *configManager
 
-	return &cobra.Command{
-		Use: "archive",
-		Annotations: GetDescriptions(
-			[]string{"Manually archives all logs"},
-			false,
-		),
-		Run: func(cmd *cobra.Command, args []string) {
-			mu.Lock()
-			defer mu.Unlock()
+// 			config, err := cfgMgr.LoadConfig()
+// 			if err != nil {
+// 				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
+// 				return
+// 			}
 
-			err := il.ArchiveLogs(nil)
-			if err != nil {
-				fmt.Printf("ErrorCtx archiving logs: %v\n", err)
-			} else {
-				fmt.Println("Logs archived successfully!")
-			}
-		},
-	}
-}
+// 			logDir := config.Output()
+// 			logSize, err := il.GetLogDirectorySize(filepath.Dir(logDir)) // Add this function to core
+// 			if err != nil {
+// 				fmt.Printf("ErrorCtx calculating log size: %v\n", err)
+// 				return
+// 			}
 
-// watchLogsCmd monitors logs in real-time.
-func watchLogsCmd() *cobra.Command {
-	var mu sync.RWMutex
+// 			sizeInMB := logSize / (1024 * 1024)
 
-	return &cobra.Command{
-		Use:     "watch",
-		Aliases: []string{"w"},
-		Annotations: GetDescriptions(
-			[]string{"Monitors logs in real-time"},
-			false,
-		),
-		Run: func(cmd *cobra.Command, args []string) {
-			mu.Lock()
-			defer mu.Unlock()
+// 			fmt.Printf("The total log size in directory '%s' is: %d MB\n", filepath.Dir(logDir), sizeInMB)
+// 		},
+// 	}
+// }
 
-			configManager := il.NewConfigManager()
-			if configManager == nil {
-				fmt.Println("ErrorCtx initializing ConfigManager.")
-				return
-			}
-			cfgMgr := *configManager
+// // archiveLogsCmd allows manual log archiving.
+// func archiveLogsCmd() *cobra.Command {
+// 	var mu sync.RWMutex
 
-			config, err := cfgMgr.LoadConfig()
-			if err != nil {
-				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
-				return
-			}
+// 	return &cobra.Command{
+// 		Use: "archive",
+// 		Annotations: GetDescriptions(
+// 			[]string{"Manually archives all logs"},
+// 			false,
+// 		),
+// 		Run: func(cmd *cobra.Command, args []string) {
+// 			mu.Lock()
+// 			defer mu.Unlock()
 
-			logFilePath := config.Output()
-			reader := il.NewFileLogReader()
-			stopChan := make(chan struct{})
+// 			err := il.ArchiveLogs(nil)
+// 			if err != nil {
+// 				fmt.Printf("ErrorCtx archiving logs: %v\n", err)
+// 			} else {
+// 				fmt.Println("Logs archived successfully!")
+// 			}
+// 		},
+// 	}
+// }
 
-			// Capture signals for interruption
-			sigChan := make(chan os.Signal, 1)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-			go func() {
-				<-sigChan
-				close(stopChan)
-			}()
+// // watchLogsCmd monitors logs in real-time.
+// func watchLogsCmd() *cobra.Command {
+// 	var mu sync.RWMutex
 
-			fmt.Println("Monitoring started (Ctrl+C to exit):")
-			if err := reader.Tail(logFilePath, stopChan); err != nil {
-				fmt.Printf("ErrorCtx monitoring logs: %v\n", err)
-			}
+// 	return &cobra.Command{
+// 		Use:     "watch",
+// 		Aliases: []string{"w"},
+// 		Annotations: GetDescriptions(
+// 			[]string{"Monitors logs in real-time"},
+// 			false,
+// 		),
+// 		Run: func(cmd *cobra.Command, args []string) {
+// 			mu.Lock()
+// 			defer mu.Unlock()
 
-			// Wait a small delay to finish
-			time.Sleep(500 * time.Millisecond)
-		},
-	}
-}
+// 			configManager := il.NewConfigManager()
+// 			if configManager == nil {
+// 				fmt.Println("ErrorCtx initializing ConfigManager.")
+// 				return
+// 			}
+// 			cfgMgr := *configManager
+
+// 			config, err := cfgMgr.LoadConfig()
+// 			if err != nil {
+// 				fmt.Printf("ErrorCtx loading configuration: %v\n", err)
+// 				return
+// 			}
+
+// 			logFilePath := config.Output()
+// 			reader := il.NewFileLogReader()
+// 			stopChan := make(chan struct{})
+
+// 			// Capture signals for interruption
+// 			sigChan := make(chan os.Signal, 1)
+// 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+// 			go func() {
+// 				<-sigChan
+// 				close(stopChan)
+// 			}()
+
+// 			fmt.Println("Monitoring started (Ctrl+C to exit):")
+// 			if err := reader.Tail(logFilePath, stopChan); err != nil {
+// 				fmt.Printf("ErrorCtx monitoring logs: %v\n", err)
+// 			}
+
+// 			// Wait a small delay to finish
+// 			time.Sleep(500 * time.Millisecond)
+// 		},
+// 	}
+// }

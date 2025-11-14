@@ -1,4 +1,4 @@
-package core
+package loggerz
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/gorilla/websocket"
+	"github.com/kubex-ecosystem/logz/internal/interfaces"
 	"github.com/spf13/viper"
 
 	"fmt"
@@ -35,36 +36,6 @@ type NotifierWebSocketConfig struct {
 	Proxy    func(*http.Request) (*url.URL, error)
 }
 
-// NotifierManager defines the interface for managing notifiers.
-type NotifierManager interface {
-	// WebServer returns the HTTP server instance.
-	WebServer() *http.Server
-
-	// Websocket returns the Gorilla WebSocket connection instance.
-	Websocket() *websocket.Conn
-
-	// WebClient returns the HTTP client instance.
-	WebClient() *http.Client
-
-	// DBusClient returns the DBus connection instance.
-	DBusClient() *dbus.Conn
-
-	// AddNotifier adds or updates a notifier with the given name.
-	AddNotifier(name string, notifier Notifier)
-
-	// RemoveNotifier removes the notifier with the given name.
-	RemoveNotifier(name string)
-
-	// GetNotifier retrieves the notifier with the given name.
-	GetNotifier(name string) (Notifier, bool)
-
-	// ListNotifiers lists all registered notifier names.
-	ListNotifiers() []string
-
-	// UpdateFromConfig updates notifiers dynamically based on the provided configuration.
-	UpdateFromConfig() error
-}
-
 // NotifierManagerImpl is the implementation of the NotifierManager interface.
 type NotifierManagerImpl struct {
 	webServer  *http.Server
@@ -72,14 +43,14 @@ type NotifierManagerImpl struct {
 	webClient  *http.Client
 	dbusClient *dbus.Conn
 	wsConfig   *NotifierWebSocketConfig
-	notifiers  map[string]Notifier
+	notifiers  map[string]interfaces.Notifier
 	mu         sync.RWMutex
 }
 
 // NewNotifierManager creates a new instance of NotifierManagerImpl.
-func NewNotifierManager(notifiers map[string]Notifier) NotifierManager {
+func NewNotifierManager(notifiers map[string]interfaces.Notifier) interfaces.NotifierManager {
 	if notifiers == nil {
-		notifiers = make(map[string]Notifier)
+		notifiers = make(map[string]interfaces.Notifier)
 	}
 	return &NotifierManagerImpl{
 		notifiers: notifiers,
@@ -87,7 +58,7 @@ func NewNotifierManager(notifiers map[string]Notifier) NotifierManager {
 }
 
 // AddNotifier adds or updates a notifier with the given name.
-func (nm *NotifierManagerImpl) AddNotifier(name string, notifier Notifier) {
+func (nm *NotifierManagerImpl) AddNotifier(name string, notifier interfaces.Notifier) {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
 	nm.notifiers[name] = notifier
@@ -103,7 +74,7 @@ func (nm *NotifierManagerImpl) RemoveNotifier(name string) {
 }
 
 // GetNotifier retrieves the notifier with the given name.
-func (nm *NotifierManagerImpl) GetNotifier(name string) (Notifier, bool) {
+func (nm *NotifierManagerImpl) GetNotifier(name string) (interfaces.Notifier, bool) {
 	nm.mu.RLock()
 	defer nm.mu.RUnlock()
 	notifier, ok := nm.notifiers[name]
@@ -140,14 +111,14 @@ func (nm *NotifierManagerImpl) UpdateFromConfig() error {
 		case "http":
 			webhookURL, _ := conf["webhookURL"].(string)
 			authToken, _ := conf["authToken"].(string)
-			notifier := NewHTTPNotifier(webhookURL, authToken)
+			notifier := interfaces.NewHTTPNotifier(webhookURL, authToken)
 			nm.AddNotifier(name, notifier)
 		case "websocket":
 			endpoint, _ := conf["endpoint"].(string)
-			notifier := NewWebSocketNotifier(endpoint)
+			notifier := interfaces.NewWebSocketNotifier(endpoint)
 			nm.AddNotifier(name, notifier)
 		case "dbus":
-			notifier := NewDBusNotifier()
+			notifier := interfaces.NewDBusNotifier()
 			nm.AddNotifier(name, notifier)
 		default:
 			fmt.Printf("Unknown notifier type '%s' for notifier '%s'.\n", typ, name)
@@ -158,9 +129,9 @@ func (nm *NotifierManagerImpl) UpdateFromConfig() error {
 
 // WebServer returns the HTTP server instance.
 func (nm *NotifierManagerImpl) WebServer() *http.Server {
-	if nm.webServer == nil {
-		nm.webServer = Server()
-	}
+	// if nm.webServer == nil {
+	// 	nm.webServer = Server()
+	// }
 	return nm.webServer
 }
 
@@ -186,15 +157,15 @@ func (nm *NotifierManagerImpl) Websocket() *websocket.Conn {
 // WebClient returns the HTTP client instance.
 func (nm *NotifierManagerImpl) WebClient() *http.Client {
 	if nm.webClient == nil {
-		nm.webClient = Client()
+		nm.webClient = &http.Client{}
 	}
 	return nm.webClient
 }
 
 // DBusClient returns the DBus connection instance.
 func (nm *NotifierManagerImpl) DBusClient() *dbus.Conn {
-	if nm.dbusClient == nil {
-		nm.dbusClient = DBus()
-	}
+	// if nm.dbusClient == nil {
+	// 	nm.dbusClient = li.DBus()
+	// }
 	return nm.dbusClient
 }

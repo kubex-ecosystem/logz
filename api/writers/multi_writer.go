@@ -1,16 +1,18 @@
 // Package writters provides functionality for managing writers.
-package writters
+package writers
 
-import (
-	il "github.com/kubex-ecosystem/logz/internal/core"
-)
+import "github.com/kubex-ecosystem/logz/internal/loggerz"
 
-// LogzMultiWriter represents a multi-writer for log entries.
-type LogzMultiWriter[T any] = il.LogMultiWriter[T]
+// LogMultiWriter defines the contract for writing logs to multiple writers.
+type LogMultiWriter[T any] interface {
+	Write(entry []byte) (int, error)
+	AddWriter(w LogzWriter[T, WriteLogz[T]])
+	GetWriters() []LogzWriter[T, WriteLogz[T]]
+}
 
 // NewLogzMultiWriter creates a new instance of LogzMultiWriter.
 // It initializes a multi-writer that can handle multiple log writers.
 // This allows for writing log entries to multiple outputs simultaneously.
-func NewLogzMultiWriter[T any]() LogzMultiWriter[T] {
-	return il.NewMultiWriter[T]()
+func NewLogzMultiWriter[T any]() LogMultiWriter[T] {
+	return loggerz.NewMultiWriter()
 }

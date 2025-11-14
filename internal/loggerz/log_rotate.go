@@ -1,4 +1,4 @@
-package core
+package loggerz
 
 import (
 	"archive/tar"
@@ -10,10 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	li "github.com/kubex-ecosystem/logz/internal/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/services/notifiers"
 )
 
 // CheckLogSize checks and manages the size of the logs
-func CheckLogSize(config Config) error {
+func CheckLogSize(config li.Config) error {
 	logDir := config.Output()
 	files, err := os.ReadDir(logDir)
 	if err != nil {
@@ -147,7 +150,7 @@ func addFileToTar(tw *tar.Writer, filePath string) error {
 
 // ArchiveLogs archives old logs into a zip file
 func ArchiveLogs(files []string) error {
-	logDir := GetLogPath()
+	logDir := notifiers.GetLogPath()
 	if len(files) == 0 {
 		err := filepath.Walk(logDir, func(path string, info os.FileInfo, err error) error {
 			if strings.HasSuffix(info.Name(), ".log") {
@@ -215,7 +218,7 @@ func addFileToZip(zipWriter *zip.Writer, filePath string) error {
 
 func GetLogDirectorySize(directory string) (int64, error) {
 	if directory == "" {
-		directory = filepath.Dir(GetLogPath())
+		directory = filepath.Dir(notifiers.GetLogPath())
 	}
 	var totalSize int64
 

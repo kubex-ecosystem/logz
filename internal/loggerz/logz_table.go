@@ -1,5 +1,4 @@
-// Package utils provides utility functions for handling tables.
-package utils
+package loggerz
 
 import (
 	"github.com/olekukonko/tablewriter"

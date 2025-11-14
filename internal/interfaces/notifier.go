@@ -1,4 +1,4 @@
-package core
+package interfaces
 
 import (
 	"bytes"
@@ -12,33 +12,9 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/gorilla/websocket"
+
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
-
-// Notifier defines the interface for a log notifier.
-type Notifier interface {
-	// Notify sends a log entry notification.
-	Notify(entry LogzEntry) error
-
-	// Enable activates the notifier.
-	Enable()
-
-	// Disable deactivates the notifier.
-	Disable()
-
-	// Enabled checks if the notifier is active.
-	Enabled() bool
-
-	// WebServer returns the HTTP server instance.
-	WebServer() *http.Server
-
-	// Websocket returns the WebSocket instance.
-	Websocket() *websocket.Conn
-
-	// WebClient returns the HTTP client instance.
-	WebClient() *http.Client
-	// DBusClient returns the DBus connection instance.
-	DBusClient() *dbus.Conn
-}
 
 // NotifierImpl is the implementation of the Notifier interface.
 type NotifierImpl struct {
@@ -223,7 +199,7 @@ func NewHTTPNotifier(webhookURL, authToken string) *HTTPNotifier {
 	}
 	// Inicializar NotifierManager padrão se necessário
 	if notifier.NotifierManager == nil {
-		notifier.NotifierManager = NewNotifierManager(nil)
+		notifier.NotifierManager = kbx.NewNotifierManagep(nil)
 	}
 	return notifier
 }
@@ -277,7 +253,7 @@ type WebSocketNotifier struct {
 }
 
 // NewWebSocketNotifierWithConfig creates a new WebSocketNotifier instance.
-func NewWebSocketNotifierWithConfig(config *NotifierWebSocketConfig) *WebSocketNotifier {
+func NewWebSocketNotifierWithConfig(config *notifiers.NotifierWebSocketConfig) *WebSocketNotifier {
 	notifier := &WebSocketNotifier{
 		NotifierImpl: NotifierImpl{
 			EnabledFlag: true, // Habilitado por padrão
@@ -286,7 +262,7 @@ func NewWebSocketNotifierWithConfig(config *NotifierWebSocketConfig) *WebSocketN
 	}
 	// Inicializar NotifierManager padrão se necessário
 	if notifier.NotifierManager == nil {
-		notifier.NotifierManager = NewNotifierManager(nil)
+		notifier.NotifierManager = notifiers.NewNotifierManager(nil)
 	}
 	return notifier
 }
@@ -301,7 +277,7 @@ func NewWebSocketNotifier(endpoint string) *WebSocketNotifier {
 	}
 	// Inicializar NotifierManager padrão se necessário
 	if notifier.NotifierManager == nil {
-		notifier.NotifierManager = NewNotifierManager(nil)
+		notifier.NotifierManager = notifiers.NewNotifierManager(nil)
 	}
 	return notifier
 }
@@ -359,7 +335,7 @@ func NewDBusNotifier() *DBusNotifier {
 	}
 	// Inicializar NotifierManager padrão se necessário
 	if notifier.NotifierManager == nil {
-		notifier.NotifierManager = NewNotifierManager(nil)
+		notifier.NotifierManager = notifiers.NewNotifierManager(nil)
 	}
 	return notifier
 }
@@ -414,4 +390,52 @@ func GetLogPath() string {
 		return ""
 	}
 	return configPath
+}
+
+// ensureConfigExists checks if the configuration file exists, and creates it with default values if it does not.
+func ensureConfigExists(configPath string) error {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		defaultConfig := map[string]any{
+			"VlPort":            kbx.DefaultServerPort,
+			"VlBindAddress":     kbx.DefaultServerHost,
+			"VlAddress":         fmt.Sprintf("%s:%s", kbx.DefaultMode, kbx.DefaultServerPort),
+			"VlPidFile":         "logz_srv.pid",
+			"VlReadTimeout":     15 * time.Second,
+			"VlWriteTimeout":    15 * time.Second,
+			"VlIdleTimeout":     60 * time.Second,
+			"VlOutput":          kbx.DefaultOutput,
+			"VlNotifierManager": notifiers.NewNotifierManager(nil),
+			"VlMode":            kbx.DefaultMode,
+		}
+		data, _ := json.MarshalIndent(defaultConfig, "", "  ")
+		if writeErr := os.WriteFile(configPath, data, 0644); writeErr != nil {
+			return fmt.Errorf("failed to create default VConfig: %w", writeErr)
+		}
+	}
+	return nil
+}
+
+func getConfigType(configPath string) string {
+	configType := filepath.Ext(configPath)
+	switch configType {
+	case ".yaml":
+		return "yaml"
+	case ".yml":
+		return "yaml"
+	case ".toml":
+		return "toml"
+	case ".ini":
+		return "ini"
+	default:
+		return "json"
+	}
+
+}
+
+// getOrDefault returns the value if it is not empty, otherwise returns the default value.
+func getOrDefault(value, defaultValue string) string {
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }

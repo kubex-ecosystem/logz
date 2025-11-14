@@ -12,11 +12,9 @@ import (
 	"time"
 
 	manifest "github.com/kubex-ecosystem/logz/internal/module/info"
-	"github.com/kubex-ecosystem/logz/logger"
 	"github.com/spf13/cobra"
 )
 
-var gl = logger.NewLogger("Logz")
 var (
 	info manifest.Manifest
 	vrs  Service
@@ -27,7 +25,7 @@ func init() {
 	if info == nil {
 		info, err = manifest.GetManifest()
 		if err != nil {
-			gl.ErrorCtx("Failed to get manifest: "+err.Error(), map[string]any{})
+			fmt.Println("Failed to get manifest:", err)
 		}
 	}
 }
@@ -63,7 +61,8 @@ func init() {
 		var err error
 		info, err = manifest.GetManifest()
 		if err != nil {
-			gl.ErrorCtx("Failed to get manifest: "+err.Error(), map[string]any{})
+			// gl.ErrorCtx("Failed to get manifest: "+err.Error(), map[string]any{})
+			fmt.Println("Failed to get manifest:", err)
 		}
 	}
 	if vrs == nil {
@@ -74,7 +73,8 @@ func init() {
 func getLatestTag(repoURL string) (string, error) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			gl.ErrorCtx(fmt.Sprintf("Recovered from panic in getLatestTag: %v", rec), map[string]interface{}{})
+			// gl.ErrorCtx(fmt.Sprintf("Recovered from panic in getLatestTag: %v", rec), map[string]interface{}{})
+			fmt.Println("Recovered from panic in getLatestTag:", rec)
 			err = fmt.Errorf("panic occurred while fetching latest tag: %v", rec)
 		}
 	}()
@@ -252,7 +252,8 @@ func (v *ServiceImpl) GetRepository() string {
 }
 func (v *ServiceImpl) setLastCheckedAt(t time.Time) {
 	v.lastCheckedAt = t
-	gl.DebugCtx("Last checked at: "+t.Format(time.RFC3339), map[string]interface{}{})
+	// gl.DebugCtx("Last checked at: "+t.Format(time.RFC3339), map[string]interface{}{})
+	fmt.Println("Last checked at:", t.Format(time.RFC3339))
 }
 
 func NewVersionService() Service {
@@ -281,9 +282,12 @@ func init() {
 			Long:  "Print the version number of " + info.GetName() + " and other related information.",
 			Run: func(cmd *cobra.Command, args []string) {
 				if info.IsPrivate() {
-					gl.WarnCtx("The information shown may not be accurate for private repositories.", map[string]interface{}{})
-					gl.InfoCtx("Current version: "+GetVersion(), map[string]interface{}{})
-					gl.InfoCtx("Git repository: "+GetGitRepositoryModelURL(), map[string]interface{}{})
+					// gl.WarnCtx("The information shown may not be accurate for private repositories.", map[string]interface{}{})
+					// gl.InfoCtx("Current version: "+GetVersion(), map[string]interface{}{})
+					// gl.InfoCtx("Git repository: "+GetGitRepositoryModelURL(), map[string]interface{}{})
+					fmt.Println("The information shown may not be accurate for private repositories.")
+					fmt.Println("Current version:", GetVersion())
+					fmt.Println("Git repository:", GetGitRepositoryModelURL())
 					return
 				}
 				GetVersionInfo()
@@ -297,7 +301,8 @@ func init() {
 			Long:  "Print the latest version number of " + info.GetName() + " from the Git repository.",
 			Run: func(cmd *cobra.Command, args []string) {
 				if info.IsPrivate() {
-					gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
+					// gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
+					fmt.Println("Cannot fetch latest version for private repositories.")
 					return
 				}
 				GetLatestVersionInfo()
@@ -311,7 +316,8 @@ func init() {
 			Long:  "Check if the current version is the latest version of " + info.GetName() + " and print the version information.",
 			Run: func(cmd *cobra.Command, args []string) {
 				if info.IsPrivate() {
-					gl.ErrorCtx("Cannot check version for private repositories.", map[string]interface{}{})
+					// gl.ErrorCtx("Cannot check version for private repositories.", map[string]interface{}{})
+					fmt.Println("Cannot check version for private repositories.")
 					return
 				}
 				GetVersionInfoWithLatestAndCheck()
@@ -325,18 +331,23 @@ func init() {
 			Long:  "Update the version information of " + info.GetName() + " by fetching the latest version from the Git repository.",
 			Run: func(cmd *cobra.Command, args []string) {
 				if info.IsPrivate() {
-					gl.ErrorCtx("Cannot update version for private repositories.", map[string]interface{}{})
+					// gl.ErrorCtx("Cannot update version for private repositories.", map[string]interface{}{})
+					fmt.Println("Cannot update version for private repositories.")
 					return
 				}
 				if err := vrs.updateLatestVersion(); err != nil {
-					gl.ErrorCtx("Failed to update version: "+err.Error(), map[string]interface{}{})
+					// gl.ErrorCtx("Failed to update version: "+err.Error(), map[string]interface{}{})
+					fmt.Println("Failed to update version:", err)
 				} else {
 					latestVersion, err := vrs.GetLatestVersion()
 					if err != nil {
-						gl.ErrorCtx("Failed to get latest version: "+err.Error(), map[string]interface{}{})
+						// gl.ErrorCtx("Failed to get latest version: "+err.Error(), map[string]interface{}{})
+						fmt.Println("Failed to get latest version:", err)
 					} else {
-						gl.InfoCtx("Current version: "+vrs.GetCurrentVersion(), map[string]interface{}{})
-						gl.InfoCtx("Latest version: "+latestVersion, map[string]interface{}{})
+						// gl.InfoCtx("Current version: "+vrs.GetCurrentVersion(), map[string]interface{}{})
+						fmt.Println("Current version:", vrs.GetCurrentVersion())
+						// gl.InfoCtx("Latest version: "+latestVersion, map[string]interface{}{})
+						fmt.Println("Latest version:", latestVersion)
 					}
 					vrs.setLastCheckedAt(time.Now())
 				}
@@ -349,7 +360,7 @@ func init() {
 			Short: "Get the current version of " + info.GetName(),
 			Long:  "Get the current version of " + info.GetName() + " from the manifest.",
 			Run: func(cmd *cobra.Command, args []string) {
-				gl.InfoCtx("Current version: "+vrs.GetCurrentVersion(), map[string]interface{}{})
+				fmt.Println("Current version:", vrs.GetCurrentVersion())
 			},
 		}
 	}
@@ -359,9 +370,9 @@ func init() {
 			Short: "Restart the " + info.GetName() + " service",
 			Long:  "Restart the " + info.GetName() + " service to apply any changes made.",
 			Run: func(cmd *cobra.Command, args []string) {
-				gl.InfoCtx("Restarting the service...", map[string]interface{}{})
+				fmt.Println("Restarting the service...")
 				// Logic to restart the service can be added here
-				gl.InfoCtx("Service restarted successfully", map[string]interface{}{})
+				fmt.Println("Service restarted successfully")
 			},
 		}
 	}
@@ -371,7 +382,7 @@ func GetVersion() string {
 	if info == nil {
 		_, err := manifest.GetManifest()
 		if err != nil {
-			gl.ErrorCtx("Failed to get manifest: "+err.Error(), map[string]interface{}{})
+			fmt.Println("Failed to get manifest:", err)
 			return "Unknown version"
 		}
 	}
@@ -384,13 +395,13 @@ func GetGitRepositoryModelURL() string {
 	return info.GetRepository()
 }
 func GetVersionInfo() string {
-	gl.InfoCtx("Version: "+GetVersion(), map[string]interface{}{})
-	gl.InfoCtx("Git repository: "+GetGitRepositoryModelURL(), map[string]interface{}{})
+	fmt.Println("Version:", GetVersion())
+	fmt.Println("Git repository:", GetGitRepositoryModelURL())
 	return fmt.Sprintf("Version: %s\nGit repository: %s", GetVersion(), GetGitRepositoryModelURL())
 }
 func GetLatestVersionFromGit() string {
 	if info.IsPrivate() {
-		gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
+		fmt.Println("Cannot fetch latest version for private repositories.")
 		return "Cannot fetch latest version for private repositories."
 	}
 
@@ -400,20 +411,20 @@ func GetLatestVersionFromGit() string {
 
 	gitURLWithoutGit := strings.TrimSuffix(GetGitRepositoryModelURL(), ".git")
 	if gitURLWithoutGit == "" {
-		gl.ErrorCtx("No repository URL set in the manifest.", map[string]interface{}{})
+		fmt.Println("No repository URL set in the manifest.")
 		return "No repository URL set in the manifest."
 	}
 
 	response, err := netClient.Get(gitURLWithoutGit + "/releases/latest")
 	if err != nil {
-		gl.ErrorCtx("Error fetching latest version: "+err.Error(), map[string]interface{}{})
-		gl.ErrorCtx("URL: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		fmt.Println("Error fetching latest version:", err)
+		fmt.Println("URL:", gitURLWithoutGit+"/releases/latest")
 		return err.Error()
 	}
 
 	if response.StatusCode != 200 {
-		gl.ErrorCtx("Error fetching latest version: "+response.Status, map[string]interface{}{})
-		gl.ErrorCtx("URL: "+gitURLWithoutGit+"/releases/latest", map[string]interface{}{})
+		fmt.Println("Error fetching latest version:", response.Status)
+		fmt.Println("URL:", gitURLWithoutGit+"/releases/latest")
 		body, _ := io.ReadAll(response.Body)
 		return fmt.Sprintf("Error: %s\nResponse: %s", response.Status, string(body))
 	}
@@ -424,22 +435,22 @@ func GetLatestVersionFromGit() string {
 }
 func GetLatestVersionInfo() string {
 	if info.IsPrivate() {
-		gl.ErrorCtx("Cannot fetch latest version for private repositories.", map[string]interface{}{})
+		fmt.Println("Cannot fetch latest version for private repositories.")
 		return "Cannot fetch latest version for private repositories."
 	}
-	gl.InfoCtx("Latest version: "+GetLatestVersionFromGit(), map[string]interface{}{})
+	fmt.Println("Latest version:", GetLatestVersionFromGit())
 	return "Latest version: " + GetLatestVersionFromGit()
 }
 func GetVersionInfoWithLatestAndCheck() string {
 	if info.IsPrivate() {
-		gl.ErrorCtx("Cannot check version for private repositories.", map[string]interface{}{})
+		fmt.Println("Cannot check version for private repositories.")
 		return "Cannot check version for private repositories."
 	}
 	if GetVersion() == GetLatestVersionFromGit() {
-		gl.InfoCtx("You are using the latest version.", map[string]interface{}{})
+		fmt.Println("You are using the latest version.")
 		return fmt.Sprintf("You are using the latest version.\n%s\n%s", GetVersionInfo(), GetLatestVersionInfo())
 	} else {
-		gl.WarnCtx("You are using an outdated version.", map[string]interface{}{})
+		fmt.Println("You are using an outdated version.")
 		return fmt.Sprintf("You are using an outdated version.\n%s\n%s", GetVersionInfo(), GetLatestVersionInfo())
 	}
 }

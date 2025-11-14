@@ -1,4 +1,4 @@
-package core
+package loggerz
 
 /*import (
 	iKbxCfg "github.com/kubex-ecosystem/kubex-interfaces/config"
