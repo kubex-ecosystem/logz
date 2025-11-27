@@ -3,18 +3,18 @@ package formatter
 import (
 	"encoding/json"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
 type JSONFormatter struct {
 	Pretty bool
 }
 
-func NewJSONFormatter(pretty bool) interfaces.Formatter {
+func NewJSONFormatter(pretty bool) Formatter {
 	return &JSONFormatter{Pretty: pretty}
 }
 
-func (f *JSONFormatter) Format(e interfaces.Entry) ([]byte, error) {
+func (f *JSONFormatter) Format(e kbx.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {
 		return nil, err
 	}

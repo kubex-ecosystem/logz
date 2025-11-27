@@ -1,6 +1,10 @@
 package interfaces
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+)
 
 type LHook[T any] interface {
 	Fire(record T) error
@@ -23,7 +27,7 @@ func (f FHook[T]) Clone() FHook[T] {
 	return f
 }
 
-type Hook func(record Entry) error
+type Hook func(record kbx.Entry) error
 
 type Hooks []Hook
 
@@ -56,7 +60,7 @@ func (h Hooks) Add(hook Hook) (Hooks, error) {
 }
 
 // Fire executa todos os hooks da coleção.
-func (h Hooks) Fire(record Entry) error {
+func (h Hooks) Fire(record kbx.Entry) error {
 	for _, hook := range h {
 		err := hook(record)
 		if err != nil {
@@ -94,15 +98,15 @@ func (h HooksG[T]) Fire(record T) error {
 }
 
 // HookFunc é uma função que implementa a interface Hook.
-type HookFunc func(record Entry) error
+type HookFunc func(record kbx.Entry) error
 
 // Run executa o hook.
-func (f HookFunc) Run(record Entry) error {
+func (f HookFunc) Run(record kbx.Entry) error {
 	return f(record)
 }
 
 // HookFuncG é uma função genérica que implementa a interface HookG.
-type HookFuncG[T Hook | *Entry] func(record T) error
+type HookFuncG[T Hook | *kbx.Entry] func(record T) error
 
 // Run executa o hook genérico.
 func (f HookFuncG[T]) Run(record T) error {

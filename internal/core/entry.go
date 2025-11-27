@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
 // Entry é a unidade básica de log do sistema.
 // Tudo no Kubex que for "log estruturado" deveria conseguir ser expresso nisso.
 type Entry struct {
-	Timestamp time.Time        `json:"ts"`    // Sempre UTC.
-	Level     interfaces.Level `json:"level"` // debug / info / warn / error / fatal / silent
-	Message   string           `json:"msg"`   // Mensagem humana.
+	Timestamp time.Time `json:"ts"`    // Sempre UTC.
+	Level     kbx.Level `json:"level"` // debug / info / warn / error / fatal / silent
+	Message   string    `json:"msg"`   // Mensagem humana.
 
 	Context  string `json:"ctx,omitempty"`    // ex: "auth", "db", "billing"
 	Source   string `json:"src,omitempty"`    // componente/módulo/serviço
@@ -43,39 +43,39 @@ func NewEntry() (*Entry, error) {
 // - timestamp UTC
 // - maps inicializados
 // - caller capturado
-func NewEntryImpl() (interfaces.Entry, error) { return NewEntry() }
+func NewEntryImpl() (kbx.Entry, error) { return NewEntry() }
 
 //
 // ---------- Chainable builders ----------
 //
 
-func (e *Entry) WithLevel(l interfaces.Level) interfaces.Entry {
+func (e *Entry) WithLevel(l kbx.Level) kbx.Entry {
 	e.Level = l
 	e.Severity = l.Severity()
 	return e
 }
 
-func (e *Entry) WithMessage(msg string) interfaces.Entry {
+func (e *Entry) WithMessage(msg string) kbx.Entry {
 	e.Message = msg
 	return e
 }
 
-func (e *Entry) WithContext(ctx string) interfaces.Entry {
+func (e *Entry) WithContext(ctx string) kbx.Entry {
 	e.Context = ctx
 	return e
 }
 
-func (e *Entry) WithSource(src string) interfaces.Entry {
+func (e *Entry) WithSource(src string) kbx.Entry {
 	e.Source = src
 	return e
 }
 
-func (e *Entry) WithTraceID(id string) interfaces.Entry {
+func (e *Entry) WithTraceID(id string) kbx.Entry {
 	e.TraceID = id
 	return e
 }
 
-func (e *Entry) WithField(key string, value any) interfaces.Entry {
+func (e *Entry) WithField(key string, value any) kbx.Entry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
@@ -83,7 +83,7 @@ func (e *Entry) WithField(key string, value any) interfaces.Entry {
 	return e
 }
 
-func (e *Entry) WithFields(fields map[string]any) interfaces.Entry {
+func (e *Entry) WithFields(fields map[string]any) kbx.Entry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
@@ -93,17 +93,17 @@ func (e *Entry) WithFields(fields map[string]any) interfaces.Entry {
 	return e
 }
 
-func (e *Entry) WithData(data any) interfaces.Entry {
+func (e *Entry) WithData(data any) kbx.Entry {
 	e.Fields["data"] = data
 	return e
 }
 
-func (e *Entry) WithError(err error) interfaces.Entry {
+func (e *Entry) WithError(err error) kbx.Entry {
 	e.Error = err
 	return e
 }
 
-func (e *Entry) Tag(k, v string) interfaces.Entry {
+func (e *Entry) Tag(k, v string) kbx.Entry {
 	if e.Tags == nil {
 		e.Tags = make(map[string]string)
 	}
@@ -111,7 +111,7 @@ func (e *Entry) Tag(k, v string) interfaces.Entry {
 	return e
 }
 
-func (e *Entry) Field(k string, v any) interfaces.Entry {
+func (e *Entry) Field(k string, v any) kbx.Entry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
@@ -119,12 +119,12 @@ func (e *Entry) Field(k string, v any) interfaces.Entry {
 	return e
 }
 
-func (e *Entry) WithCaller(c string) interfaces.Entry {
+func (e *Entry) WithCaller(c string) kbx.Entry {
 	e.Caller = c
 	return e
 }
 
-func (e *Entry) CaptureCaller(skip int) interfaces.Entry {
+func (e *Entry) CaptureCaller(skip int) kbx.Entry {
 	e.Caller = captureCaller(skip + 1)
 	return e
 }
@@ -168,7 +168,7 @@ func (e *Entry) GetFields() map[string]any {
 // ---------- Clone sem aliasing ----------
 //
 
-func (e *Entry) Clone() interfaces.Entry {
+func (e *Entry) Clone() kbx.Entry {
 	if e == nil {
 		return nil
 	}
@@ -203,9 +203,9 @@ func (e *Entry) GetMessage() string {
 // ---------- Record interface ----------
 //
 
-func (e *Entry) GetLevel() interfaces.Level {
+func (e *Entry) GetLevel() kbx.Level {
 	if e == nil {
-		return interfaces.LevelSilent
+		return kbx.LevelSilent
 	}
 	return e.Level
 }
@@ -228,7 +228,7 @@ func (e *Entry) Validate() error {
 		return errors.New("message is required")
 	}
 	// Silent pode ter severidade 0.
-	if e.Level != interfaces.LevelSilent && e.Severity <= 0 {
+	if e.Level != kbx.LevelSilent && e.Severity <= 0 {
 		return errors.New("invalid severity (did you forget WithLevel?)")
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 
 	"log"
@@ -33,7 +34,7 @@ type Logger struct {
 //
 // Não sabe nada de linha, arquivo, CLI, JSON, etc.
 // Isso é responsabilidade do Formatter + destino (io.Writer).
-type LoggerZ[T interfaces.Entry] struct {
+type LoggerZ[T kbx.Entry] struct {
 	ID       uuid.UUID
 	flushMuZ sync.Mutex
 	hooksMuZ sync.Mutex
@@ -44,7 +45,7 @@ type LoggerZ[T interfaces.Entry] struct {
 
 func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
 	if opts == nil {
-		opts = NewLoggerOptions()
+		opts = NewLoggerOptions(kbx.LoggerArgs)
 	}
 	if withDefaults {
 		opts = opts.WithDefaults(opts)
@@ -96,9 +97,9 @@ func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logge
 // - formatter: serializa T em []byte
 // - out: destino final (io.Writer global, arquivo, socket, etc)
 // - min: nível mínimo
-func NewLoggerZ[T interfaces.Entry](prefix string, opts *LoggerOptionsImpl, withDefaults bool) *LoggerZ[T] {
+func NewLoggerZ[T kbx.Entry](prefix string, opts *LoggerOptionsImpl, withDefaults bool) *LoggerZ[T] {
 	if opts == nil {
-		opts = NewLoggerOptions()
+		opts = NewLoggerOptions(kbx.LoggerArgs)
 	}
 	if withDefaults {
 		opts = opts.WithDefaults(opts)
@@ -121,7 +122,7 @@ func NewLoggerZ[T interfaces.Entry](prefix string, opts *LoggerOptionsImpl, with
 // - min: nível mínimo
 func NewLoggerZI(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
 	if opts == nil {
-		opts = NewLoggerOptions()
+		opts = NewLoggerOptions(kbx.LoggerArgs)
 	}
 	if withDefaults {
 		opts = opts.WithDefaults(opts)
@@ -169,7 +170,7 @@ func NewLoggerZI(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Log
 	return lgr
 }
 
-func (l *Logger) SetFormatter(f interfaces.Formatter) {
+func (l *Logger) SetFormatter(f formatter.Formatter) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.opts.Formatter = f
@@ -181,7 +182,7 @@ func (l *Logger) SetOutput(w io.Writer) {
 	l.opts.Output = w
 }
 
-func (l *Logger) SetMinLevel(min interfaces.Level) {
+func (l *Logger) SetMinLevel(min kbx.Level) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.opts.MinLevel = min
@@ -196,20 +197,20 @@ func (l *Logger) AddHook(h interfaces.Hook) {
 	l.opts.Hooks = append(l.opts.Hooks, h)
 }
 
-func (l *Logger) Enabled(level interfaces.Level) bool {
+func (l *Logger) Enabled(level kbx.Level) bool {
 	l.mu.RLock()
 	min := l.opts.MinLevel
 	l.mu.RUnlock()
 	return level.Severity() >= min.Severity()
 }
 
-func (l *Logger) GetMinLevel() interfaces.Level {
+func (l *Logger) GetMinLevel() kbx.Level {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return l.opts.MinLevel
 }
 
-func (l *Logger) GetLevel() interfaces.Level {
+func (l *Logger) GetLevel() kbx.Level {
 	return l.opts.MinLevel
 }
 
@@ -265,7 +266,7 @@ func (l *Logger) SetMetadata(metadata map[string]any) {
 
 // Log é o caminho principal: recebe um Record pronto (T),
 // dispara hooks, formata e escreve em out.
-func (l *Logger) Log(lvl string, rec interfaces.Entry) error {
+func (l *Logger) Log(lvl string, rec kbx.Entry) error {
 	if !kbx.IsObjSafe(rec, false) {
 		// nada a fazer, mas não vamos quebrar ninguém
 		return nil
@@ -273,7 +274,7 @@ func (l *Logger) Log(lvl string, rec interfaces.Entry) error {
 
 	// r := *rec // copia pra evitar alterações concorrentes
 
-	if !l.Enabled(interfaces.Level(rec.GetLevel().String())) {
+	if !l.Enabled(kbx.Level(rec.GetLevel().String())) {
 		return nil
 	}
 
@@ -336,7 +337,7 @@ func (l *Logger) LogAny(args ...any) error {
 	}()
 
 	// se args[0] é level → old API compat
-	if len(args) > 1 && (interfaces.IsLevel(fmt.Sprintf("%v", args[0]))) {
+	if len(args) > 1 && (kbx.IsLevel(fmt.Sprintf("%v", args[0]))) {
 		level := normalizeLevel(args[0])
 		entry := toEntry(args[1:]...)
 		entry = entry.WithLevel(level)
@@ -346,7 +347,7 @@ func (l *Logger) LogAny(args ...any) error {
 	// modo moderno: nada garante level → assume Info
 	entry := toEntry(args...)
 	if entry.GetLevel() == "" {
-		entry = entry.WithLevel(interfaces.LevelInfo)
+		entry = entry.WithLevel(kbx.LevelInfo)
 	}
 
 	return l.Log(entry.GetLevel().String(), entry)

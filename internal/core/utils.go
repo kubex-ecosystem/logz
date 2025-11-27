@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-func toEntry(args ...any) interfaces.Entry {
+func toEntry(args ...any) kbx.Entry {
 	if len(args) == 0 {
 		en, err := NewEntry()
 		if err != nil {
 			// fallback bruto
 			return &Entry{
 				Message: fmt.Sprintf("failed to create new entry: %v", err),
-				Level:   interfaces.LevelError,
+				Level:   kbx.LevelError,
 			}
 		}
 
@@ -25,7 +24,7 @@ func toEntry(args ...any) interfaces.Entry {
 	}
 
 	// Se já for Entry → retorna direto
-	if e, ok := args[0].(interfaces.Entry); ok {
+	if e, ok := args[0].(kbx.Entry); ok {
 		return e
 	}
 
@@ -36,14 +35,14 @@ func toEntry(args ...any) interfaces.Entry {
 			// fallback bruto
 			return &Entry{
 				Message: fmt.Sprintf("failed to create new entry: %v", err),
-				Level:   interfaces.LevelError,
+				Level:   kbx.LevelError,
 			}
 		}
 
 		return en.
 			WithError(err).
 			WithMessage(err.Error()).
-			WithLevel(interfaces.LevelError)
+			WithLevel(kbx.LevelError)
 	}
 
 	// Se for string
@@ -53,7 +52,7 @@ func toEntry(args ...any) interfaces.Entry {
 			// fallback bruto
 			return &Entry{
 				Message: fmt.Sprintf("failed to create new entry: %v", err),
-				Level:   interfaces.LevelError,
+				Level:   kbx.LevelError,
 			}
 		}
 
@@ -67,7 +66,7 @@ func toEntry(args ...any) interfaces.Entry {
 			// fallback bruto
 			return &Entry{
 				Message: fmt.Sprintf("failed to create new entry: %v", err),
-				Level:   interfaces.LevelError,
+				Level:   kbx.LevelError,
 			}
 		}
 		return en.WithMessage(string(b))
@@ -80,7 +79,7 @@ func toEntry(args ...any) interfaces.Entry {
 			// fallback bruto
 			return &Entry{
 				Message: fmt.Sprintf("failed to create new entry: %v", err),
-				Level:   interfaces.LevelError,
+				Level:   kbx.LevelError,
 			}
 		}
 
@@ -97,7 +96,7 @@ func toEntry(args ...any) interfaces.Entry {
 			// fallback bruto
 			return &Entry{
 				Message: fmt.Sprintf("failed to create new entry: %v", err),
-				Level:   interfaces.LevelError,
+				Level:   kbx.LevelError,
 			}
 		}
 
@@ -111,7 +110,7 @@ func toEntry(args ...any) interfaces.Entry {
 		// fallback bruto
 		return &Entry{
 			Message: fmt.Sprintf("failed to create new entry: %v", err),
-			Level:   interfaces.LevelError,
+			Level:   kbx.LevelError,
 		}
 	}
 
@@ -120,13 +119,13 @@ func toEntry(args ...any) interfaces.Entry {
 		WithMessage(fmt.Sprintf("%v", args[0]))
 }
 
-func ToEntry(args ...any) interfaces.Entry {
+func ToEntry(args ...any) kbx.Entry {
 	e, err := NewEntry()
 	if err != nil {
 		// fallback bruto
 		return &Entry{
 			Message: fmt.Sprintf("failed to create new entry: %v", err),
-			Level:   interfaces.LevelError,
+			Level:   kbx.LevelError,
 		}
 	}
 
@@ -137,7 +136,7 @@ func ToEntry(args ...any) interfaces.Entry {
 	first := args[0]
 
 	// 1) se já é Entry
-	if rec, ok := first.(interfaces.Entry); ok {
+	if rec, ok := first.(kbx.Entry); ok {
 		return rec
 	}
 
@@ -148,7 +147,7 @@ func ToEntry(args ...any) interfaces.Entry {
 			// fallback bruto
 			return &Entry{
 				Message: fmt.Sprintf("failed to create new entry: %v", err),
-				Level:   interfaces.LevelError,
+				Level:   kbx.LevelError,
 			}
 		}
 		if len(args) > 1 {
@@ -203,17 +202,17 @@ func ToEntry(args ...any) interfaces.Entry {
 	return e.WithMessage(fmt.Sprintf("%v", first))
 }
 
-func normalizeLevel(v any) interfaces.Level {
+func normalizeLevel(v any) kbx.Level {
 	switch x := v.(type) {
-	case interfaces.Level:
+	case kbx.Level:
 		return x
 
 	case string:
-		l := interfaces.Level(strings.ToLower(strings.TrimSpace(x)))
-		if interfaces.IsLevel(l.String()) {
+		l := kbx.Level(strings.ToLower(strings.TrimSpace(x)))
+		if kbx.IsLevel(l.String()) {
 			return l
 		}
 	}
 
-	return interfaces.LevelInfo
+	return kbx.LevelInfo
 }

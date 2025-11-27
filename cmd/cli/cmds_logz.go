@@ -2,17 +2,13 @@
 package cli
 
 import (
-	"io"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
 	"github.com/kubex-ecosystem/logz/internal/core"
-	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/info"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
-	"github.com/kubex-ecosystem/logz/internal/writer"
 	"github.com/spf13/cobra"
 )
 
@@ -43,6 +39,9 @@ func LogzCmd() *cobra.Command {
 }
 
 func LoggerCmd() *cobra.Command {
+	var Output, Format, Level, MinLevel, MaxLevel string
+	var Message []string
+
 	short := "Logger related operations"
 	long := `Perform various logger related operations such as setting log levels, formats, and outputs.
 You can configure the logger to suit your application's needs.`
@@ -56,13 +55,9 @@ You can configure the logger to suit your application's needs.`
 			[]string{short, long}, os.Getenv("LOGZ_HIDE_BANNER") == "true",
 		),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := core.NewLoggerOptions()
-			opts.Debug = kbx.BoolPtr(initArgs.Debug)
-			opts.Level = interfaces.ParseLevel(kbx.GetValueOrDefaultSimple(initArgs.Level, "info"))
-			opts.MinLevel = interfaces.ParseLevel(kbx.GetValueOrDefaultSimple(initArgs.MinLevel, "debug"))
-			opts.MaxLevel = interfaces.ParseLevel(kbx.GetValueOrDefaultSimple(initArgs.MaxLevel, "fatal"))
-			opts.Output = kbx.GetValueOrDefaultSimple[io.Writer](writer.ParseWriter(initArgs.Output), os.Stdout)
-			opts.Formatter = formatter.ParseFormatter(kbx.GetValueOrDefaultSimple(initArgs.Format, "text"), false)
+
+			opts := core.NewLoggerOptions(initArgs)
+
 			entry, err := core.NewEntry()
 
 			logger := core.NewLogger("LogzCLI", opts, false)
@@ -72,7 +67,7 @@ You can configure the logger to suit your application's needs.`
 			entry.Message = strings.TrimSpace(
 				strings.ToValidUTF8(
 					strings.Join(
-						initArgs.Message,
+						Message,
 						" ",
 					), "",
 				),
@@ -96,12 +91,12 @@ You can configure the logger to suit your application's needs.`
 	}
 
 	loggerCmd.Flags().BoolVarP(&initArgs.Debug, "debug", "d", false, "Enable debug mode")
-	loggerCmd.Flags().StringVarP(&initArgs.Level, "level", "l", "info", "Set the logging level (e.g., debug, info, warn, error)")
-	loggerCmd.Flags().StringVarP(&initArgs.MinLevel, "min-level", "m", "debug", "Set the minimum logging level")
-	loggerCmd.Flags().StringVarP(&initArgs.MaxLevel, "max-level", "M", "fatal", "Set the maximum logging level")
-	loggerCmd.Flags().StringVarP(&initArgs.Output, "output", "o", "stdout", "Set the logging output (e.g., stdout, file)")
-	loggerCmd.Flags().StringVarP(&initArgs.Format, "format", "f", "text", "Set the logging format (e.g., json, text)")
-	loggerCmd.Flags().StringArrayVarP(&initArgs.Message, "message", "e", []string{}, "Log message parts")
+	loggerCmd.Flags().StringVarP(&Level, "level", "l", "info", "Set the logging level (e.g., debug, info, warn, error)")
+	loggerCmd.Flags().StringVarP(&MinLevel, "min-level", "m", "debug", "Set the minimum logging level")
+	loggerCmd.Flags().StringVarP(&MaxLevel, "max-level", "M", "fatal", "Set the maximum logging level")
+	loggerCmd.Flags().StringVarP(&Output, "output", "o", "stdout", "Set the logging output (e.g., stdout, file)")
+	loggerCmd.Flags().StringVarP(&Format, "format", "f", "text", "Set the logging format (e.g., json, text)")
+	loggerCmd.Flags().StringArrayVarP(&Message, "message", "e", []string{}, "Log message parts")
 
 	return loggerCmd
 }

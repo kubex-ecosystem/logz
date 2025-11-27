@@ -2,17 +2,17 @@
 package logz
 
 import (
-	I "github.com/kubex-ecosystem/logz/interfaces"
 	C "github.com/kubex-ecosystem/logz/internal/core"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-type Logger = C.LoggerZ[I.Entry]
-type Entry = I.Entry
+type Logger = C.LoggerZ[kbx.Entry]
+type Entry = kbx.Entry
 
-func NewEntry() (I.Entry, error) {
+func NewEntry() (kbx.Entry, error) {
 	return C.NewEntryImpl()
 }
 
 func NewLogger(prefix string, opts *C.LoggerOptionsImpl, withDefaults bool) *Logger {
-	return C.NewLoggerZ[I.Entry](prefix, opts, withDefaults)
+	return C.NewLoggerZ[kbx.Entry](prefix, opts, withDefaults)
 }

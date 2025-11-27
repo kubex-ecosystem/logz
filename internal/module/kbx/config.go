@@ -3,24 +3,21 @@ package kbx
 import (
 	"io"
 	"time"
-
-	"github.com/kubex-ecosystem/logz/interfaces"
 )
 
 type LogzGeneralOptions struct {
 	// General options
-	Debug     *bool `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug,omitempty"`
-	ShowColor *bool `json:"show_color,omitempty" yaml:"show_color,omitempty" mapstructure:"show_color,omitempty"`
-	ShowIcons *bool `json:"show_icons,omitempty" yaml:"show_icons,omitempty" mapstructure:"show_icons,omitempty"`
+	Prefix    string `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix,omitempty"`
+	Debug     bool   `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug,omitempty"`
+	ShowColor *bool  `json:"show_color,omitempty" yaml:"show_color,omitempty" mapstructure:"show_color,omitempty"`
+	ShowIcons *bool  `json:"show_icons,omitempty" yaml:"show_icons,omitempty" mapstructure:"show_icons,omitempty"`
 }
 
 type LogzFormatOptions struct {
-	// Format        string
-	Formatter interfaces.Formatter `json:"formatter,omitempty" yaml:"formatter,omitempty" mapstructure:"formatter,omitempty"`
-	Output    io.Writer            `json:"output,omitempty" yaml:"output,omitempty" mapstructure:"output,omitempty"`
-	MinLevel  interfaces.Level     `json:"min_level,omitempty" yaml:"min_level,omitempty" mapstructure:"min_level,omitempty"`
-	MaxLevel  interfaces.Level     `json:"max_level,omitempty" yaml:"max_level,omitempty" mapstructure:"max_level,omitempty"`
-	Level     interfaces.Level     `json:"level,omitempty" yaml:"level,omitempty" mapstructure:"level,omitempty"`
+	Output   io.Writer `json:"output,omitempty" yaml:"output,omitempty" mapstructure:"output,omitempty"`
+	MinLevel Level     `json:"min_level,omitempty" yaml:"min_level,omitempty" mapstructure:"min_level,omitempty"`
+	MaxLevel Level     `json:"max_level,omitempty" yaml:"max_level,omitempty" mapstructure:"max_level,omitempty"`
+	Level    Level     `json:"level,omitempty" yaml:"level,omitempty" mapstructure:"level,omitempty"`
 }
 
 type LogzOutputOptions struct {
@@ -47,11 +44,4 @@ type LogzBufferingOptions struct {
 	Buffer        []byte         `json:"buffer,omitempty" yaml:"buffer,omitempty" mapstructure:"buffer,omitempty"`
 	BufferSize    *int           `json:"buffer_size,omitempty" yaml:"buffer_size,omitempty" mapstructure:"buffer_size,omitempty"`
 	FlushInterval *time.Duration `json:"flush_interval,omitempty" yaml:"flush_interval,omitempty" mapstructure:"flush_interval,omitempty"`
-}
-
-type LogzAdvancedOptions struct {
-	// Hooks
-	Hooks    []interfaces.Hook     `json:"hooks,omitempty" yaml:"hooks,omitempty" mapstructure:"hooks,omitempty"`
-	LHooks   interfaces.LHook[any] `json:"l_hooks,omitempty" yaml:"l_hooks,omitempty" mapstructure:"l_hooks,omitempty"`
-	Metadata map[string]any        `json:"metadata,omitempty" yaml:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 }

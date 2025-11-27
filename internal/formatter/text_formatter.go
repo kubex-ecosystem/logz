@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
 type TextFormatter struct {
@@ -17,33 +17,33 @@ type TextFormatter struct {
 
 // --- ICONES E CORES ---------------------------------------------------------
 
-var icons = map[interfaces.Level]string{
-	interfaces.LevelNotice:  "📝",
-	interfaces.LevelTrace:   "🔍",
-	interfaces.LevelSuccess: "✅",
-	interfaces.LevelDebug:   "🐛",
-	interfaces.LevelInfo:    "ℹ️",
-	interfaces.LevelWarn:    "⚠️",
-	interfaces.LevelError:   "❌",
-	interfaces.LevelFatal:   "💀",
+var icons = map[kbx.Level]string{
+	kbx.LevelNotice:  "📝",
+	kbx.LevelTrace:   "🔍",
+	kbx.LevelSuccess: "✅",
+	kbx.LevelDebug:   "🐛",
+	kbx.LevelInfo:    "ℹ️",
+	kbx.LevelWarn:    "⚠️",
+	kbx.LevelError:   "❌",
+	kbx.LevelFatal:   "💀",
 }
 
-var colors = map[interfaces.Level]string{
-	interfaces.LevelNotice:  "\033[33m",
-	interfaces.LevelTrace:   "\033[36m",
-	interfaces.LevelSuccess: "\033[32m",
-	interfaces.LevelDebug:   "\033[34m",
-	interfaces.LevelInfo:    "\033[32m",
-	interfaces.LevelWarn:    "\033[33m",
-	interfaces.LevelError:   "\033[31m",
-	interfaces.LevelFatal:   "\033[35m",
+var colors = map[kbx.Level]string{
+	kbx.LevelNotice:  "\033[33m",
+	kbx.LevelTrace:   "\033[36m",
+	kbx.LevelSuccess: "\033[32m",
+	kbx.LevelDebug:   "\033[34m",
+	kbx.LevelInfo:    "\033[32m",
+	kbx.LevelWarn:    "\033[33m",
+	kbx.LevelError:   "\033[31m",
+	kbx.LevelFatal:   "\033[35m",
 }
 
 const reset = "\033[0m"
 
 // --- CONSTRUCTOR ------------------------------------------------------------
 
-func NewTextFormatter(pretty bool) interfaces.Formatter {
+func NewTextFormatter(pretty bool) Formatter {
 	return &TextFormatter{
 		DisableColor: os.Getenv("LOGZ_NO_COLOR") != "" || runtime.GOOS == "windows",
 		DisableIcon:  os.Getenv("LOGZ_NO_ICON") != "",
@@ -52,7 +52,7 @@ func NewTextFormatter(pretty bool) interfaces.Formatter {
 
 // --- PUBLIC API -------------------------------------------------------------
 
-func (f *TextFormatter) Format(e interfaces.Entry) ([]byte, error) {
+func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
 	level := e.GetLevel()
 	msg := strings.TrimSpace(e.GetMessage())
 

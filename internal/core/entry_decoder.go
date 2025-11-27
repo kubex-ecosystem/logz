@@ -3,19 +3,19 @@ package core
 import (
 	"strings"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
 // DefaultEntryDecoder cria uma função Decode pra IOBridge[*Entry],
 // que transforma uma linha de texto em uma Entry simples.
 //
 // É uma estratégia padrão: level fixo + mensagem = linha inteira.
-func DefaultEntryDecoder(defaultLevel interfaces.Level) func([]byte) (interfaces.Entry, error) {
+func DefaultEntryDecoder(defaultLevel kbx.Level) func([]byte) (kbx.Entry, error) {
 	if defaultLevel == "" {
-		defaultLevel = interfaces.LevelInfo
+		defaultLevel = kbx.LevelInfo
 	}
 
-	return func(p []byte) (interfaces.Entry, error) {
+	return func(p []byte) (kbx.Entry, error) {
 		msg := strings.TrimSpace(string(p))
 		if msg == "" {
 			return nil, nil

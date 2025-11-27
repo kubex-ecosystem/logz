@@ -3,7 +3,7 @@ package core
 import (
 	"strings"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
 // IOBridge é o adaptador que IMPLEMENTA io.Writer e empurra tudo para um Logger[T].
@@ -19,13 +19,13 @@ import (
 //	log.SetOutput(bridge)      // log stdlib
 //	cmd.Stdout = bridge        // exec.Command
 //	json.NewEncoder(bridge)...
-type IOBridge[T interfaces.Entry] struct {
+type IOBridge[T kbx.Entry] struct {
 	Logger *LoggerZ[T]
 	Decode func([]byte) (T, error)
 }
 
 // NewIOBridge cria a ponte genérica entre io.Writer e Logger[T].
-func NewIOBridge[T interfaces.Entry](logger *LoggerZ[T], decode func([]byte) (T, error)) *IOBridge[T] {
+func NewIOBridge[T kbx.Entry](logger *LoggerZ[T], decode func([]byte) (T, error)) *IOBridge[T] {
 	return &IOBridge[T]{
 		Logger: logger,
 		Decode: decode,

@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
 type PrettyFormatter struct {
@@ -15,14 +15,14 @@ type PrettyFormatter struct {
 	WithColors bool
 }
 
-func NewPrettyFormatter() interfaces.Formatter {
+func NewPrettyFormatter() Formatter {
 	return &PrettyFormatter{
 		TimeLayout: "15:04:05.000",
 		WithColors: true,
 	}
 }
 
-func (f *PrettyFormatter) Format(e interfaces.Entry) ([]byte, error) {
+func (f *PrettyFormatter) Format(e kbx.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (f *PrettyFormatter) Format(e interfaces.Entry) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func colorForLevel(l interfaces.Level, s string) string {
+func colorForLevel(l kbx.Level, s string) string {
 	const (
 		reset   = "\x1b[0m"
 		gray    = "\x1b[90m"
@@ -97,15 +97,15 @@ func colorForLevel(l interfaces.Level, s string) string {
 		magenta = "\x1b[35m"
 	)
 	switch l {
-	case interfaces.LevelDebug:
+	case kbx.LevelDebug:
 		return gray + s + reset
-	case interfaces.LevelInfo:
+	case kbx.LevelInfo:
 		return green + s + reset
-	case interfaces.LevelWarn:
+	case kbx.LevelWarn:
 		return yellow + s + reset
-	case interfaces.LevelError:
+	case kbx.LevelError:
 		return red + s + reset
-	case interfaces.LevelFatal:
+	case kbx.LevelFatal:
 		return magenta + s + reset
 	default:
 		return s

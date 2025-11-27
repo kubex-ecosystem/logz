@@ -9,40 +9,58 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-type LoggerOptionsImpl struct {
-	ID     uuid.UUID `json:"id,omitempty" yaml:"id,omitempty" mapstructure:"id,omitempty"`
-	Prefix string    `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix,omitempty"`
+const (
+	LevelNotice  kbx.Level = "notice"
+	LevelDebug   kbx.Level = "debug"
+	LevelTrace   kbx.Level = "trace"
+	LevelSuccess kbx.Level = "success"
+	LevelInfo    kbx.Level = "info"
+	LevelWarn    kbx.Level = "warn"
+	LevelError   kbx.Level = "error"
+	LevelFatal   kbx.Level = "fatal"
+	LevelSilent  kbx.Level = "silent"
+)
 
-	*kbx.LogzGeneralOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
-
-	*kbx.LogzFormatOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
-
-	*kbx.LogzOutputOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
-
-	*kbx.LogzRotatingOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
-
-	*kbx.LogzBufferingOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
-
-	*kbx.LogzAdvancedOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
+type LogzAdvancedOptions struct {
+	// Hooks
+	Formatter formatter.Formatter   `json:"formatter,omitempty" yaml:"formatter,omitempty" mapstructure:"formatter,omitempty"`
+	Hooks     []interfaces.Hook     `json:"hooks,omitempty" yaml:"hooks,omitempty" mapstructure:"hooks,omitempty"`
+	LHooks    interfaces.LHook[any] `json:"l_hooks,omitempty" yaml:"l_hooks,omitempty" mapstructure:"l_hooks,omitempty"`
+	Metadata  map[string]any        `json:"metadata,omitempty" yaml:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 }
 
-func NewLoggerOptions() *LoggerOptionsImpl {
+type LoggerConfig = kbx.InitArgs
+
+type LoggerOptionsImpl struct {
+	*LoggerConfig        `json:",inline" yaml:",inline" mapstructure:",squash"`
+	*LogzAdvancedOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
+}
+
+func NewLoggerOptions(initArgs *kbx.InitArgs) *LoggerOptionsImpl {
+	if initArgs != nil {
+		return &LoggerOptionsImpl{
+			LoggerConfig:        initArgs,
+			LogzAdvancedOptions: &LogzAdvancedOptions{},
+		}
+	}
 	return &LoggerOptionsImpl{
-		ID:                   uuid.New(),
-		LogzGeneralOptions:   &kbx.LogzGeneralOptions{},
-		LogzFormatOptions:    &kbx.LogzFormatOptions{},
-		LogzOutputOptions:    &kbx.LogzOutputOptions{},
-		LogzRotatingOptions:  &kbx.LogzRotatingOptions{},
-		LogzBufferingOptions: &kbx.LogzBufferingOptions{},
-		LogzAdvancedOptions:  &kbx.LogzAdvancedOptions{},
+		LoggerConfig: &LoggerConfig{
+			ID:                   uuid.New(),
+			LogzGeneralOptions:   &kbx.LogzGeneralOptions{},
+			LogzFormatOptions:    &kbx.LogzFormatOptions{},
+			LogzOutputOptions:    &kbx.LogzOutputOptions{},
+			LogzRotatingOptions:  &kbx.LogzRotatingOptions{},
+			LogzBufferingOptions: &kbx.LogzBufferingOptions{},
+		},
+		LogzAdvancedOptions: &LogzAdvancedOptions{},
 	}
 }
 
 func (o *LoggerOptionsImpl) ApplyOptions(logger *Logger) {
-
 	for key, setter := range loggerSetters {
 		if val := o.Get(key); val != nil {
 			setter(logger, val)
@@ -93,13 +111,15 @@ func (o *LoggerOptionsImpl) Hydrate(prefix string) *LoggerOptionsImpl {
 
 func (o *LoggerOptionsImpl) Clone() *LoggerOptionsImpl {
 	return &LoggerOptionsImpl{
-		ID:                   o.ID,
-		LogzGeneralOptions:   o.LogzGeneralOptions,
-		LogzFormatOptions:    o.LogzFormatOptions,
-		LogzOutputOptions:    o.LogzOutputOptions,
-		LogzRotatingOptions:  o.LogzRotatingOptions,
-		LogzBufferingOptions: o.LogzBufferingOptions,
-		LogzAdvancedOptions:  o.LogzAdvancedOptions,
+		&kbx.InitArgs{
+			ID:                   o.ID,
+			LogzGeneralOptions:   o.LogzGeneralOptions,
+			LogzFormatOptions:    o.LogzFormatOptions,
+			LogzOutputOptions:    o.LogzOutputOptions,
+			LogzRotatingOptions:  o.LogzRotatingOptions,
+			LogzBufferingOptions: o.LogzBufferingOptions,
+		},
+		o.LogzAdvancedOptions,
 	}
 }
 
@@ -117,13 +137,13 @@ func init() {
 	// ---- Níveis / Formatação / Writer ----
 
 	RegisterOptionSetter("min_level", func(l *Logger, v any) {
-		if lvl, ok := v.(interfaces.Level); ok {
+		if lvl, ok := v.(kbx.Level); ok {
 			l.SetMinLevel(lvl)
 		}
 	})
 
 	RegisterOptionSetter("formatter", func(l *Logger, v any) {
-		if f, ok := v.(interfaces.Formatter); ok {
+		if f, ok := v.(formatter.Formatter); ok {
 			l.SetFormatter(f)
 		}
 	})
@@ -240,10 +260,10 @@ func (o *LoggerOptionsImpl) Get(key string) any {
 func (o *LoggerOptionsImpl) Set(key string, value any) {
 	switch key {
 	case "min_level":
-		o.MinLevel = value.(interfaces.Level)
+		o.MinLevel = value.(kbx.Level)
 
 	case "formatter":
-		o.Formatter = value.(interfaces.Formatter)
+		o.Formatter = value.(formatter.Formatter)
 
 	case "output":
 		o.Output = value.(io.Writer)

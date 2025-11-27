@@ -2,12 +2,14 @@ package interfaces
 
 import (
 	"encoding/json"
+
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-type DynamicFormatter[T Entry] struct {
-	compactThreshold Level
-	prettyThreshold  Level
-	jsonThreshold    Level
+type DynamicFormatter[T kbx.Entry] struct {
+	compactThreshold kbx.Level
+	prettyThreshold  kbx.Level
+	jsonThreshold    kbx.Level
 
 	enrichers []func(*T)
 	filters   []func(*T) bool
