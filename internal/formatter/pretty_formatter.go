@@ -1,3 +1,4 @@
+// PrettyFormatter é um formatador de log que produz saídas legíveis por humanos.
 package formatter
 
 import (

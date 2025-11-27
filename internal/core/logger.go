@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 
 	"log"
 )
@@ -88,8 +89,16 @@ func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logge
 	)
 
 	// Reafirma configurações do log padrão
-	logr.SetFlags(0)           // desativa flags automáticas do log padrão
-	logr.SetOutput(io.Discard) // evita escrita direta no output padrão
+	logr.SetFlags(0) // desativa flags automáticas do log padrão
+
+	if kbx.DefaultFalse(opts.OutputTTY) {
+		// se for TTY, desativa escrita direta no output padrão
+		logr.SetOutput(io.Discard) // evita escrita direta no output padrão
+	} else {
+		// se não for TTY, mantém escrita direta no output padrão
+		logr.SetOutput(out)
+	}
+
 	logr.SetPrefix(prefix)
 
 	return &Logger{
@@ -193,6 +202,56 @@ func (l *Logger) SetMetadata(metadata map[string]any) {
 	// implementação fictícia
 }
 
+// Log é o caminho principal: recebe um Record pronto (T),
+// dispara hooks, formata e escreve em out.
+func (l *Logger) Log(lvl string, rec interfaces.Entry) error {
+	if !kbx.IsObjSafe(rec, false) {
+		// nada a fazer, mas não vamos quebrar ninguém
+		return nil
+	}
+
+	// r := *rec // copia pra evitar alterações concorrentes
+
+	if !l.Enabled(interfaces.Level(rec.GetLevel().String())) {
+		return nil
+	}
+
+	if err := rec.Validate(); err != nil {
+		return err
+	}
+
+	l.mu.RLock()
+	f := l.opts.Formatter
+	out := l.opts.Output
+
+	hooks := append([]interfaces.LHook[any](nil), l.opts.LHooks)
+
+	l.mu.RUnlock()
+
+	if f == nil || out == nil {
+		// logger não inicializado corretamente; falha silenciosa
+		return nil
+	}
+
+	// hooks antes da formatação
+	for _, h := range hooks {
+		h.Fire(rec)
+	}
+
+	b, err := f.Format(rec)
+	if err != nil {
+		return err
+	}
+
+	// garante newline pra saída de console / arquivos de texto.
+	if len(b) == 0 || b[len(b)-1] != '\n' {
+		b = append(b, '\n')
+	}
+
+	_, err = out.Write(b)
+	return err
+}
+
 func (l *Logger) LogAny(args ...any) error {
 	if l == nil {
 		return nil
@@ -224,11 +283,4 @@ func (l *Logger) LogAny(args ...any) error {
 	}
 
 	return l.Log(entry.GetLevel().String(), entry)
-}
-
-func (l *Logger) Log(level string, args ...any) error {
-	lvl := normalizeLevel(level)
-	entry := toEntry(args...)
-	entry = entry.WithLevel(lvl)
-	return l.LogAny(lvl, entry)
 }

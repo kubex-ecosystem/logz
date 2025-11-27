@@ -7,12 +7,15 @@ import "strings"
 type Level string
 
 const (
-	LevelDebug  Level = "debug"
-	LevelInfo   Level = "info"
-	LevelWarn   Level = "warn"
-	LevelError  Level = "error"
-	LevelFatal  Level = "fatal"
-	LevelSilent Level = "silent"
+	LevelNotice  Level = "notice"
+	LevelDebug   Level = "debug"
+	LevelTrace   Level = "trace"
+	LevelSuccess Level = "success"
+	LevelInfo    Level = "info"
+	LevelWarn    Level = "warn"
+	LevelError   Level = "error"
+	LevelFatal   Level = "fatal"
+	LevelSilent  Level = "silent"
 )
 
 func (l Level) String() string {

@@ -69,26 +69,22 @@ func (m *LogZ) Execute() error {
 	}
 }
 func (m *LogZ) Command() *cobra.Command {
-	cmd := &cobra.Command{
-		Use: m.Module(),
-		//Aliases:     []string{m.Alias(), "w", "wb", "webServer", "http"},
-		Example: m.concatenateExamples(),
-		Annotations: m.GetDescriptions(
-			[]string{
-				m.LongDescription(),
-				m.ShortDescription(),
-			}, m.hideBanner,
-		),
-		Version: version.GetVersion(),
-		Run: func(cmd *cobra.Command, args []string) {
-			_ = cmd.Help()
-		},
-	}
+	cmd := cli.LoggerCmd()
+
+	cmd.Short = m.ShortDescription()
+	cmd.Long = m.LongDescription()
+	cmd.Use = m.Usage()
+	cmd.Example = m.concatenateExamples()
+	cmd.Annotations = m.GetDescriptions(
+		[]string{
+			m.LongDescription(),
+			m.ShortDescription(),
+		}, m.hideBanner,
+	)
+	cmd.Version = version.GetVersion()
 
 	cmd.AddCommand(version.CliCommand())
-	cmd.AddCommand(cli.LoggerCmd())
 	cmd.AddCommand(cli.LogzCmd())
-	// cmd.AddCommand(cli.MetricsCmd())
 
 	setUsageDefinition(cmd)
 	for _, c := range cmd.Commands() {

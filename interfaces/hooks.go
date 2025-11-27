@@ -17,8 +17,8 @@ func (f FHook[T]) String() string {
 	return "FHook"
 }
 
-func (f FHook[T]) Clone() *FHook[T] {
-	return &f
+func (f FHook[T]) Clone() FHook[T] {
+	return f
 }
 
 type Hook func(record Entry)
@@ -26,13 +26,13 @@ type Hook func(record Entry)
 type Hooks []Hook
 
 // Add adiciona um hook à coleção.
-func (h *Hooks) Add(hook Hook) {
-	*h = append(*h, hook)
+func (h Hooks) Add(hook Hook) {
+	h = append(h, hook)
 }
 
 // Fire executa todos os hooks da coleção.
-func (h *Hooks) Fire(record Entry) {
-	for _, hook := range *h {
+func (h Hooks) Fire(record Entry) {
+	for _, hook := range h {
 		hook(record)
 	}
 }
@@ -50,8 +50,8 @@ func (h *HooksG[T]) Add(hook HookG[T]) {
 }
 
 // Fire executa todos os hooks da coleção.
-func (h *HooksG[T]) Fire(record T) {
-	for _, hook := range *h {
+func (h HooksG[T]) Fire(record T) {
+	for _, hook := range h {
 		hook(record)
 	}
 }

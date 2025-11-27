@@ -1,9 +1,5 @@
 package interfaces
 
-import (
-	"encoding/json"
-)
-
 // FormatterG é genérico em T, mas T precisa ser um Record.
 // Para o logz "normal", T será *Entry.
 // Para outros módulos do Kubex, T pode ser outro tipo que implemente Record.
@@ -17,21 +13,4 @@ type FormatterFuncG[T Entry] func(T) ([]byte, error)
 // Format formata o record genérico.
 func (f FormatterFuncG[T]) Format(rec T) ([]byte, error) {
 	return f(rec)
-}
-
-func ParseFormatter(format string) Formatter {
-	switch format {
-	case "json":
-		return FormatterFuncG[Entry](func(entry Entry) ([]byte, error) {
-			return json.Marshal(entry)
-		})
-	case "text":
-		return FormatterFuncG[Entry](func(entry Entry) ([]byte, error) {
-			return []byte(entry.GetMessage()), nil
-		})
-	default:
-		return FormatterFuncG[Entry](func(entry Entry) ([]byte, error) {
-			return []byte(entry.GetMessage()), nil
-		})
-	}
 }

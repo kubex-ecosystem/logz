@@ -10,7 +10,7 @@ type JSONFormatter struct {
 	Pretty bool
 }
 
-func NewJSONFormatter(pretty bool) *JSONFormatter {
+func NewJSONFormatter(pretty bool) interfaces.Formatter {
 	return &JSONFormatter{Pretty: pretty}
 }
 

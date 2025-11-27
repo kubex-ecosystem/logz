@@ -6,8 +6,10 @@ import (
 
 	"github.com/kubex-ecosystem/logz/interfaces"
 	"github.com/kubex-ecosystem/logz/internal/core"
+	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/info"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+	"github.com/kubex-ecosystem/logz/internal/writer"
 	"github.com/spf13/cobra"
 )
 
@@ -56,13 +58,14 @@ You can configure the logger to suit your application's needs.`
 			opts.Level = interfaces.ParseLevel(initArgs.Level)
 			opts.MinLevel = interfaces.ParseLevel(initArgs.MinLevel)
 			opts.MaxLevel = interfaces.ParseLevel(initArgs.MaxLevel)
-			opts.Output = kbx.GetValueOrDefaultSimple[io.Writer](any(initArgs.Output).(io.Writer), os.Stdout)
-			opts.Formatter = interfaces.ParseFormatter(initArgs.Format)
+			opts.Output = kbx.GetValueOrDefaultSimple[io.Writer](writer.ParseWriter(initArgs.Output), os.Stdout)
+			opts.Formatter = formatter.ParseFormatter(initArgs.Format, false)
 
 			logger, entry := SetupLogger(
 				opts,
 				initArgs.Message,
 			)
+			logger.Logger.Println("TESTE")
 
 			logger.Log(initArgs.Level, entry)
 
@@ -86,6 +89,6 @@ func SetupLogger(loggerOptions *core.LoggerOptionsImpl, messages []string) (*cor
 	for _, msgPart := range messages {
 		entry.WithMessage(entry.GetMessage() + msgPart + " ")
 	}
-	entry.WithMessage(entry.GetMessage()[:len(entry.GetMessage())-1]) // Remove trailing space
+	// entry.WithMessage(entry.GetMessage()[:len(entry.GetMessage())-1]) // Remove trailing space
 	return logger, entry
 }
