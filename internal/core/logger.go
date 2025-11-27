@@ -223,9 +223,7 @@ func (l *Logger) Log(lvl string, rec interfaces.Entry) error {
 	l.mu.RLock()
 	f := l.opts.Formatter
 	out := l.opts.Output
-
 	hooks := append([]interfaces.LHook[any](nil), l.opts.LHooks)
-
 	l.mu.RUnlock()
 
 	if f == nil || out == nil {
@@ -235,7 +233,10 @@ func (l *Logger) Log(lvl string, rec interfaces.Entry) error {
 
 	// hooks antes da formatação
 	for _, h := range hooks {
-		h.Fire(rec)
+		err := h.Fire(rec)
+		if err != nil {
+			return err
+		}
 	}
 
 	b, err := f.Format(rec)
