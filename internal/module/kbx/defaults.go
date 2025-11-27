@@ -2,31 +2,26 @@
 package kbx
 
 const (
-	DefaultMode    = "service"
-	DefaultOutput  = "stdout"
-	DefaultLogPath = "$HOME/.kubex/logs/logz.log"
+	KeyringService        = "canalize"
+	DefaultKubexConfigDir = "$HOME/.canalize"
+
+	DefaultCanalizeBEKeyPath    = "$HOME/.canalize/gobe/gobe-key.pem"
+	DefaultCanalizeBECertPath   = "$HOME/.canalize/gobe/gobe-cert.pem"
+	DefaultCanalizeBECAPath     = "$HOME/.canalize/gobe/ca-cert.pem"
+	DefaultCanalizeBEConfigPath = "$HOME/.canalize/gobe/config/config.json"
+
+	DefaultConfigDir            = "$HOME/.canalize/logz/config"
+	DefaultConfigFile           = "$HOME/.canalize/logz/config.json"
+	DefaultCanalizeDSConfigPath = "$HOME/.canalize/logz/config/config.json"
 )
 
 const (
-	KeyringService        = "kubex"
-	DefaultKubexConfigDir = "$HOME/.kubex"
-
-	DefaultGoBEKeyPath    = "$HOME/.kubex/gobe/gobe-key.pem"
-	DefaultGoBECertPath   = "$HOME/.kubex/gobe/gobe-cert.pem"
-	DefaultGoBECAPath     = "$HOME/.kubex/gobe/ca-cert.pem"
-	DefaultGoBEConfigPath = "$HOME/.kubex/gobe/config/config.json"
-
-	DefaultConfigDir        = "$HOME/.kubex/gdbase/config"
-	DefaultConfigFile       = "$HOME/.kubex/gdbase/config.json"
-	DefaultGDBaseConfigPath = "$HOME/.kubex/gdbase/config/config.json"
-)
-
-const (
-	DefaultVolumesDir     = "$HOME/.kubex/volumes"
-	DefaultRedisVolume    = "$HOME/.kubex/volumes/redis"
-	DefaultPostgresVolume = "$HOME/.kubex/volumes/postgresql"
-	DefaultMongoVolume    = "$HOME/.kubex/volumes/mongo"
-	DefaultRabbitMQVolume = "$HOME/.kubex/volumes/rabbitmq"
+	DefaultVolumesDir     = "$HOME/.canalize/volumes"
+	DefaultRedisVolume    = "$HOME/.canalize/volumes/redis"
+	DefaultPostgresVolume = "$HOME/.canalize/volumes/postgresql"
+	DefaultMongoDBVolume  = "$HOME/.canalize/volumes/mongodb"
+	DefaultMongoVolume    = "$HOME/.canalize/volumes/mongo"
+	DefaultRabbitMQVolume = "$HOME/.canalize/volumes/rabbitmq"
 )
 
 const (
@@ -66,79 +61,32 @@ const (
 )
 
 const (
-	DefaultServerPort = "8088"
+	DefaultServerPort = "5000"
 	DefaultServerHost = "0.0.0.0"
 )
 
-const (
-	DefaultLLMHistoryLimit    = 5
-	DefaultProviderConfigPath = "$HOME/.kubex/providers"
-)
-
-type DBNameKey string
-
-const (
-	ContextDBNameKey = DBNameKey("dbName")
-)
-
-const (
-	HeaderRequestIDKey = "X-Request-ID"
-)
-
-const (
-	CookieSessionIDKey = "session_id"
-)
-
-const (
-	AuthTypeNone   = "none"
-	AuthTypeBasic  = "basic"
-	AuthTypeBearer = "bearer"
-	AuthTypeAPIKey = "api_key" // pragma: allowlist secret
-	AuthTypeOIDC   = "oidc"
-)
-
-type LogMode string
-type LogFormat string
-type LogLevel string
-
-const (
-	NoColor                  = false
-	DefaultLogLevel          = "INFO"
-	DEBUG           LogLevel = "DEBUG"
-	TRACE           LogLevel = "TRACE"
-	NOTICE          LogLevel = "NOTICE"
-	INFO            LogLevel = "INFO"
-	SUCCESS         LogLevel = "SUCCESS"
-	WARN            LogLevel = "WARN"
-	ERROR           LogLevel = "ERROR"
-	FATAL           LogLevel = "FATAL"
-	PANIC           LogLevel = "PANIC"
-	SILENT          LogLevel = "SILENT"
-	ANSWER          LogLevel = "ANSWER"
-)
-
-const (
-	JSON LogFormat = "json"
-	TEXT LogFormat = "text"
-	YAML LogFormat = "yaml"
-	XML  LogFormat = "xml"
-	RAW  LogFormat = "raw"
-)
-
-const (
-	ModeService    LogMode = "service"    // Indicates that the core is being used by a detached process
-	ModeStandalone LogMode = "standalone" // Indicates that the core is being used locally (e.g., CLI)
-)
-
-var LogLevels = map[LogLevel]int{
-	DEBUG:   1,
-	TRACE:   2,
-	INFO:    3,
-	NOTICE:  4,
-	SUCCESS: 5,
-	WARN:    6,
-	ERROR:   7,
-	FATAL:   8,
-	SILENT:  9,
-	ANSWER:  10,
+type ValidationError struct {
+	Field   string
+	Message string
 }
+
+func (v *ValidationError) Error() string {
+	return v.Message
+}
+func (v *ValidationError) FieldError() map[string]string {
+	return map[string]string{v.Field: v.Message}
+}
+func (v *ValidationError) FieldsError() map[string]string {
+	return map[string]string{v.Field: v.Message}
+}
+func (v *ValidationError) ErrorOrNil() error {
+	return v
+}
+
+var (
+	ErrUsernameRequired = &ValidationError{Field: "username", Message: "Username is required"}
+	ErrPasswordRequired = &ValidationError{Field: "password", Message: "Password is required"}
+	ErrEmailRequired    = &ValidationError{Field: "email", Message: "Email is required"}
+	ErrDBNotProvided    = &ValidationError{Field: "db", Message: "Database not provided"}
+	ErrModelNotFound    = &ValidationError{Field: "model", Message: "Model not found"}
+)

@@ -1,134 +1,119 @@
 // Package kbx provides utilities for working with initialization arguments.
 package kbx
 
-import (
-	"os"
-	"path/filepath"
-	"time"
+type glgr interface {
+	Log(level string, parts ...any)
+}
 
-	"github.com/google/uuid"
+var gl glgr
+
+func SetLogger(logger glgr) {
+	gl = logger
+}
+
+type DBType string
+
+const (
+	DBTypePostgres DBType = "postgres"
+	DBTypeRabbitMQ DBType = "rabbitmq"
+	DBTypeRedis    DBType = "redis"
+	DBTypeMongoDB  DBType = "mongodb"
+	DBTypeMySQL    DBType = "mysql"
+	DBTypeMSSQL    DBType = "mssql"
+	DBTypeSQLite   DBType = "sqlite"
+	DBTypeOracle   DBType = "oracle"
 )
 
-type InitArgs = KBXConfig
+type InitArgs struct {
+	ConfigFile     string
+	ConfigType     string
+	EnvFile        string
+	LogFile        string
+	Name           string
+	Image          string
+	Debug          bool
+	ReleaseMode    bool
+	IsConfidential bool
+	DryRun         bool
+	Force          bool
+	Reset          bool
+	FailFast       bool
+	BatchMode      bool
+	NoColor        bool
+	RootMode       bool
+	Host           string
+	Command        string
+	Subcommand     string
+	MaxProcs       int
+	TimeoutMS      int
+	EnvVars        map[string]string
+	Ports          map[string]string
+	Volumes        map[string]string
+	Bind           string
+	Address        string
+	PubCertKeyPath string
+	PubKeyPath     string
+	Pwd            string
 
-func NewInitArgs(
-	configFile string,
-	configType string,
-	configDBFile string,
-	configDBType string,
-	envFile string,
-	logFile string,
+	Enabled  bool
+	Port     string
+	Hostname string
+	Username string
+	Password string
+	Database string
+	DSN      string
+}
 
-	cwd string,
-	tempDir string,
+func Log(level string, payload ...any) {
+	gl.Log(level, payload...)
+}
 
-	// name string,
-	debug bool,
-	releaseMode bool,
-	isConfidential bool,
-	background bool,
+type MigrationInfo struct {
+	// MigrationPath é o caminho para os arquivos de migração.
+	MigrationPath string `json:"migration_path,omitempty" yaml:"migration_path,omitempty" mapstructure:"migration_path,omitempty"`
+	// Enabled indica se a migração está habilitada.
+	Enabled bool `json:"enabled,omitempty" yaml:"enabled,omitempty" mapstructure:"enabled,omitempty" default:"false"`
+	// Options são opções adicionais para a migração.
+	Options map[string]any `json:"options,omitempty" yaml:"options,omitempty" mapstructure:"options,omitempty"`
+	// Auto indica se a migração deve ser executada automaticamente.
+	Auto *bool `json:"auto,omitempty" yaml:"auto,omitempty" mapstructure:"auto,omitempty" default:"false"`
+	// Version indica a versão da migração.
+	Version string `json:"version,omitempty" yaml:"version,omitempty" mapstructure:"version,omitempty"`
+	// Bootstrap indica se a migração deve ser inicializada.
+	Bootstrap *bool `json:"bootstrap,omitempty" yaml:"bootstrap,omitempty" mapstructure:"bootstrap,omitempty" default:"false"`
+	// DryRun indica se a migração deve ser executada em modo de simulação.
+	DryRun *bool `json:"dry_run,omitempty" yaml:"dry_run,omitempty" mapstructure:"dry_run,omitempty" default:"false"`
+	// Reset indica se a migração deve redefinir o banco de dados antes de aplicar as migrações.
+	Reset *bool `json:"reset,omitempty" yaml:"reset,omitempty" mapstructure:"reset,omitempty" default:"false"`
+	// Force indica se a migração deve forçar a aplicação de todas as migrações.
+	Force *bool `json:"force,omitempty" yaml:"force,omitempty" mapstructure:"force,omitempty" default:"false"`
+}
 
-	port string,
-	bind string,
-	pubCertKeyPath string,
-	pubKeyPath string,
-	privKeyPath string,
+// DBConfig is the pure, serializable configuration for a single database.
+type DBConfig struct {
+	ID         string         `json:"id,omitempty" yaml:"id,omitempty" mapstructure:"id,omitempty"`
+	Name       string         `json:"name,omitempty" yaml:"name,omitempty" mapstructure:"name,omitempty"`
+	IsDefault  bool           `json:"is_default,omitempty" yaml:"is_default,omitempty" mapstructure:"is_default,omitempty"`
+	Enabled    *bool          `json:"enabled,omitempty" yaml:"enabled,omitempty" mapstructure:"enabled,omitempty" default:"true"`
+	Debug      bool           `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug,omitempty"`
+	Type       DBType         `json:"type,omitempty" yaml:"type,omitempty" mapstructure:"Type,omitempty" validate:"required,oneof=postgres rabbitmq redis mongodb mysql mssql sqlite oracle"`
+	Host       string         `json:"host,omitempty" yaml:"host,omitempty" mapstructure:"host,omitempty"`
+	Port       string         `json:"port,omitempty" yaml:"port,omitempty" mapstructure:"port,omitempty"`
+	User       string         `json:"user,omitempty" yaml:"user,omitempty" mapstructure:"user,omitempty"`
+	Pass       string         `json:"pass,omitempty" yaml:"pass,omitempty" mapstructure:"pass,omitempty"`
+	TLSEnabled bool           `json:"tls_enabled,omitempty" yaml:"tls_enabled,omitempty" mapstructure:"tls_enabled,omitempty"`
+	DBName     string         `json:"db_name,omitempty" yaml:"db_name,omitempty" mapstructure:"db_name,omitempty"`
+	Schema     string         `json:"schema,omitempty" yaml:"schema,omitempty" mapstructure:"schema,omitempty"`
+	DSN        string         `json:"dsn,omitempty" yaml:"dsn,omitempty" mapstructure:"dsn,omitempty"`
+	Options    map[string]any `json:"options,omitempty" yaml:"options,omitempty" mapstructure:"options,omitempty"`
+	Backend    string         `json:"backend,omitempty" yaml:"backend,omitempty" mapstructure:"backend,omitempty"`
+	Migration  *MigrationInfo `json:"migration,omitempty" yaml:"migration,omitempty" mapstructure:"migration,omitempty" validate:"omitempty,object"`
+}
 
-	timeout time.Duration,
-	historySize int,
-	defaultProvider string,
-	defaultTemperature float32,
-	providerConfigPath string,
-
-	openAIConfig map[string]any,
-	chatGPTConfig map[string]any,
-	claudeConfig map[string]any,
-	anthropicConfig map[string]any,
-	deepSeekConfig map[string]any,
-	geminiConfig map[string]any,
-	ollamaConfig map[string]any,
-
-	notificationProvider any,
-	notificationTimeoutSeconds int,
-) *InitArgs {
-	// Prepare with default values fallbacks, just what will be used inside another variables. Otherwise,
-	// we will use the direct values and respective fallbacks in the struct initialization
-	configFile = GetValueOrDefaultSimple(configFile, os.ExpandEnv(DefaultGoBEConfigPath))
-	configDBFile = GetValueOrDefaultSimple(configDBFile, "dbconfig.json")
-	envFile = GetValueOrDefaultSimple(envFile, os.ExpandEnv(filepath.Join("$PWD", ".env")))
-	logFile = GetValueOrDefaultSimple(
-		logFile,
-		filepath.Join(filepath.Dir(filepath.Dir(os.ExpandEnv(os.ExpandEnv(DefaultGoBEConfigPath)))), "logs", "gobe.log"),
-	)
-	port = GetValueOrDefaultSimple(port, "8088")
-	bind = GetValueOrDefaultSimple(bind, "0.0.0.0")
-
-	openAIConfig = GetValueOrDefaultSimple(openAIConfig, map[string]any{})
-	chatGPTConfig = GetValueOrDefaultSimple(chatGPTConfig, map[string]any{})
-	claudeConfig = GetValueOrDefaultSimple(claudeConfig, map[string]any{})
-	anthropicConfig = GetValueOrDefaultSimple(anthropicConfig, map[string]any{})
-	deepSeekConfig = GetValueOrDefaultSimple(deepSeekConfig, map[string]any{})
-	geminiConfig = GetValueOrDefaultSimple(geminiConfig, map[string]any{})
-	ollamaConfig = GetValueOrDefaultSimple(ollamaConfig, map[string]any{})
-
-	return &InitArgs{
-		&Reference{
-			ID:   uuid.New(),
-			Name: "GoBE",
-		},
-		&ConfigPaths{
-			// Basic path and file configurations
-			ConfigFile:   configFile,
-			ConfigType:   filepath.Ext(configFile)[1:],
-			ConfigDBFile: configDBFile,
-			ConfigDBType: filepath.Ext(configDBFile)[1:],
-			EnvFile:      envFile,
-			LogFile:      logFile,
-		},
-		&ConfigScope{
-			// Scope and runtime settings
-			Cwd:     GetValueOrDefaultSimple(cwd, ""),
-			TempDir: os.TempDir(),
-		},
-		&ConfigBasic{
-			// Basic application settings
-			// Name:           GetValueOrDefaultSimple(name, "GoBE"),
-			Debug:          GetValueOrDefaultSimple(debug, false),
-			ReleaseMode:    GetValueOrDefaultSimple(releaseMode, false),
-			IsConfidential: GetValueOrDefaultSimple(isConfidential, false),
-			Background:     background,
-		},
-		&ConfigNetworkSecurity{
-			// Network and security settings
-			Port:           port,
-			Bind:           bind,
-			PubCertKeyPath: GetValueOrDefaultSimple(pubCertKeyPath, os.ExpandEnv(DefaultGoBEKeyPath)),
-			PubKeyPath:     GetValueOrDefaultSimple(pubKeyPath, os.ExpandEnv(DefaultGoBECertPath)),
-		},
-		&ConfigAIResiliency{
-			Timeout:            60 * time.Second,
-			HistorySize:        25,
-			DefaultProvider:    "openai",
-			DefaultTemperature: 0,
-			ProviderConfigPath: GetValueOrDefaultSimple(providerConfigPath, ""),
-		},
-		&ConfigAIIntegrations{
-			// AI Integrations and Settings
-			OpenAIConfig:    openAIConfig,
-			ChatGPTConfig:   chatGPTConfig,
-			ClaudeConfig:    claudeConfig,
-			AnthropicConfig: anthropicConfig,
-			DeepSeekConfig:  deepSeekConfig,
-			GeminiConfig:    geminiConfig,
-			OllamaConfig:    ollamaConfig,
-		},
-		&ConfigExtended{
-			// Extended settings
-			NotificationProvider:       notificationProvider,
-			NotificationTimeoutSeconds: GetValueOrDefaultSimple(notificationTimeoutSeconds, 5),
-		},
-		&LktSettings{
-			ExtractOptions: &ExtractOptions{},
-		},
-	}
+// RootConfig representa o arquivo de configuração do DS.
+type RootConfig struct {
+	Name      string      `json:"name,omitempty" yaml:"name,omitempty" mapstructure:"name,omitempty"`
+	FilePath  string      `json:"file_path,omitempty" yaml:"file_path,omitempty" mapstructure:"file_path,omitempty"`
+	Enabled   *bool       `json:"enabled,omitempty" yaml:"enabled,omitempty" mapstructure:"enabled,omitempty" default:"true"`
+	Databases []*DBConfig `json:"databases,omitempty" yaml:"databases,omitempty" mapstructure:"databases,omitempty"`
 }

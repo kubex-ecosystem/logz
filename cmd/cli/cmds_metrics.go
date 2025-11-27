@@ -1,10 +1,12 @@
 package cli
 
 import (
+	// "github.com/kubex-ecosystem/logz/api/notifiers"
+
+	"github.com/kubex-ecosystem/logz/internal/module/info"
 	"github.com/spf13/cobra"
 
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -13,7 +15,7 @@ import (
 func MetricsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "metrics",
-		Annotations: GetDescriptions(
+		Annotations: info.GetDescriptions(
 			[]string{"Manage Prometheus metrics"},
 			false,
 		),
@@ -42,8 +44,8 @@ func enableMetricsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			pm := il.GetPrometheusManager()
-			pm.Enable(port)
+			// pm := notifiers.GetPrometheusManager()
+			// pm.Enable(port)
 		},
 	}
 	enMCmd.Flags().StringVarP(&port, "port", "p", "2112", "Port to expose Prometheus metrics")
@@ -62,8 +64,8 @@ func disableMetricsCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			pm := il.GetPrometheusManager()
-			pm.Disable()
+			// pm := notifiers.GetPrometheusManager()
+			// pm.Disable()
 		},
 	}
 }
@@ -81,14 +83,14 @@ func addMetricCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			name := args[0]
-			value, valueErr := strconv.ParseFloat(args[1], 64)
-			if valueErr != nil {
-				fmt.Printf("Invalid metric value: %v\n", valueErr)
-				return
-			}
-			pm := il.GetPrometheusManager()
-			pm.AddMetric(name, value, nil)
+			// name := args[0]
+			// value, valueErr := strconv.ParseFloat(args[1], 64)
+			// if valueErr != nil {
+			// 	fmt.Printf("Invalid metric value: %v\n", valueErr)
+			// 	return
+			// }
+			// pm := notifiers.GetPrometheusManager()
+			// pm.AddMetric(name, value, nil)
 		},
 	}
 }
@@ -106,9 +108,9 @@ func removeMetricCmd() *cobra.Command {
 			mu.Lock()
 			defer mu.Unlock()
 
-			name := args[0]
-			pm := il.GetPrometheusManager()
-			pm.RemoveMetric(name)
+			// name := args[0]
+			// pm := notifiers.GetPrometheusManager()
+			// pm.RemoveMetric(name)
 		},
 	}
 }
@@ -125,16 +127,16 @@ func listMetricsCmd() *cobra.Command {
 			mu.RLock()
 			defer mu.RUnlock()
 
-			pm := il.GetPrometheusManager()
-			metrics := pm.GetMetrics()
-			if len(metrics) == 0 {
-				fmt.Println("No metrics registered.")
-				return
-			}
-			fmt.Println("Registered metrics:")
-			for name, value := range metrics {
-				fmt.Printf(" - %s: %f\n", name, value)
-			}
+			// pm := notifiers.GetPrometheusManager()
+			// metrics := pm.GetMetrics()
+			// if len(metrics) == 0 {
+			// 	fmt.Println("No metrics registered.")
+			// 	return
+			// }
+			// fmt.Println("Registered metrics:")
+			// for name, value := range metrics {
+			// 	fmt.Printf(" - %s: %f\n", name, value)
+			// }
 		},
 	}
 }
@@ -150,16 +152,16 @@ func watchMetricsCmd() *cobra.Command {
 			ticker := time.NewTicker(2 * time.Second)
 			defer ticker.Stop()
 			for range ticker.C {
-				metrics := il.GetPrometheusManager().GetMetrics()
-				fmt.Println("Current Metrics:")
-				if len(metrics) == 0 {
-					fmt.Println("  No metrics registered.")
-				} else {
-					for name, value := range metrics {
-						fmt.Printf(" - %s: %f\n", name, value)
-					}
-				}
-				fmt.Println("-----")
+				// metrics := notifierss.GetPrometheusManager().GetMetrics()
+				// fmt.Println("Current Metrics:")
+				// if len(metrics) == 0 {
+				// 	fmt.Println("  No metrics registered.")
+				// } else {
+				// 	for name, value := range metrics {
+				// 		fmt.Printf(" - %s: %f\n", name, value)
+				// 	}
+				// }
+				// fmt.Println("-----")
 			}
 		},
 	}

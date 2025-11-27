@@ -153,9 +153,9 @@ func HydrateMapFromEnvOrDefaults[T any](dbType string, target map[string]T, defa
 	defer func(hCtl chan any) {
 		if r := recover(); r != nil {
 			// Handle the panic (e.g., log the error)
-			fmt.Println(fmt.Errorf("Recovered from panic in HydrateMapFromEnvOrDefaults: %v", r))
+			gl.Log("error", fmt.Sprintf("Panic at the Hydration: %v", r))
 			if hydrationCtl != nil {
-				fmt.Println("info", "HydrationCtl", "Async hydration due to panic recovery")
+				gl.Log("info", "HydrationCtl", "Async hydration due to panic recovery")
 				for key, defaultValue := range defaults {
 					target[key] = GetValueOrDefaultAny(target[key], defaultValue)
 				}
@@ -171,7 +171,25 @@ func HydrateMapFromEnvOrDefaults[T any](dbType string, target map[string]T, defa
 		)
 	}
 
-	fmt.Println("debug", fmt.Sprintf("Hydrated Map for DBType %s: %+v", dbType, target))
+	gl.Log("debug", fmt.Sprintf("Hydrated Map for DBType %s: %+v", dbType, target))
 
 	return target
+}
+
+func BoolPtr(b bool) *bool {
+	return &b
+}
+
+func DefaultTrue(b *bool) bool {
+	if b == nil {
+		return true
+	}
+	return *b
+}
+
+func DefaultFalse(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
 }

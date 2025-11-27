@@ -2,82 +2,90 @@
 package module
 
 import (
-	cc "github.com/kubex-ecosystem/logz/cmd/cli"
-	vs "github.com/kubex-ecosystem/logz/internal/module/version"
+	"github.com/kubex-ecosystem/logz/cmd/cli"
+	"github.com/kubex-ecosystem/logz/internal/module/info"
+	"github.com/kubex-ecosystem/logz/internal/module/version"
 	"github.com/spf13/cobra"
 
 	"os"
 	"strings"
 )
 
-// Logz represents the main structure for the logz command-line interface.
-type Logz struct {
-	hideBanner bool
+type glgr interface {
+	Log(level string, parts ...any)
 }
 
-// Alias returns the alias for the logz command.
-func (m *Logz) Alias() string {
-	return "logs"
+var gl glgr
+
+func SetLogger(logger glgr) {
+	gl = logger
 }
 
-// ShortDescription provides a brief description of the logz command.
-func (m *Logz) ShortDescription() string {
-	return "LoggerLogz and logs manager"
+type LogZ struct {
+	parentCmdName string
+	hideBanner    bool
+	certPath      string
+	keyPath       string
+	configPath    string
 }
 
-// LongDescription provides a detailed description of the logz command.
-func (m *Logz) LongDescription() string {
-	return "The \"logz\" command-line interface (CLI) is an intuitive and user-friendly core and log management module designed for developers.\nIntegrated with Prometheus for monitoring, \"logz\" ensures comprehensive log management and is compatible with other plugins and\nthe Go programming language making it a versatile tool for maintaining system health and performance."
+func (m *LogZ) Alias() string {
+	return ""
 }
-
-// Usage returns the usage information for the logz command.
-func (m *Logz) Usage() string {
+func (m *LogZ) ShortDescription() string {
+	return "LogZ: A Kubex Ecosystem Logging Tool"
+}
+func (m *LogZ) LongDescription() string {
+	return `LogZ: A Kubex Ecosystem Logging Tool for managing logs and events, providing insights into system performance and security.`
+}
+func (m *LogZ) Usage() string {
 	return "logz [command] [args]"
 }
-
-// Examples returns example usages of the logz command.
-func (m *Logz) Examples() []string {
-	return []string{"logz show all", "lg error 'error message'"}
+func (m *LogZ) Examples() []string {
+	return []string{"logz -l info -m file -o /path/to/logfile.log",
+		"logz -l debug -m json -o /path/to/logfile.json",
+		"logz -l warn -m stdout",
+		"logz -l error -m stderr",
+		"logz -l fatal -m file -o /path/to/logfile.log",
+	}
 }
-
-// Active indicates whether the logz command is active.
-func (m *Logz) Active() bool {
+func (m *LogZ) Active() bool {
 	return true
 }
-
-// Module returns the module name for the logz command.
-func (m *Logz) Module() string {
+func (m *LogZ) Module() string {
 	return "logz"
 }
+func (m *LogZ) Execute() error {
+	dbChanData := make(chan interface{})
+	defer close(dbChanData)
 
-// Execute runs the logz command.
-func (m *Logz) Execute() error {
-	return m.Command().Execute()
+	if spyderErr := m.Command().Execute(); spyderErr != nil {
+		gl.Log("error", spyderErr.Error())
+		return spyderErr
+	} else {
+		return nil
+	}
 }
-
-// Command creates and returns the main cobra.Command for the logz CLI.
-func (m *Logz) Command() *cobra.Command {
+func (m *LogZ) Command() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:         m.Module(),
-		Short:       m.ShortDescription(),
-		Long:        m.LongDescription(),
-		Example:     m.concatenateExamples(),
-		Annotations: cc.GetDescriptions([]string{m.LongDescription(), m.ShortDescription()}, false),
-		Version:     vs.GetVersion(),
+		Use: m.Module(),
+		//Aliases:     []string{m.Alias(), "w", "wb", "webServer", "http"},
+		Example: m.concatenateExamples(),
+		Annotations: m.GetDescriptions(
+			[]string{
+				m.LongDescription(),
+				m.ShortDescription(),
+			}, m.hideBanner,
+		),
+		Version: version.GetVersion(),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cmd.Help(); err != nil {
-				os.Exit(1)
-			}
+			_ = cmd.Help()
 		},
 	}
 
-	// Add subcommands to the logz command
-	cmd.AddCommand(cc.LogzCmds())
-	cmd.AddCommand(cc.ServiceCmd())
-	cmd.AddCommand(cc.MetricsCmd())
-	cmd.AddCommand(vs.CliCommand())
+	cmd.AddCommand(version.CliCommand())
+	cmd.AddCommand(cli.MetricsCmd())
 
-	// Set usage definitions for the command and its subcommands
 	setUsageDefinition(cmd)
 	for _, c := range cmd.Commands() {
 		setUsageDefinition(c)
@@ -91,11 +99,20 @@ func (m *Logz) Command() *cobra.Command {
 	return cmd
 }
 
-// concatenateExamples concatenates example usages into a single string.
-func (m *Logz) concatenateExamples() string {
+func (m *LogZ) GetDescriptions(descriptionArg []string, hideBanner bool) map[string]string {
+	return info.GetDescriptions(descriptionArg, (m.hideBanner || hideBanner))
+}
+func (m *LogZ) SetParentCmdName(rtCmd string) {
+	m.parentCmdName = rtCmd
+}
+func (m *LogZ) concatenateExamples() string {
 	examples := ""
+	rtCmd := m.parentCmdName
+	if rtCmd != "" {
+		rtCmd = rtCmd + " "
+	}
 	for _, example := range m.Examples() {
-		examples += string(example) + "\n  "
+		examples += rtCmd + example + "\n  "
 	}
 	return examples
 }

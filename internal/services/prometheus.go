@@ -1,4 +1,5 @@
-package core
+// Package services provides various services for the application.
+package services
 
 import (
 	"encoding/json"
