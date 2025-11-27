@@ -11,7 +11,17 @@ import (
 
 func toEntry(args ...any) interfaces.Entry {
 	if len(args) == 0 {
-		return NewEntry().WithMessage("<empty>")
+		en, err := NewEntry()
+		if err != nil {
+			// fallback bruto
+			return &Entry{
+				Message: fmt.Sprintf("failed to create new entry: %v", err),
+				Level:   interfaces.LevelError,
+			}
+		}
+
+		return en.
+			WithMessage("<empty>")
 	}
 
 	// Se já for Entry → retorna direto
@@ -20,8 +30,17 @@ func toEntry(args ...any) interfaces.Entry {
 	}
 
 	// Se for error
-	if err, ok := args[0].(error); ok {
-		return NewEntry().
+	if _, ok := args[0].(error); ok {
+		en, err := NewEntry()
+		if err != nil {
+			// fallback bruto
+			return &Entry{
+				Message: fmt.Sprintf("failed to create new entry: %v", err),
+				Level:   interfaces.LevelError,
+			}
+		}
+
+		return en.
 			WithError(err).
 			WithMessage(err.Error()).
 			WithLevel(interfaces.LevelError)
@@ -29,17 +48,43 @@ func toEntry(args ...any) interfaces.Entry {
 
 	// Se for string
 	if s, ok := args[0].(string); ok {
-		return NewEntry().WithMessage(s)
+		en, err := NewEntry()
+		if err != nil {
+			// fallback bruto
+			return &Entry{
+				Message: fmt.Sprintf("failed to create new entry: %v", err),
+				Level:   interfaces.LevelError,
+			}
+		}
+
+		return en.WithMessage(s)
 	}
 
 	// Se for []byte
 	if b, ok := args[0].([]byte); ok {
-		return NewEntry().WithMessage(string(b))
+		en, err := NewEntry()
+		if err != nil {
+			// fallback bruto
+			return &Entry{
+				Message: fmt.Sprintf("failed to create new entry: %v", err),
+				Level:   interfaces.LevelError,
+			}
+		}
+		return en.WithMessage(string(b))
 	}
 
 	// Se for map
 	if m, ok := args[0].(map[string]any); ok {
-		return NewEntry().
+		en, err := NewEntry()
+		if err != nil {
+			// fallback bruto
+			return &Entry{
+				Message: fmt.Sprintf("failed to create new entry: %v", err),
+				Level:   interfaces.LevelError,
+			}
+		}
+
+		return en.
 			WithFields(m).
 			WithMessage("map")
 	}
@@ -47,18 +92,43 @@ func toEntry(args ...any) interfaces.Entry {
 	// Se for struct (fallback leve SEM panic)
 	val := args[0]
 	if kbx.IsObjSafe(val, false) {
-		return NewEntry().
+		en, err := NewEntry()
+		if err != nil {
+			// fallback bruto
+			return &Entry{
+				Message: fmt.Sprintf("failed to create new entry: %v", err),
+				Level:   interfaces.LevelError,
+			}
+		}
+
+		return en.
 			WithMessage(fmt.Sprintf("%T", val)).
 			WithData(val)
 	}
 
+	en, err := NewEntry()
+	if err != nil {
+		// fallback bruto
+		return &Entry{
+			Message: fmt.Sprintf("failed to create new entry: %v", err),
+			Level:   interfaces.LevelError,
+		}
+	}
+
 	// fallback TOTAL
-	return NewEntry().
+	return en.
 		WithMessage(fmt.Sprintf("%v", args[0]))
 }
 
 func ToEntry(args ...any) interfaces.Entry {
-	e := NewEntry()
+	e, err := NewEntry()
+	if err != nil {
+		// fallback bruto
+		return &Entry{
+			Message: fmt.Sprintf("failed to create new entry: %v", err),
+			Level:   interfaces.LevelError,
+		}
+	}
 
 	if len(args) == 0 {
 		return e.WithMessage("<empty>")

@@ -20,7 +20,11 @@ func DefaultEntryDecoder(defaultLevel interfaces.Level) func([]byte) (interfaces
 		if msg == "" {
 			return nil, nil
 		}
-		return NewEntry().
+		e, er := NewEntry()
+		if er != nil {
+			return nil, er
+		}
+		return e.
 			WithLevel(defaultLevel).
 			WithMessage(msg), nil
 	}

@@ -1,3 +1,4 @@
+// Package cli implements the command-line interface for Logz.
 package cli
 
 import (
@@ -52,7 +53,7 @@ You can configure the logger to suit your application's needs.`
 		Annotations: info.GetDescriptions(
 			[]string{short, long}, os.Getenv("LOGZ_HIDE_BANNER") == "true",
 		),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := core.NewLoggerOptions()
 			opts.Debug = kbx.BoolPtr(initArgs.Debug)
 			opts.Level = interfaces.ParseLevel(initArgs.Level)
@@ -60,14 +61,15 @@ You can configure the logger to suit your application's needs.`
 			opts.MaxLevel = interfaces.ParseLevel(initArgs.MaxLevel)
 			opts.Output = kbx.GetValueOrDefaultSimple[io.Writer](writer.ParseWriter(initArgs.Output), os.Stdout)
 			opts.Formatter = formatter.ParseFormatter(initArgs.Format, false)
-
 			logger, entry := SetupLogger(
 				opts,
 				initArgs.Message,
 			)
-			logger.Logger.Println("TESTE")
 
-			logger.Log(initArgs.Level, entry)
+			// Log the entry
+			// logger.LogAny(entry)
+
+			return logger.Log("error", entry)
 
 		},
 	}
@@ -83,9 +85,12 @@ You can configure the logger to suit your application's needs.`
 	return loggerCmd
 }
 
-func SetupLogger(loggerOptions *core.LoggerOptionsImpl, messages []string) (*core.Logger, interfaces.Entry) {
+func SetupLogger(loggerOptions *core.LoggerOptionsImpl, messages []string) (interfaces.Logger, interfaces.Entry) {
 	logger := core.NewLogger("LogzCLI", loggerOptions, false)
-	entry := core.NewEntry()
+	entry, err := core.NewEntry()
+	if err != nil {
+		panic("failed to create new log entry: " + err.Error())
+	}
 	for _, msgPart := range messages {
 		entry.WithMessage(entry.GetMessage() + msgPart + " ")
 	}

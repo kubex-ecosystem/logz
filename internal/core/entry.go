@@ -43,8 +43,12 @@ func NewEntryImpl() *Entry {
 // - timestamp UTC
 // - maps inicializados
 // - caller capturado
-func NewEntry() interfaces.Entry {
-	return NewEntryImpl()
+func NewEntry() (interfaces.Entry, error) {
+	newEntry := NewEntryImpl()
+	if newEntry == nil {
+		return nil, errors.New("failed to create new entry")
+	}
+	return newEntry, nil
 }
 
 //

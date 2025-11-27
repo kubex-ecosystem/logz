@@ -43,7 +43,7 @@ const reset = "\033[0m"
 
 // --- CONSTRUCTOR ------------------------------------------------------------
 
-func NewTextFormatter() interfaces.Formatter {
+func NewTextFormatter(pretty bool) interfaces.Formatter {
 	return &TextFormatter{
 		DisableColor: os.Getenv("LOGZ_NO_COLOR") != "" || runtime.GOOS == "windows",
 		DisableIcon:  os.Getenv("LOGZ_NO_ICON") != "",

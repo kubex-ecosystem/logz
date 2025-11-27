@@ -39,7 +39,7 @@ type LoggerZ[T interfaces.Entry] struct {
 	hooksMuZ sync.Mutex
 	muZ      sync.RWMutex
 	optsZ    *LoggerOptionsImpl
-	*Logger
+	interfaces.Logger
 }
 
 // NewLoggerZ cria um logger genérico:
@@ -69,7 +69,7 @@ func NewLoggerZ[T interfaces.Entry](prefix string, opts *LoggerOptionsImpl, with
 // - formatter: serializa Record em []byte
 // - out: destino final (io.Writer global, arquivo, socket, etc)
 // - min: nível mínimo
-func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
+func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) interfaces.Logger {
 	if opts == nil {
 		opts = NewLoggerOptions()
 	}
@@ -108,7 +108,7 @@ func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logge
 	}
 }
 
-func (l *Logger) SetFormatter(f interfaces.FormatterG[interfaces.Entry]) {
+func (l *Logger) SetFormatter(f interfaces.Formatter) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.opts.Formatter = f

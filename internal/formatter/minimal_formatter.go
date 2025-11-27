@@ -7,9 +7,14 @@ import (
 )
 
 // MinimalFormatter: LEVEL message\n
-type MinimalFormatter struct{}
 
-func NewMinimalFormatter() *MinimalFormatter { return &MinimalFormatter{} }
+type MinimalFormatter struct {
+	pretty bool
+}
+
+func NewMinimalFormatter(pretty bool) interfaces.Formatter {
+	return &MinimalFormatter{pretty: pretty}
+}
 
 func (f *MinimalFormatter) Format(e interfaces.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {

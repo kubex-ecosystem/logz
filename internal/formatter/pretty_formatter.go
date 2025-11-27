@@ -15,7 +15,7 @@ type PrettyFormatter struct {
 	WithColors bool
 }
 
-func NewPrettyFormatter() *PrettyFormatter {
+func NewPrettyFormatter() interfaces.Formatter {
 	return &PrettyFormatter{
 		TimeLayout: "15:04:05.000",
 		WithColors: true,
