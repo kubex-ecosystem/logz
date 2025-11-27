@@ -2,6 +2,9 @@ package formatter
 
 import (
 	"bytes"
+	"fmt"
+	"sort"
+	"time"
 
 	"github.com/kubex-ecosystem/logz/interfaces"
 )
@@ -25,65 +28,65 @@ func (f *PrettyFormatter) Format(e interfaces.Entry) ([]byte, error) {
 
 	var buf bytes.Buffer
 
-	// ts := e.Timestamp.In(time.Local).Format(f.TimeLayout)
-	// level := string(e.Level)
+	ts := e.GetTimestamp().In(time.Local).Format(f.TimeLayout)
+	level := string(e.GetLevel())
 
-	// levelStr := level
-	// if f.WithColors {
-	// 	levelStr = colorForLevel(e.Level, level)
-	// }
+	levelStr := level
+	if f.WithColors {
+		levelStr = colorForLevel(e.GetLevel(), level)
+	}
 
-	// fmt.Fprintf(&buf, "%s  %s  %s", ts, levelStr, e.Message)
-	// if e.Context != "" {
-	// 	fmt.Fprintf(&buf, "  (%s)", e.Context)
-	// }
-	// buf.WriteByte('\n')
+	fmt.Fprintf(&buf, "%s  %s  %s", ts, levelStr, e.GetMessage())
+	if e.GetContext() != "" {
+		fmt.Fprintf(&buf, "  (%s)", e.GetContext())
+	}
+	buf.WriteByte('\n')
 
-	// // tags e fields em linhas subsequentes
-	// if len(e.Tags) > 0 || len(e.Fields) > 0 || e.Caller != "" {
-	// 	keys := make([]string, 0, len(e.Tags))
-	// 	for k := range e.Tags {
-	// 		keys = append(keys, k)
-	// 	}
-	// 	sort.Strings(keys)
+	// tags e fields em linhas subsequentes
+	if len(e.GetTags()) > 0 || len(e.GetFields()) > 0 || e.GetCaller() != "" {
+		keys := make([]string, 0, len(e.GetTags()))
+		for k := range e.GetTags() {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 
-	// 	if len(keys) > 0 {
-	// 		buf.WriteString("  tags: ")
-	// 		for i, k := range keys {
-	// 			if i > 0 {
-	// 				buf.WriteString(" ")
-	// 			}
-	// 			fmt.Fprintf(&buf, "%s=%s", k, e.Tags[k])
-	// 		}
-	// 		buf.WriteByte('\n')
-	// 	}
+		if len(keys) > 0 {
+			buf.WriteString("  tags: ")
+			for i, k := range keys {
+				if i > 0 {
+					buf.WriteString(" ")
+				}
+				fmt.Fprintf(&buf, "%s=%s", k, e.GetTags()[k])
+			}
+			buf.WriteByte('\n')
+		}
 
-	// 	fkeys := make([]string, 0, len(e.Fields))
-	// 	for k := range e.Fields {
-	// 		fkeys = append(fkeys, k)
-	// 	}
-	// 	sort.Strings(fkeys)
+		fkeys := make([]string, 0, len(e.GetFields()))
+		for k := range e.GetFields() {
+			fkeys = append(fkeys, k)
+		}
+		sort.Strings(fkeys)
 
-	// 	if len(fkeys) > 0 {
-	// 		buf.WriteString("  fields: ")
-	// 		for i, k := range fkeys {
-	// 			if i > 0 {
-	// 				buf.WriteString(" ")
-	// 			}
-	// 			fmt.Fprintf(&buf, "%s=%v", k, e.Fields[k])
-	// 		}
-	// 		buf.WriteByte('\n')
-	// 	}
+		if len(fkeys) > 0 {
+			buf.WriteString("  fields: ")
+			for i, k := range fkeys {
+				if i > 0 {
+					buf.WriteString(" ")
+				}
+				fmt.Fprintf(&buf, "%s=%v", k, e.GetFields()[k])
+			}
+			buf.WriteByte('\n')
+		}
 
-	// 	if e.Caller != "" {
-	// 		fmt.Fprintf(&buf, "  caller: %s\n", e.Caller)
-	// 	}
-	// }
+		if e.GetCaller() != "" {
+			fmt.Fprintf(&buf, "  caller: %s\n", e.GetCaller())
+		}
+	}
 
 	return buf.Bytes(), nil
 }
 
-func colorForLevel(l string, s string) string {
+func colorForLevel(l interfaces.Level, s string) string {
 	const (
 		reset   = "\x1b[0m"
 		gray    = "\x1b[90m"
@@ -93,15 +96,15 @@ func colorForLevel(l string, s string) string {
 		magenta = "\x1b[35m"
 	)
 	switch l {
-	case "debug":
+	case interfaces.LevelDebug:
 		return gray + s + reset
-	case "info":
+	case interfaces.LevelInfo:
 		return green + s + reset
-	case "warn":
+	case interfaces.LevelWarn:
 		return yellow + s + reset
-	case "error":
+	case interfaces.LevelError:
 		return red + s + reset
-	case "fatal":
+	case interfaces.LevelFatal:
 		return magenta + s + reset
 	default:
 		return s

@@ -86,3 +86,9 @@ CLAUDE.md
 .notes/v2/internal/core/level.go
 .notes/v2/internal/core/logger.go
 .notes/v2/internal/core/record.go
+.notes/logz_global.go
+.notes/logz.lkt.txt
+.notes/core/entry.go
+.notes/core/fields.go
+.notes/core/levels.go
+.notes/core/logger.go

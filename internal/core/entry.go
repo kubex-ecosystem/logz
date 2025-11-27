@@ -26,13 +26,11 @@ type Entry struct {
 
 	Tags   map[string]string `json:"tags,omitempty"`   // chave/valor indexáveis
 	Fields map[string]any    `json:"fields,omitempty"` // payload arbitrário
+
+	Error error `json:"error,omitempty"` // erro associado (se houver)
 }
 
-// NewEntry cria uma entry com:
-// - timestamp UTC
-// - maps inicializados
-// - caller capturado
-func NewEntry() *Entry {
+func NewEntryImpl() *Entry {
 	return &Entry{
 		Timestamp: time.Now().UTC(),
 		Tags:      make(map[string]string),
@@ -41,37 +39,73 @@ func NewEntry() *Entry {
 	}
 }
 
+// NewEntry cria uma entry com:
+// - timestamp UTC
+// - maps inicializados
+// - caller capturado
+func NewEntry() interfaces.Entry {
+	return NewEntryImpl()
+}
+
 //
 // ---------- Chainable builders ----------
 //
 
-func (e *Entry) WithLevel(l interfaces.Level) *Entry {
+func (e *Entry) WithLevel(l interfaces.Level) interfaces.Entry {
 	e.Level = l
 	e.Severity = l.Severity()
 	return e
 }
 
-func (e *Entry) WithMessage(msg string) *Entry {
+func (e *Entry) WithMessage(msg string) interfaces.Entry {
 	e.Message = msg
 	return e
 }
 
-func (e *Entry) WithContext(ctx string) *Entry {
+func (e *Entry) WithContext(ctx string) interfaces.Entry {
 	e.Context = ctx
 	return e
 }
 
-func (e *Entry) WithSource(src string) *Entry {
+func (e *Entry) WithSource(src string) interfaces.Entry {
 	e.Source = src
 	return e
 }
 
-func (e *Entry) WithTraceID(id string) *Entry {
+func (e *Entry) WithTraceID(id string) interfaces.Entry {
 	e.TraceID = id
 	return e
 }
 
-func (e *Entry) Tag(k, v string) *Entry {
+func (e *Entry) WithField(key string, value any) interfaces.Entry {
+	if e.Fields == nil {
+		e.Fields = make(map[string]any)
+	}
+	e.Fields[key] = value
+	return e
+}
+
+func (e *Entry) WithFields(fields map[string]any) interfaces.Entry {
+	if e.Fields == nil {
+		e.Fields = make(map[string]any)
+	}
+	for k, v := range fields {
+		e.Fields[k] = v
+	}
+	return e
+}
+
+func (e *Entry) WithData(data any) interfaces.Entry {
+	e.Fields["data"] = data
+	return e
+}
+
+func (e *Entry) WithError(err error) interfaces.Entry {
+	e.Error = err
+	return e
+}
+
+func (e *Entry) Tag(k, v string) interfaces.Entry {
 	if e.Tags == nil {
 		e.Tags = make(map[string]string)
 	}
@@ -79,7 +113,7 @@ func (e *Entry) Tag(k, v string) *Entry {
 	return e
 }
 
-func (e *Entry) Field(k string, v any) *Entry {
+func (e *Entry) Field(k string, v any) interfaces.Entry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
@@ -87,21 +121,56 @@ func (e *Entry) Field(k string, v any) *Entry {
 	return e
 }
 
-func (e *Entry) WithCaller(c string) *Entry {
+func (e *Entry) WithCaller(c string) interfaces.Entry {
 	e.Caller = c
 	return e
 }
 
-func (e *Entry) CaptureCaller(skip int) *Entry {
+func (e *Entry) CaptureCaller(skip int) interfaces.Entry {
 	e.Caller = captureCaller(skip + 1)
 	return e
+}
+
+func (e *Entry) GetTimestamp() time.Time {
+	if e == nil {
+		return time.Time{}
+	}
+	return e.Timestamp
+}
+
+func (e *Entry) GetContext() string {
+	if e == nil {
+		return ""
+	}
+	return e.Context
+}
+
+func (e *Entry) GetCaller() string {
+	if e == nil {
+		return ""
+	}
+	return e.Caller
+}
+
+func (e *Entry) GetTags() map[string]string {
+	if e == nil {
+		return nil
+	}
+	return e.Tags
+}
+
+func (e *Entry) GetFields() map[string]any {
+	if e == nil {
+		return nil
+	}
+	return e.Fields
 }
 
 //
 // ---------- Clone sem aliasing ----------
 //
 
-func (e *Entry) Clone() *Entry {
+func (e *Entry) Clone() interfaces.Entry {
 	if e == nil {
 		return nil
 	}
@@ -123,6 +192,13 @@ func (e *Entry) Clone() *Entry {
 	}
 
 	return &clone
+}
+
+func (e *Entry) GetMessage() string {
+	if e == nil {
+		return ""
+	}
+	return e.Message
 }
 
 //

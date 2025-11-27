@@ -1,13 +1,30 @@
 package core
 
 import (
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kubex-ecosystem/logz/interfaces"
-	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+
+	"log"
 )
+
+// Logger é o núcleo do pipeline:
+//
+//	Record (T) -> hooks -> formatter -> io.Writer
+//
+// Não sabe nada de linha, arquivo, CLI, JSON, etc.
+// Isso é responsabilidade do Formatter + destino (io.Writer).
+type Logger struct {
+	mu      sync.RWMutex
+	flushMu sync.Mutex
+	hooksMu sync.Mutex
+	opts    *LoggerOptionsImpl
+	*log.Logger
+}
 
 // LoggerZ é o núcleo do pipeline:
 //
@@ -16,91 +33,88 @@ import (
 // Não sabe nada de linha, arquivo, CLI, JSON, etc.
 // Isso é responsabilidade do Formatter + destino (io.Writer).
 type LoggerZ[T interfaces.Entry] struct {
-	mu        sync.RWMutex
-	formatter interfaces.FormatterG[T]
-	out       io.Writer
-	minLevel  interfaces.Level
-	hooks     []interfaces.HookG[T]
+	ID       uuid.UUID
+	flushMuZ sync.Mutex
+	hooksMuZ sync.Mutex
+	muZ      sync.RWMutex
+	optsZ    *LoggerOptionsImpl
 	*Logger
 }
 
-// LoggerG é o núcleo do pipeline:
-//
-//	Record (T) -> hooks -> formatter -> io.Writer
-//
-// Não sabe nada de linha, arquivo, CLI, JSON, etc.
-// Isso é responsabilidade do Formatter + destino (io.Writer).
-type LoggerG[T interfaces.Entry] struct {
-	mu        sync.RWMutex
-	formatter interfaces.FormatterG[T]
-	out       io.Writer
-	minLevel  interfaces.Level
-	hooks     []interfaces.HookG[T]
-	*Logger
-}
-
-// NewLoggerG cria um logger genérico:
+// NewLoggerZ cria um logger genérico:
 // - formatter: serializa T em []byte
 // - out: destino final (io.Writer global, arquivo, socket, etc)
 // - min: nível mínimo
-func NewLoggerG[T interfaces.Entry](formatter interfaces.FormatterG[T], out io.Writer, min interfaces.Level) *LoggerG[T] {
-	if min == "" {
-		min = interfaces.LevelDebug
+func NewLoggerZ[T interfaces.Entry](prefix string, opts *LoggerOptionsImpl, withDefaults bool) *LoggerZ[T] {
+	if opts == nil {
+		opts = NewLoggerOptions()
 	}
-	return &LoggerG[T]{
-		formatter: formatter,
-		out:       out,
-		minLevel:  min,
+	if withDefaults {
+		opts = opts.WithDefaults(opts)
 	}
-}
+	return &LoggerZ[T]{
+		ID: uuid.New(),
 
-type Logger struct {
-	mu        sync.RWMutex
-	formatter interfaces.Formatter
-	out       io.Writer
-	minLevel  interfaces.Level
-	hooks     []interfaces.Hook
-	level     interfaces.Level
-	buffer    []byte
-	lastEntry *Entry
-	ticker    *time.Ticker
-	flushMu   sync.Mutex
-	hooksMu   sync.Mutex
-	lHooks    []interfaces.LHook[interfaces.Entry]
+		muZ:      sync.RWMutex{},
+		flushMuZ: sync.Mutex{},
+		hooksMuZ: sync.Mutex{},
+
+		optsZ:  opts,
+		Logger: NewLogger(prefix, opts, false), // evita chamada recursiva
+	}
 }
 
 // NewLogger cria um logger genérico:
 // - formatter: serializa Record em []byte
 // - out: destino final (io.Writer global, arquivo, socket, etc)
 // - min: nível mínimo
-func NewLogger(formatter interfaces.Formatter, out io.Writer, min interfaces.Level) *Logger {
-	if min == "" {
-		min = interfaces.LevelDebug
+func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
+	if opts == nil {
+		opts = NewLoggerOptions()
 	}
+	if withDefaults {
+		opts = opts.WithDefaults(opts)
+	}
+
+	// Configura o stdlog do Go para usar o mesmo output e prefixo
+	out := opts.Output
+	if out == nil {
+		out = io.Discard
+	}
+	logr := log.New(
+		out,
+		prefix,
+		0,
+	)
+
+	// Reafirma configurações do log padrão
+	logr.SetFlags(0)           // desativa flags automáticas do log padrão
+	logr.SetOutput(io.Discard) // evita escrita direta no output padrão
+	logr.SetPrefix(prefix)
+
 	return &Logger{
-		formatter: formatter,
-		out:       out,
-		minLevel:  min,
-		level:     min,
+		mu:     sync.RWMutex{},
+		opts:   opts,
+		Logger: logr,
 	}
 }
 
 func (l *Logger) SetFormatter(f interfaces.FormatterG[interfaces.Entry]) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.formatter = f
+	l.opts.Formatter = f
 }
 
 func (l *Logger) SetOutput(w io.Writer) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.out = w
+	l.opts.Output = w
 }
 
 func (l *Logger) SetMinLevel(min interfaces.Level) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.minLevel = min
+	l.opts.MinLevel = min
 }
 
 func (l *Logger) AddHook(h interfaces.Hook) {
@@ -109,12 +123,12 @@ func (l *Logger) AddHook(h interfaces.Hook) {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.hooks = append(l.hooks, h)
+	l.opts.Hooks = append(l.opts.Hooks, h)
 }
 
 func (l *Logger) Enabled(level interfaces.Level) bool {
 	l.mu.RLock()
-	min := l.minLevel
+	min := l.opts.MinLevel
 	l.mu.RUnlock()
 	return level.Severity() >= min.Severity()
 }
@@ -122,59 +136,99 @@ func (l *Logger) Enabled(level interfaces.Level) bool {
 func (l *Logger) GetMinLevel() interfaces.Level {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	return l.minLevel
+	return l.opts.MinLevel
 }
 
 func (l *Logger) GetLevel() interfaces.Level {
-	return l.minLevel
+	return l.opts.MinLevel
 }
 
-// Log é o caminho principal: recebe um Record pronto (T),
-// dispara hooks, formata e escreve em out.
-func (l *Logger) Log(rec interfaces.Entry) error {
-	if !kbx.IsObjSafe(rec, false) {
-		// nada a fazer, mas não vamos quebrar ninguém
+// SetRotate is the setter for setRotate
+func (l *Logger) SetRotate(rotate bool) {
+	// implementação fictícia
+}
+
+// SetRotateMaxSize is the setter for setRotateMaxSize
+func (l *Logger) SetRotateMaxSize(size int64) {
+	// implementação fictícia
+}
+
+// SetRotateMaxBack is the setter for setRotateMaxBack
+func (l *Logger) SetRotateMaxBack(back int64) {
+	// implementação fictícia
+}
+
+// SetRotateMaxAge is the setter for setRotateMaxAge
+func (l *Logger) SetRotateMaxAge(age int64) {
+	// implementação fictícia
+}
+
+// SetCompress is the setter for setCompress
+func (l *Logger) SetCompress(compress bool) {
+	// implementação fictícia
+}
+
+// SetBufferSize is the setter for setBufferSize
+func (l *Logger) SetBufferSize(size int) {
+	// implementação fictícia
+}
+
+// SetFlushInterval is the setter for setFlushInterval
+func (l *Logger) SetFlushInterval(interval time.Duration) {
+	// implementação fictícia
+}
+
+// SetHooks is the setter for setHooks
+func (l *Logger) SetHooks(hooks []interfaces.Hook) {
+	// implementação fictícia
+}
+
+// SetLHooks is the setter for setLHooks
+func (l *Logger) SetLHooks(hooks interfaces.LHook[any]) {
+	// implementação fictícia
+}
+
+// SetMetadata is the setter for setMetadata
+func (l *Logger) SetMetadata(metadata map[string]any) {
+	// implementação fictícia
+}
+
+func (l *Logger) LogAny(args ...any) error {
+	if l == nil {
+		return nil
+	}
+	if len(args) == 0 {
 		return nil
 	}
 
-	// r := *rec // copia pra evitar alterações concorrentes
+	defer func() {
+		if r := recover(); r != nil {
+			if l.Logger != nil {
+				l.Logger.Printf("logz: panic in LogAny: %v (args=%#v)", r, args)
+			}
+		}
+	}()
 
-	if !l.Enabled(interfaces.Level(rec.GetLevel().String())) {
-		return nil
+	// se args[0] é level → old API compat
+	if len(args) > 1 && (interfaces.IsLevel(fmt.Sprintf("%v", args[0]))) {
+		level := normalizeLevel(args[0])
+		entry := toEntry(args[1:]...)
+		entry = entry.WithLevel(level)
+		return l.Log(level.String(), entry)
 	}
 
-	if err := rec.Validate(); err != nil {
-		return err
+	// modo moderno: nada garante level → assume Info
+	entry := toEntry(args...)
+	if entry.GetLevel() == "" {
+		entry = entry.WithLevel(interfaces.LevelInfo)
 	}
 
-	l.mu.RLock()
-	f := l.formatter
-	out := l.out
+	return l.Log(entry.GetLevel().String(), entry)
+}
 
-	hooks := append([]interfaces.LHook[interfaces.Entry](nil), l.lHooks...)
-
-	l.mu.RUnlock()
-
-	if f == nil || out == nil {
-		// logger não inicializado corretamente; falha silenciosa
-		return nil
-	}
-
-	// hooks antes da formatação
-	for _, h := range hooks {
-		h.Fire(rec)
-	}
-
-	b, err := f.Format(rec)
-	if err != nil {
-		return err
-	}
-
-	// garante newline pra saída de console / arquivos de texto.
-	if len(b) == 0 || b[len(b)-1] != '\n' {
-		b = append(b, '\n')
-	}
-
-	_, err = out.Write(b)
-	return err
+func (l *Logger) Log(level string, args ...any) error {
+	lvl := normalizeLevel(level)
+	entry := toEntry(args...)
+	entry = entry.WithLevel(lvl)
+	return l.LogAny(lvl, entry)
 }

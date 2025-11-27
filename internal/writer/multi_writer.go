@@ -1,4 +1,4 @@
-package logz
+package writer
 
 type MultiWriter struct {
 	writers []Writer

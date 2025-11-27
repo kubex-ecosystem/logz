@@ -1,4 +1,4 @@
-package logz
+package writer
 
 // Writer recebe bytes já formatados e empurra pra algum destino.
 // NÃO sabe nada sobre Entry.

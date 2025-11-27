@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"time"
 )
 
 var (
@@ -192,4 +193,20 @@ func DefaultFalse(b *bool) bool {
 		return false
 	}
 	return *b
+}
+
+func PtrInt64(n int64) *int64 {
+	return &n
+}
+
+func PtrInt(n int64) *int {
+	ni := int(n)
+	return &ni
+}
+
+func PtrDuration(d time.Duration) *time.Duration {
+	if d == 0 {
+		return nil
+	}
+	return &d
 }

@@ -20,12 +20,12 @@ import (
 //	cmd.Stdout = bridge        // exec.Command
 //	json.NewEncoder(bridge)...
 type IOBridge[T interfaces.Entry] struct {
-	Logger *LoggerG[T]
+	Logger *LoggerZ[T]
 	Decode func([]byte) (T, error)
 }
 
 // NewIOBridge cria a ponte genérica entre io.Writer e Logger[T].
-func NewIOBridge[T interfaces.Entry](logger *LoggerG[T], decode func([]byte) (T, error)) *IOBridge[T] {
+func NewIOBridge[T interfaces.Entry](logger *LoggerZ[T], decode func([]byte) (T, error)) *IOBridge[T] {
 	return &IOBridge[T]{
 		Logger: logger,
 		Decode: decode,
@@ -56,7 +56,7 @@ func (b *IOBridge[T]) Write(p []byte) (int, error) {
 		return 0, err
 	}
 
-	if err := b.Logger.Log(rec); err != nil {
+	if err := b.Logger.Log(string(rec.GetLevel()), rec); err != nil {
 		return 0, err
 	}
 

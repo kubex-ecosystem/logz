@@ -2,6 +2,8 @@
 package module
 
 import (
+	"fmt"
+
 	"github.com/kubex-ecosystem/logz/cmd/cli"
 	"github.com/kubex-ecosystem/logz/internal/module/info"
 	"github.com/kubex-ecosystem/logz/internal/module/version"
@@ -60,7 +62,7 @@ func (m *LogZ) Execute() error {
 	defer close(dbChanData)
 
 	if spyderErr := m.Command().Execute(); spyderErr != nil {
-		gl.Log("error", spyderErr.Error())
+		fmt.Fprintf(os.Stderr, "Error: %v\n", spyderErr)
 		return spyderErr
 	} else {
 		return nil
@@ -84,7 +86,9 @@ func (m *LogZ) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(version.CliCommand())
-	cmd.AddCommand(cli.MetricsCmd())
+	cmd.AddCommand(cli.LoggerCmd())
+	cmd.AddCommand(cli.LogzCmd())
+	// cmd.AddCommand(cli.MetricsCmd())
 
 	setUsageDefinition(cmd)
 	for _, c := range cmd.Commands() {

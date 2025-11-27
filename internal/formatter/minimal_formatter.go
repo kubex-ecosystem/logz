@@ -1,6 +1,8 @@
 package formatter
 
 import (
+	"fmt"
+
 	"github.com/kubex-ecosystem/logz/interfaces"
 )
 
@@ -13,7 +15,6 @@ func (f *MinimalFormatter) Format(e interfaces.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {
 		return nil, err
 	}
-	// line := fmt.Sprintf("%s %s\n", e.Level, e.Message)
-	// return []byte(line), nil
-	return nil, nil
+	line := fmt.Sprintf("%s %s\n", e.GetLevel(), e.String())
+	return []byte(line), nil
 }

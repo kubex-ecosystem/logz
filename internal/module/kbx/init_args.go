@@ -25,6 +25,13 @@ const (
 )
 
 type InitArgs struct {
+	Level    string
+	MinLevel string
+	MaxLevel string
+	Output   string
+	Format   string
+	Message  []string
+
 	ConfigFile     string
 	ConfigType     string
 	EnvFile        string

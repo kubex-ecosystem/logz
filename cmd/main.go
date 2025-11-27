@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"os"
 
-	// gl "github.com/kubex-ecosystem/logz"
-
 	"github.com/kubex-ecosystem/logz/internal/module"
 	manifest "github.com/kubex-ecosystem/logz/internal/module/info"
 )
 
 var info, err = manifest.GetManifest()
 
-// func init() {
-// 	gl.GetLogger(info.GetName()).Info("Initializing Logz CLI Application...")
-// }
+func init() {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading manifest: %v\n", err)
+		os.Exit(1)
+	}
+}
 
 func main() {
 	if logzErr := module.RegX().Execute(); logzErr != nil {

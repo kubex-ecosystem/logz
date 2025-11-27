@@ -60,3 +60,12 @@ func ParseLevel(s string) Level {
 		return LevelInfo
 	}
 }
+
+func IsLevel(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(strings.ToValidUTF8(s, ""))) {
+	case "debug", "info", "warn", "warning", "error", "err", "fatal", "silent":
+		return true
+	default:
+		return false
+	}
+}

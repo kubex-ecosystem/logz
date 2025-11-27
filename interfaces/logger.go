@@ -13,7 +13,7 @@ type Logger interface {
 	Log(rec Entry) error
 }
 
-type LoggerG[T Entry] interface {
+type LoggerZ[T Entry] interface {
 	SetFormatter(f FormatterG[T])
 	SetOutput(w io.Writer)
 	SetMinLevel(min Level)

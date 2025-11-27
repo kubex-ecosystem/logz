@@ -1,4 +1,3 @@
-// Package formatter provides a JSON formatter for log entries.
 package formatter
 
 import (
