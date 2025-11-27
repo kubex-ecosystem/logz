@@ -30,26 +30,20 @@ type Entry struct {
 	Error error `json:"error,omitempty"` // erro associado (se houver)
 }
 
-func NewEntryImpl() *Entry {
+func NewEntry() (*Entry, error) {
 	return &Entry{
 		Timestamp: time.Now().UTC(),
 		Tags:      make(map[string]string),
 		Fields:    make(map[string]any),
 		Caller:    captureCaller(3),
-	}
+	}, nil
 }
 
-// NewEntry cria uma entry com:
+// NewEntryImpl cria uma entry com:
 // - timestamp UTC
 // - maps inicializados
 // - caller capturado
-func NewEntry() (interfaces.Entry, error) {
-	newEntry := NewEntryImpl()
-	if newEntry == nil {
-		return nil, errors.New("failed to create new entry")
-	}
-	return newEntry, nil
-}
+func NewEntryImpl() (interfaces.Entry, error) { return NewEntry() }
 
 //
 // ---------- Chainable builders ----------
@@ -227,10 +221,10 @@ func (e *Entry) Validate() error {
 	if e.Timestamp.IsZero() {
 		return errors.New("timestamp is required")
 	}
-	if strings.TrimSpace(string(e.Level)) == "" {
+	if len(strings.TrimSpace(string(e.Level))) == 0 {
 		return errors.New("level is required")
 	}
-	if strings.TrimSpace(e.Message) == "" {
+	if len(strings.TrimSpace(e.Message)) == 0 {
 		return errors.New("message is required")
 	}
 	// Silent pode ter severidade 0.

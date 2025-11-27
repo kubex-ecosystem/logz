@@ -9,7 +9,6 @@ type Logger interface {
 	SetFormatter(f Formatter)
 	SetOutput(w io.Writer)
 	SetMinLevel(min Level)
-	AddHook(h Hook)
 	Enabled(level Level) bool
 	GetMinLevel() Level
 	GetLevel() Level
@@ -25,31 +24,36 @@ type Logger interface {
 	SetMetadata(metadata map[string]any)
 	Log(lvl string, rec Entry) error
 	LogAny(args ...any) error
+
+	AddHook(h Hook)
 }
 
-type LoggerZ[T Entry] interface {
+type LoggerZ[T Hook | *Entry] interface {
 	SetFormatter(f Formatter)
 	SetOutput(w io.Writer)
 	SetMinLevel(min Level)
-	AddHook(h HookG[T])
 	Enabled(level Level) bool
 	Log(rec T) error
+
+	AddHook(h HookG[T])
 }
 
 type LoggerFunc interface {
 	SetFormatter(f FormatterFunc)
 	SetOutput(w io.Writer)
 	SetMinLevel(min Level)
-	AddHook(h HookFunc)
 	Enabled(level Level) bool
 	Log(rec Entry) error
+
+	AddHook(h HookFunc)
 }
 
-type LoggerFuncG[T Entry] interface {
+type LoggerFuncG[T Hook | *Entry] interface {
 	SetFormatter(f FormatterFunc)
 	SetOutput(w io.Writer)
 	SetMinLevel(min Level)
-	AddHook(h HookFuncG[T])
 	Enabled(level Level) bool
 	Log(rec T) error
+
+	AddHook(h HookFuncG[T])
 }

@@ -42,6 +42,56 @@ type LoggerZ[T interfaces.Entry] struct {
 	interfaces.Logger
 }
 
+func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
+	if opts == nil {
+		opts = NewLoggerOptions()
+	}
+	if withDefaults {
+		opts = opts.WithDefaults(opts)
+	}
+	opts.Prefix = prefix
+
+	// Configura o stdlog do Go para usar o mesmo output e prefixo
+	var out io.Writer
+	if opts.Output == nil {
+		opts.Output = io.Discard
+	} else {
+		out = opts.Output
+	}
+	if out == nil {
+		out = io.Discard
+	}
+	opts.Output = out
+	logr := log.New(
+		opts.Output,
+		opts.Prefix,
+		0,
+	)
+
+	lgr := &Logger{
+		flushMu: sync.Mutex{},
+		hooksMu: sync.Mutex{},
+		mu:      sync.RWMutex{},
+		opts:    opts,
+		Logger:  logr,
+	}
+	// Reafirma configurações do log padrão
+	lgr.SetFlags(0) // desativa flags automáticas do log padrão
+	if kbx.DefaultFalse(opts.OutputTTY) {
+		// se for TTY, desativa escrita direta no output padrão
+		lgr.SetOutput(io.Discard) // evita escrita direta no output padrão
+	} else {
+		// se não for TTY, mantém escrita direta no output padrão
+		lgr.SetOutput(out)
+	}
+	lgr.SetPrefix(prefix)
+	lgr.SetFormatter(lgr.opts.Formatter)
+	lgr.SetPrefix(lgr.opts.Prefix)
+	lgr.SetMinLevel(lgr.opts.MinLevel)
+
+	return lgr
+}
+
 // NewLoggerZ cria um logger genérico:
 // - formatter: serializa T em []byte
 // - out: destino final (io.Writer global, arquivo, socket, etc)
@@ -69,43 +119,54 @@ func NewLoggerZ[T interfaces.Entry](prefix string, opts *LoggerOptionsImpl, with
 // - formatter: serializa Record em []byte
 // - out: destino final (io.Writer global, arquivo, socket, etc)
 // - min: nível mínimo
-func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) interfaces.Logger {
+func NewLoggerZI(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
 	if opts == nil {
 		opts = NewLoggerOptions()
 	}
 	if withDefaults {
 		opts = opts.WithDefaults(opts)
 	}
+	opts.Prefix = prefix
 
 	// Configura o stdlog do Go para usar o mesmo output e prefixo
-	out := opts.Output
+	var out io.Writer
+	if opts.Output == nil {
+		opts.Output = io.Discard
+	} else {
+		out = opts.Output
+	}
 	if out == nil {
 		out = io.Discard
 	}
+	opts.Output = out
 	logr := log.New(
-		out,
-		prefix,
+		opts.Output,
+		opts.Prefix,
 		0,
 	)
 
+	lgr := &Logger{
+		flushMu: sync.Mutex{},
+		hooksMu: sync.Mutex{},
+		mu:      sync.RWMutex{},
+		opts:    opts,
+		Logger:  logr,
+	}
 	// Reafirma configurações do log padrão
-	logr.SetFlags(0) // desativa flags automáticas do log padrão
-
+	lgr.SetFlags(0) // desativa flags automáticas do log padrão
 	if kbx.DefaultFalse(opts.OutputTTY) {
 		// se for TTY, desativa escrita direta no output padrão
-		logr.SetOutput(io.Discard) // evita escrita direta no output padrão
+		lgr.SetOutput(io.Discard) // evita escrita direta no output padrão
 	} else {
 		// se não for TTY, mantém escrita direta no output padrão
-		logr.SetOutput(out)
+		lgr.SetOutput(out)
 	}
+	lgr.SetPrefix(prefix)
+	lgr.SetFormatter(lgr.opts.Formatter)
+	lgr.SetPrefix(lgr.opts.Prefix)
+	lgr.SetMinLevel(lgr.opts.MinLevel)
 
-	logr.SetPrefix(prefix)
-
-	return &Logger{
-		mu:     sync.RWMutex{},
-		opts:   opts,
-		Logger: logr,
-	}
+	return lgr
 }
 
 func (l *Logger) SetFormatter(f interfaces.Formatter) {
@@ -216,8 +277,11 @@ func (l *Logger) Log(lvl string, rec interfaces.Entry) error {
 		return nil
 	}
 
-	if err := rec.Validate(); err != nil {
-		return err
+	if len(lvl) == 0 {
+		if err := rec.Validate(); err != nil {
+			return err
+		}
+		lvl = rec.GetLevel().String()
 	}
 
 	l.mu.RLock()
@@ -233,9 +297,11 @@ func (l *Logger) Log(lvl string, rec interfaces.Entry) error {
 
 	// hooks antes da formatação
 	for _, h := range hooks {
-		err := h.Fire(rec)
-		if err != nil {
-			return err
+		if h != nil {
+			err := h.Fire(rec)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

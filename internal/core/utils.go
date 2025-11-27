@@ -143,16 +143,23 @@ func ToEntry(args ...any) interfaces.Entry {
 
 	// 2) se é erro
 	if err, ok := first.(error); ok {
-		e = e.WithError(err).WithMessage(err.Error())
+		e = e.WithError(err).WithMessage(err.Error()).(*Entry)
+		if err != nil {
+			// fallback bruto
+			return &Entry{
+				Message: fmt.Sprintf("failed to create new entry: %v", err),
+				Level:   interfaces.LevelError,
+			}
+		}
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 3) string → mensagem
 	if msg, ok := first.(string); ok {
-		e = e.WithMessage(msg)
+		e = e.WithMessage(msg).(*Entry)
 		if len(args) > 1 {
 			// segundo arg error?
 			if len(args) == 2 {
@@ -160,34 +167,34 @@ func ToEntry(args ...any) interfaces.Entry {
 					return e.WithError(err)
 				}
 			}
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 4) map → fields
 	if m, ok := first.(map[string]any); ok {
-		e = e.WithFields(m)
+		e = e.WithFields(m).(*Entry)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 5) []byte → mensagem
 	if b, ok := first.([]byte); ok {
-		e = e.WithMessage(string(b))
+		e = e.WithMessage(string(b)).(*Entry)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 6) struct / qualquer coisa segura
 	if kbx.IsObjSafe(first, false) {
-		e = e.WithMessage(fmt.Sprintf("%T", first)).WithData(first)
+		e = e.WithMessage(fmt.Sprintf("%T", first)).WithData(first).(*Entry)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}

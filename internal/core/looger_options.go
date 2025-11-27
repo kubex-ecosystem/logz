@@ -71,7 +71,8 @@ type LogzAdvancedOptions struct {
 }
 
 type LoggerOptionsImpl struct {
-	ID uuid.UUID `json:"id,omitempty" yaml:"id,omitempty" mapstructure:"id,omitempty"`
+	ID     uuid.UUID `json:"id,omitempty" yaml:"id,omitempty" mapstructure:"id,omitempty"`
+	Prefix string    `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix,omitempty"`
 
 	*LogzGeneralOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
 

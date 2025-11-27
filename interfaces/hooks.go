@@ -102,7 +102,7 @@ func (f HookFunc) Run(record Entry) error {
 }
 
 // HookFuncG é uma função genérica que implementa a interface HookG.
-type HookFuncG[T Entry] func(record T) error
+type HookFuncG[T Hook | *Entry] func(record T) error
 
 // Run executa o hook genérico.
 func (f HookFuncG[T]) Run(record T) error {
