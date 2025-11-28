@@ -9,8 +9,7 @@ import (
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-// defaultLogger cria um logger padrão configurado para uso global
-func defaultLogger() *C.Logger {
+func defaultLoggerOptions() *C.LoggerOptionsImpl {
 	opts := &C.LoggerOptionsImpl{
 		LoggerConfig: &C.LoggerConfig{
 			ID: kbx.LoggerArgs.ID,
@@ -30,26 +29,64 @@ func defaultLogger() *C.Logger {
 		LogzAdvancedOptions: &C.LogzAdvancedOptions{},
 	}
 	opts.Formatter = formatter.NewTextFormatter(false)
+	return opts
+}
 
-	return C.NewLogger("", opts, false)
+// defaultLogger cria um logger padrão configurado para uso global
+func defaultLogger() *C.Logger {
+	return C.NewLogger(
+		"",
+		defaultLoggerOptions(),
+		false,
+	)
 }
 
 // Logger é a instância global padrão do logger
 var Logger = defaultLogger()
 
+// LoggerZ é a instância global padrão do logger com suporte a campos
+var loggerZ *C.LoggerZ[kbx.Entry]
+
 type LoggerZ = C.LoggerZ[kbx.Entry]
+
 type Entry = kbx.Entry
 
 func NewEntry(level kbx.Level) (kbx.Entry, error) {
 	return C.NewEntryImpl(level)
 }
 
-func NewLogger(prefix string, opts *C.LoggerOptionsImpl, withDefaults bool) *C.Logger {
-	return C.NewLogger(prefix, opts, withDefaults)
+func NewGlobalLogger(prefix string) *C.Logger {
+	return C.NewLogger(
+		prefix,
+		defaultLoggerOptions(),
+		false,
+	)
+}
+
+func NewLogger(prefix string) *LoggerZ {
+	return C.NewLoggerZ[Entry](
+		prefix,
+		defaultLoggerOptions(),
+		false,
+	)
 }
 
 func NewLoggerZ(prefix string, opts *C.LoggerOptionsImpl, withDefaults bool) *LoggerZ {
 	return C.NewLoggerZ[kbx.Entry](prefix, opts, withDefaults)
+}
+
+func GetLogger(prefix string) *C.Logger {
+	if Logger == nil {
+		Logger = defaultLogger()
+	}
+	return Logger
+}
+
+func GetLoggerZ(prefix string) *LoggerZ {
+	if loggerZ == nil {
+		loggerZ = C.NewLoggerZ[kbx.Entry](prefix, nil, false)
+	}
+	return loggerZ
 }
 
 // Log é a função global mais simples para logging.

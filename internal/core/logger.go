@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -530,4 +531,61 @@ func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 	}
 
 	return l.Log(level, entry.GetLevel().String(), entry)
+}
+
+func (l *LoggerZ[T]) Clone() *LoggerZ[T] {
+	l.muZ.RLock()
+	defer l.muZ.RUnlock()
+	newOpts := l.optsZ.Clone()
+	return NewLoggerZ[T](l.optsZ.Prefix, newOpts, false)
+}
+
+// SetDebugMode habilita ou desabilita o modo debug do logger global.
+// Quando debug=true, mostra logs de todos os níveis (incluindo debug e trace).
+// Quando debug=false, mostra apenas logs de nível info ou superior.
+func (l *LoggerZ[T]) SetDebugMode(debug bool) {
+	if l == nil {
+		return
+	}
+	if debug {
+		l.SetMinLevel(kbx.LevelDebug)
+	} else {
+		l.SetMinLevel(kbx.LevelInfo)
+	}
+}
+
+// Debug loga uma mensagem de debug
+func (l *LoggerZ[T]) Debug(msg ...any) {
+	l.Log("debug", msg...)
+}
+
+// Notice loga uma mensagem de notice
+func (l *LoggerZ[T]) Notice(msg ...any) {
+	l.Log("notice", msg...)
+}
+
+// Info loga uma mensagem informativa
+func (l *LoggerZ[T]) Info(msg ...any) {
+	l.Log("info", msg...)
+}
+
+// Success loga uma mensagem de sucesso
+func (l *LoggerZ[T]) Success(msg ...any) {
+	l.Log("success", msg...)
+}
+
+// Warn loga um aviso
+func (l *LoggerZ[T]) Warn(msg ...any) {
+	l.Log("warn", msg...)
+}
+
+// Error loga um erro e retorna error
+func (l *LoggerZ[T]) Error(msg ...any) error {
+	return l.Log("error", msg...)
+}
+
+// Fatal loga uma mensagem fatal e encerra o programa com exit code 1
+func (l *LoggerZ[T]) Fatal(msg ...any) {
+	l.Log("fatal", msg...)
+	os.Exit(1)
 }
