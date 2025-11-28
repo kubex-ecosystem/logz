@@ -39,6 +39,10 @@ var secOrder = []struct {
 	{"sanitize_body", SecSanitizeBody},
 }
 
+// String returns a string representation of the SecFlag flags that are set.
+// The output is a pipe-separated list of flag names (e.g., "auth|sanitize").
+// If no flags are set, it returns "none".
+
 func (f SecFlag) String() string {
 	if f == SecNone {
 		return "none"
@@ -58,6 +62,11 @@ func (f SecFlag) String() string {
 /* ======== REGISTRADOR ATÔMICO ======== */
 
 type FlagReg32A[T ~uint32] struct{ v atomic.Uint32 }
+
+// NewFlagReg32A creates a new instance of FlagReg32A.
+func NewFlagReg32A[T ~uint32]() *FlagReg32A[T] {
+	return &FlagReg32A[T]{}
+}
 
 // Set  CAS OR (não usa Add; evita somas indevidas quando máscara tem múltiplos bits)
 func (r *FlagReg32A[T]) Set(mask T) {

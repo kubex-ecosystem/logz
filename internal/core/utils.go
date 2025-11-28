@@ -8,9 +8,9 @@ import (
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-func toEntry(args ...any) kbx.Entry {
+func toEntry(level kbx.Level, args ...any) *Entry {
 	if len(args) == 0 {
-		en, err := NewEntry()
+		en, err := NewEntry(level)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -24,13 +24,13 @@ func toEntry(args ...any) kbx.Entry {
 	}
 
 	// Se já for Entry → retorna direto
-	if e, ok := args[0].(kbx.Entry); ok {
+	if e, ok := args[0].(*Entry); ok {
 		return e
 	}
 
 	// Se for error
 	if _, ok := args[0].(error); ok {
-		en, err := NewEntry()
+		en, err := NewEntry(kbx.LevelError)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -40,14 +40,14 @@ func toEntry(args ...any) kbx.Entry {
 		}
 
 		return en.
-			WithError(err).
-			WithMessage(err.Error()).
-			WithLevel(kbx.LevelError)
+			WithError(err) /* .
+			WithMessage(err.Error())
+			WithLevel(kbx.LevelError) */
 	}
 
 	// Se for string
 	if s, ok := args[0].(string); ok {
-		en, err := NewEntry()
+		en, err := NewEntry(level)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -61,7 +61,7 @@ func toEntry(args ...any) kbx.Entry {
 
 	// Se for []byte
 	if b, ok := args[0].([]byte); ok {
-		en, err := NewEntry()
+		en, err := NewEntry(level)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -74,7 +74,7 @@ func toEntry(args ...any) kbx.Entry {
 
 	// Se for map
 	if m, ok := args[0].(map[string]any); ok {
-		en, err := NewEntry()
+		en, err := NewEntry(level)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -91,7 +91,7 @@ func toEntry(args ...any) kbx.Entry {
 	// Se for struct (fallback leve SEM panic)
 	val := args[0]
 	if kbx.IsObjSafe(val, false) {
-		en, err := NewEntry()
+		en, err := NewEntry(level)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -105,7 +105,7 @@ func toEntry(args ...any) kbx.Entry {
 			WithData(val)
 	}
 
-	en, err := NewEntry()
+	en, err := NewEntry(level)
 	if err != nil {
 		// fallback bruto
 		return &Entry{
@@ -119,8 +119,8 @@ func toEntry(args ...any) kbx.Entry {
 		WithMessage(fmt.Sprintf("%v", args[0]))
 }
 
-func ToEntry(args ...any) kbx.Entry {
-	e, err := NewEntry()
+func ToEntry(level kbx.Level, args ...any) *Entry {
+	e, err := NewEntry(level)
 	if err != nil {
 		// fallback bruto
 		return &Entry{
@@ -136,13 +136,13 @@ func ToEntry(args ...any) kbx.Entry {
 	first := args[0]
 
 	// 1) se já é Entry
-	if rec, ok := first.(kbx.Entry); ok {
+	if rec, ok := first.(*Entry); ok {
 		return rec
 	}
 
 	// 2) se é erro
 	if err, ok := first.(error); ok {
-		e = e.WithError(err).WithMessage(err.Error()).(*Entry)
+		e = e.WithError(err)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -151,14 +151,14 @@ func ToEntry(args ...any) kbx.Entry {
 			}
 		}
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:]).(*Entry)
+			e = e.WithField("args", args[1:])
 		}
 		return e
 	}
 
 	// 3) string → mensagem
 	if msg, ok := first.(string); ok {
-		e = e.WithMessage(msg).(*Entry)
+		e = e.WithMessage(msg)
 		if len(args) > 1 {
 			// segundo arg error?
 			if len(args) == 2 {
@@ -166,34 +166,34 @@ func ToEntry(args ...any) kbx.Entry {
 					return e.WithError(err)
 				}
 			}
-			e = e.WithField("args", args[1:]).(*Entry)
+			e = e.WithField("args", args[1:])
 		}
 		return e
 	}
 
 	// 4) map → fields
 	if m, ok := first.(map[string]any); ok {
-		e = e.WithFields(m).(*Entry)
+		e = e.WithFields(m)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:]).(*Entry)
+			e = e.WithField("args", args[1:])
 		}
 		return e
 	}
 
 	// 5) []byte → mensagem
 	if b, ok := first.([]byte); ok {
-		e = e.WithMessage(string(b)).(*Entry)
+		e = e.WithMessage(string(b))
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:]).(*Entry)
+			e = e.WithField("args", args[1:])
 		}
 		return e
 	}
 
 	// 6) struct / qualquer coisa segura
 	if kbx.IsObjSafe(first, false) {
-		e = e.WithMessage(fmt.Sprintf("%T", first)).WithData(first).(*Entry)
+		e = e.WithMessage(fmt.Sprintf("%T", first)).WithData(first)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:]).(*Entry)
+			e = e.WithField("args", args[1:])
 		}
 		return e
 	}

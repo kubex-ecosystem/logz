@@ -9,8 +9,8 @@ import (
 type Logger = C.LoggerZ[kbx.Entry]
 type Entry = kbx.Entry
 
-func NewEntry() (kbx.Entry, error) {
-	return C.NewEntryImpl()
+func NewEntry(level kbx.Level) (kbx.Entry, error) {
+	return C.NewEntryImpl(level)
 }
 
 func NewLogger(prefix string, opts *C.LoggerOptionsImpl, withDefaults bool) *Logger {

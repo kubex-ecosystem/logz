@@ -25,8 +25,9 @@ type Logger interface {
 	SetHooks(hooks []Hook)
 	SetLHooks(hooks LHook[any])
 	SetMetadata(metadata map[string]any)
-	Log(lvl string, rec kbx.Entry) error
-	LogAny(args ...any) error
+
+	Log(lvl kbx.Level, args ...any) error
+	LogAny(level kbx.Level, args ...any) error
 
 	AddHook(h Hook)
 }
@@ -36,7 +37,8 @@ type LoggerZ[T Hook | *kbx.Entry] interface {
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
 	Enabled(level kbx.Level) bool
-	Log(rec T) error
+
+	Log(level kbx.Level, rec T) error
 
 	AddHook(h HookG[T])
 }
@@ -46,7 +48,8 @@ type LoggerFunc interface {
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
 	Enabled(level kbx.Level) bool
-	Log(rec kbx.Entry) error
+
+	Log(level kbx.Level, rec kbx.Entry) error
 
 	AddHook(h HookFunc)
 }
@@ -56,7 +59,8 @@ type LoggerFuncG[T Hook | *kbx.Entry] interface {
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
 	Enabled(level kbx.Level) bool
-	Log(rec T) error
+
+	Log(level kbx.Level, rec T) error
 
 	AddHook(h HookFuncG[T])
 }

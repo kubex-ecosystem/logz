@@ -1,8 +1,10 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"runtime"
 	"sync"
 	"time"
 
@@ -116,7 +118,7 @@ func NewLoggerZ[T kbx.Entry](prefix string, opts *LoggerOptionsImpl, withDefault
 	}
 }
 
-// NewLogger cria um logger genérico:
+// NewLoggerZI cria um logger genérico:
 // - formatter: serializa Record em []byte
 // - out: destino final (io.Writer global, arquivo, socket, etc)
 // - min: nível mínimo
@@ -264,49 +266,126 @@ func (l *Logger) SetMetadata(metadata map[string]any) {
 	// implementação fictícia
 }
 
-// Log é o caminho principal: recebe um Record pronto (T),
-// dispara hooks, formata e escreve em out.
-func (l *Logger) Log(lvl string, rec kbx.Entry) error {
-	if !kbx.IsObjSafe(rec, false) {
-		// nada a fazer, mas não vamos quebrar ninguém
+func (l *Logger) GetConfig() *LoggerOptionsImpl {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.opts
+}
+
+type logParts struct {
+	entries   []kbx.Entry
+	others    []any
+	jobLevel  kbx.Level
+	timestamp time.Time
+}
+
+func (l *Logger) logEntryError(entry *Entry) error {
+	// Ao ser criado o objeto já armazena o timestamp, que inclusive não
+	// pode ser alterado depois.
+	// Então se o timestamp estiver zerado, significa que o objeto
+	// foi criado de forma incorreta. e não será possível corrigir isso aqui.
+	// portanto será logado como erro de implementação.E NÃO SEGUIRÁ O FLUXO COM O RESTO!
+	entryInstanceErrorLog, err := NewEntryImpl(kbx.LevelError)
+	if err != nil {
+		return err
+	}
+	pc, file, _, ok := runtime.Caller(2)
+
+	if ok {
+		fn := runtime.FuncForPC(pc)
+
+		entryInstanceErrorLog = entryInstanceErrorLog.
+			WithField("caller_function", fn.Name()).
+			WithField("caller_file", file).
+			WithField("caller_ok", ok)
+	}
+
+	entryInstanceErrorLog = entryInstanceErrorLog.
+		WithMessage("logz: entry created with zero timestamp; this is an implementation error").
+		WithField("entry_type", "Entry").
+		WithField("entry_value", entry).
+		WithError(fmt.Errorf("entry has zero timestamp"))
+
+	if entryInstanceErrorLog.GetTimestamp().IsZero() {
 		return nil
 	}
-
-	// r := *rec // copia pra evitar alterações concorrentes
-
-	if !l.Enabled(kbx.Level(rec.GetLevel().String())) {
-		return nil
+	// Formata a Entry para ser logada
+	b, err := l.opts.Formatter.Format(entryInstanceErrorLog)
+	if err != nil {
+		return err
+	}
+	// Garante newline pra saída de console / arquivos de texto.
+	if len(b) == 0 || b[len(b)-1] != '\n' {
+		b = append(b, '\n')
 	}
 
-	if len(lvl) == 0 {
-		if err := rec.Validate(); err != nil {
-			return err
-		}
-		lvl = rec.GetLevel().String()
+	_, err = l.Writer().Write(b)
+	if err != nil {
+		return err
 	}
+	return nil
+}
 
+func (l *Logger) getFormatter() (formatter.Formatter, error) {
 	l.mu.RLock()
 	f := l.opts.Formatter
 	out := l.opts.Output
-	hooks := append([]interfaces.LHook[any](nil), l.opts.LHooks)
 	l.mu.RUnlock()
-
 	if f == nil || out == nil {
 		// logger não inicializado corretamente; falha silenciosa
-		return nil
+		return nil, fmt.Errorf("logger not properly initialized: formatter or output is nil")
 	}
+	return f, nil
+}
 
-	// hooks antes da formatação
+func (l *Logger) fireHooks(entry *Entry, stage string) error {
+	// Dispara os hooks "no e para o" estágio especificado
+
+	// TODO: Gerar mapeamento de estados do pipeline de log
+	// Será usado para gerir o fluxo inteiro e permitir abordagens
+	// mais complexas, como FSM, etc.
+
+	hooks := append([]interfaces.LHook[any](nil), l.opts.LHooks)
+
 	for _, h := range hooks {
 		if h != nil {
-			err := h.Fire(rec)
+			err := h.Fire(entry)
 			if err != nil {
 				return err
 			}
 		}
 	}
+	return nil
+}
 
-	b, err := f.Format(rec)
+func (l *Logger) dispatchLogEntry(entry *Entry) error {
+	// Isso já foi inferido antes de entrar nesse método. Ele é
+	// privado, portanto é para uso interno apenas.
+	// Nós somente iremos reafirmar o que é passível de ser reafirmado.
+	// Como o nível do log. O level DEVE SER PASSADO por argumento.
+	// Porém, como o Entry também possui a informação, nós iremos
+	// considerar o que está no entry SOMENTE QUANDO HOUVER VÁRIOS ENTRIES!!!
+	// Isso porque, se houver vários entries, pode haver intençãoes
+	// diferentes entre eles, podem compor um bloco de log enviado de uma vez.
+	if !l.Enabled(kbx.Level(entry.GetLevel().String())) {
+		return nil
+	}
+
+	// dispara hooks pré-formatação
+	if err := l.fireHooks(entry, "pre-format"); err != nil {
+		return err
+	}
+
+	// obtém o formatter
+
+	f, err := l.getFormatter()
+	if err != nil {
+		return err
+	}
+
+	// formata a Entry
+
+	b, err := f.Format(entry)
 	if err != nil {
 		return err
 	}
@@ -316,11 +395,119 @@ func (l *Logger) Log(lvl string, rec kbx.Entry) error {
 		b = append(b, '\n')
 	}
 
-	_, err = out.Write(b)
-	return err
+	// dispara hooks pós-formatação
+	if err := l.fireHooks(entry, "post-format"); err != nil {
+		return err
+	}
+
+	// escreve no destino final
+	_, err = l.Writer().Write(b)
+	if err != nil {
+		return err
+	}
+
+	// tudo ok
+	return nil
 }
 
-func (l *Logger) LogAny(args ...any) error {
+// Log é o caminho principal: recebe um Record pronto (T),
+// dispara hooks, formata e escreve em out.
+func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
+	if !kbx.IsObjSafe(rec, false) {
+		// nada a fazer, mas não vamos quebrar ninguém
+		return nil
+	}
+
+	var logParts = logParts{
+		entries:   make([]kbx.Entry, 0),
+		others:    make([]any, 0),
+		jobLevel:  lvl,
+		timestamp: time.Now(),
+	}
+	if len(rec) > 0 {
+		for _, r := range rec {
+			if !kbx.IsObjSafe(r, false) {
+				continue
+			}
+			if e, ok := r.(kbx.Entry); ok {
+				logParts.entries = append(logParts.entries, e)
+			} else {
+				logParts.others = append(logParts.others, r)
+			}
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////
+	/// Agoa vamos separar o que é Entry do que não é. PRimeiro Entries
+	/// Vamos pegar todas elas e simplesmente disparar um Log para cada
+	/// visto que cada entry possui todo o contexto que compõe o log.
+	/////////////////////////////////////////////////////////////////////
+	for pos, entry := range logParts.entries {
+		// garante que o nível do job seja respeitado
+		if entry.GetLevel() == "" || kbx.Level(entry.GetLevel()).Severity() < logParts.jobLevel.Severity() {
+			entry = entry.(*Entry).WithLevel(logParts.jobLevel)
+		}
+		// garante timestamp
+		if err := entry.Validate(); err != nil {
+			if err := l.logEntryError(entry.(*Entry)); err != nil {
+				return err
+			}
+			logParts.entries[pos] = nil
+			continue
+		} else {
+			if err := l.dispatchLogEntry(entry.(*Entry)); err != nil {
+				return err
+			}
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////
+	/// Agora, TODOS OS OUTROS objetos que estavam na lista de argumentos
+	/////////////////////////////////////////////////////////////////////
+	if len(logParts.others) > 0 {
+		entryInstance, err := NewEntryImpl(lvl)
+		if err != nil {
+			return err
+		}
+		entry := entryInstance.
+			WithLevel(lvl)
+
+		var msgParts = make([]string, 0)
+		for _, other := range logParts.others {
+			if str, ok := other.(string); ok {
+				if str != "" {
+					msgParts = append(msgParts, str)
+				}
+			} else if errObj, ok := other.(error); ok {
+				entry = entry.WithError(errObj)
+			} else if m, ok := other.(map[string]any); ok {
+				for k, v := range m {
+					entry = entry.WithField(k, v)
+				}
+			} else {
+				// tenta serializar como json
+				jsonBytes, err := json.MarshalIndent(other, "", "  ")
+				if err == nil && len(jsonBytes) > 0 {
+					msgParts = append(msgParts, string(jsonBytes))
+				} else {
+					// fallback simples
+					msgParts = append(msgParts, fmt.Sprintf("%v", other))
+				}
+			}
+		}
+		entry = entry.WithMessage(fmt.Sprintf("%s", msgParts))
+		// dispara o log
+		if err := l.dispatchLogEntry(entry); err != nil {
+			return err
+		}
+	}
+	/////////////////////////////////////////////////////////////////////
+	/// Fim do pipeline de log para objetos não estruturados.
+	///////////////////////////////////////////////////////////////////
+	return nil
+}
+
+func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 	if l == nil {
 		return nil
 	}
@@ -336,19 +523,11 @@ func (l *Logger) LogAny(args ...any) error {
 		}
 	}()
 
-	// se args[0] é level → old API compat
-	if len(args) > 1 && (kbx.IsLevel(fmt.Sprintf("%v", args[0]))) {
-		level := normalizeLevel(args[0])
-		entry := toEntry(args[1:]...)
-		entry = entry.WithLevel(level)
-		return l.Log(level.String(), entry)
-	}
-
 	// modo moderno: nada garante level → assume Info
-	entry := toEntry(args...)
+	entry := toEntry(level, args...)
 	if entry.GetLevel() == "" {
-		entry = entry.WithLevel(kbx.LevelInfo)
+		entry = entry.WithLevel(level)
 	}
 
-	return l.Log(entry.GetLevel().String(), entry)
+	return l.Log(level, entry.GetLevel().String(), entry)
 }

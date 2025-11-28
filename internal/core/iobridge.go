@@ -56,7 +56,7 @@ func (b *IOBridge[T]) Write(p []byte) (int, error) {
 		return 0, err
 	}
 
-	if err := b.Logger.Log(string(rec.GetLevel()), rec); err != nil {
+	if err := b.Logger.Log(kbx.LevelInfo, rec); err != nil {
 		return 0, err
 	}
 

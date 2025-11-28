@@ -2,34 +2,45 @@ package kbx
 
 import "time"
 
-type Entry interface {
-	// --- Chainable ---
-
-	WithLevel(l Level) Entry
-	WithMessage(msg string) Entry
-	WithContext(ctx string) Entry
-	WithSource(src string) Entry
-	WithTraceID(id string) Entry
-	WithError(err error) Entry
-	WithField(key string, value any) Entry
-	WithFields(fields map[string]any) Entry
-	WithData(data any) Entry
-
-	// ---- Tags and Fields ---
-
-	Tag(k, v string) Entry
-	Field(k string, v any) Entry
-	WithCaller(c string) Entry
-	CaptureCaller(skip int) Entry
-	Clone() Entry
-	GetLevel() Level
-	Validate() error
-	String() string
-
+type Record interface {
 	GetTimestamp() time.Time
 	GetContext() string
 	GetMessage() string
+
+	// GetData() any
+
+	Validate() error
+	String() string
+}
+
+type Entry interface {
+	Record
+
+	// ---- Tags and Fields ---
+	Clone() Entry
+	GetLevel() Level
 	GetCaller() string
 	GetTags() map[string]string
 	GetFields() map[string]any
+}
+
+type LogzEntry[T Entry] interface {
+	Entry
+
+	// --- Chainable ---
+
+	WithLevel(l Level) T
+	WithMessage(msg string) T
+	WithContext(ctx string) T
+	WithSource(src string) T
+	WithTraceID(id string) T
+	WithError(err error) T
+	WithField(key string, value any) T
+	WithFields(fields map[string]any) T
+	WithData(data any) T
+
+	Tag(k, v string) T
+	Field(k string, v any) T
+	WithCaller(c string) T
+	CaptureCaller(skip int) T
 }

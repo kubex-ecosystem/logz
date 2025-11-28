@@ -30,12 +30,14 @@ type Entry struct {
 	Error error `json:"error,omitempty"` // erro associado (se houver)
 }
 
-func NewEntry() (*Entry, error) {
+func NewEntry(level kbx.Level) (*Entry, error) {
 	return &Entry{
 		Timestamp: time.Now().UTC(),
 		Tags:      make(map[string]string),
 		Fields:    make(map[string]any),
 		Caller:    captureCaller(3),
+		Level:     level,
+		Severity:  level.Severity(),
 	}, nil
 }
 
@@ -43,39 +45,41 @@ func NewEntry() (*Entry, error) {
 // - timestamp UTC
 // - maps inicializados
 // - caller capturado
-func NewEntryImpl() (kbx.Entry, error) { return NewEntry() }
+func NewEntryImpl(level kbx.Level) (*Entry, error) {
+	return NewEntry(level)
+}
 
 //
 // ---------- Chainable builders ----------
 //
 
-func (e *Entry) WithLevel(l kbx.Level) kbx.Entry {
+func (e *Entry) WithLevel(l kbx.Level) *Entry {
 	e.Level = l
 	e.Severity = l.Severity()
 	return e
 }
 
-func (e *Entry) WithMessage(msg string) kbx.Entry {
+func (e *Entry) WithMessage(msg string) *Entry {
 	e.Message = msg
 	return e
 }
 
-func (e *Entry) WithContext(ctx string) kbx.Entry {
+func (e *Entry) WithContext(ctx string) *Entry {
 	e.Context = ctx
 	return e
 }
 
-func (e *Entry) WithSource(src string) kbx.Entry {
+func (e *Entry) WithSource(src string) *Entry {
 	e.Source = src
 	return e
 }
 
-func (e *Entry) WithTraceID(id string) kbx.Entry {
+func (e *Entry) WithTraceID(id string) *Entry {
 	e.TraceID = id
 	return e
 }
 
-func (e *Entry) WithField(key string, value any) kbx.Entry {
+func (e *Entry) WithField(key string, value any) *Entry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
@@ -83,7 +87,7 @@ func (e *Entry) WithField(key string, value any) kbx.Entry {
 	return e
 }
 
-func (e *Entry) WithFields(fields map[string]any) kbx.Entry {
+func (e *Entry) WithFields(fields map[string]any) *Entry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
@@ -93,17 +97,17 @@ func (e *Entry) WithFields(fields map[string]any) kbx.Entry {
 	return e
 }
 
-func (e *Entry) WithData(data any) kbx.Entry {
+func (e *Entry) WithData(data any) *Entry {
 	e.Fields["data"] = data
 	return e
 }
 
-func (e *Entry) WithError(err error) kbx.Entry {
+func (e *Entry) WithError(err error) *Entry {
 	e.Error = err
 	return e
 }
 
-func (e *Entry) Tag(k, v string) kbx.Entry {
+func (e *Entry) Tag(k, v string) *Entry {
 	if e.Tags == nil {
 		e.Tags = make(map[string]string)
 	}
@@ -111,7 +115,7 @@ func (e *Entry) Tag(k, v string) kbx.Entry {
 	return e
 }
 
-func (e *Entry) Field(k string, v any) kbx.Entry {
+func (e *Entry) Field(k string, v any) *Entry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
@@ -119,12 +123,12 @@ func (e *Entry) Field(k string, v any) kbx.Entry {
 	return e
 }
 
-func (e *Entry) WithCaller(c string) kbx.Entry {
+func (e *Entry) WithCaller(c string) *Entry {
 	e.Caller = c
 	return e
 }
 
-func (e *Entry) CaptureCaller(skip int) kbx.Entry {
+func (e *Entry) CaptureCaller(skip int) *Entry {
 	e.Caller = captureCaller(skip + 1)
 	return e
 }

@@ -2,11 +2,12 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/kubex-ecosystem/logz/internal/core"
+	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/info"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 	"github.com/spf13/cobra"
@@ -55,42 +56,37 @@ You can configure the logger to suit your application's needs.`
 			[]string{short, long}, os.Getenv("LOGZ_HIDE_BANNER") == "true",
 		),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			kbx.ParseLoggerArgs(Level, MinLevel, MaxLevel, Output)
 
-			opts := core.NewLoggerOptions(initArgs)
+			// Criar opções do logger
+			opts := core.NewLoggerOptions(kbx.LoggerArgs)
 
-			entry, err := core.NewEntry()
+			// Aplicar formato se especificado
+			if Format != "" {
+				opts.Formatter = formatter.ParseFormatter(Format, false)
+			} else {
+				// Usar formatter padrão se não especificado
+				opts.Formatter = formatter.NewTextFormatter(false)
+			}
 
 			logger := core.NewLogger("LogzCLI", opts, false)
+			if logger == nil {
+				return fmt.Errorf("failed to create logger")
+			}
+
+			entry, err := core.NewEntry(kbx.LoggerArgs.Level)
 			if err != nil {
 				return err
 			}
-			entry.Message = strings.TrimSpace(
-				strings.ToValidUTF8(
-					strings.Join(
-						Message,
-						" ",
-					), "",
-				),
-			)
-			entry.Level = opts.Level
-			entry.Timestamp = time.Now().UTC()
-			entry.Fields = make(map[string]any)
-			// Add any additional fields to the entry
-			entry.Fields["module"] = "logger_cmd"
-			entry.Fields["timestamp"] = entry.Timestamp.Format(time.RFC3339)
-			// Add any additional fields to the entry
-			entry.Fields["caller"] = "logger_cmd"
-			entry.Fields["file"] = "cmd/cli/cmds_logz.go"
-			// Add any additional fields to the entry
-			entry.Fields["args"] = args
-			entry.Fields["message"] = entry.Message
+			entry.Message = strings.TrimSpace(strings.ToValidUTF8(strings.Join(Message, " "), ""))
 
-			return logger.Log("error", entry)
+			// Usar o level correto ao invés de "error" fixo
+			return logger.Log(kbx.LoggerArgs.Level, entry)
 
 		},
 	}
 
-	loggerCmd.Flags().BoolVarP(&initArgs.Debug, "debug", "d", false, "Enable debug mode")
+	loggerCmd.Flags().BoolVarP(&kbx.LoggerArgs.Debug, "debug", "d", false, "Enable debug mode")
 	loggerCmd.Flags().StringVarP(&Level, "level", "l", "info", "Set the logging level (e.g., debug, info, warn, error)")
 	loggerCmd.Flags().StringVarP(&MinLevel, "min-level", "m", "debug", "Set the minimum logging level")
 	loggerCmd.Flags().StringVarP(&MaxLevel, "max-level", "M", "fatal", "Set the maximum logging level")

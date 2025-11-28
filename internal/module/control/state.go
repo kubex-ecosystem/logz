@@ -2,8 +2,9 @@
 package control
 
 import (
-	"errors"
 	"sync/atomic"
+
+	kbx "github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
 // Example: Job state flags (combináveis) -------------------------------------
@@ -24,15 +25,15 @@ const (
 	terminalMask JobFlag = JobCompletedA | JobFailedA | JobTimedOutA
 )
 
-var (
-	ErrTerminal = errors.New("job is in a terminal state")
-)
-
 func (j JobFlag) Has(flag JobFlag) bool {
 	return j&flag != 0
 }
 
 type FlagReg32[T ~uint32] struct{ v atomic.Uint32 }
+
+func NewFlagReg32[T ~uint32]() *FlagReg32[T] {
+	return &FlagReg32[T]{}
+}
 
 func (r *FlagReg32[T]) Load() T { return T(r.v.Load()) }
 func (r *FlagReg32[T]) Store(val T) {
@@ -64,13 +65,17 @@ func (r *FlagReg32[T]) All(mask T) bool { return r.v.Load()&uint32(mask) == uint
 
 type JobState struct{ r FlagReg32[JobFlag] }
 
+func NewJobState() *JobState {
+	return &JobState{r: *NewFlagReg32[JobFlag]()}
+}
+
 func (s *JobState) Load() JobFlag { return s.r.Load() }
 
 // Start only from Pending; sets Running.
 func (s *JobState) Start() error {
 	ok := s.r.SetIf(terminalMask|JobRunningA|JobCompletedA|JobFailedA|JobTimedOutA, JobRunningA)
 	if !ok {
-		return ErrTerminal
+		return kbx.ErrTerminal
 	}
 	return nil
 }
@@ -84,7 +89,7 @@ func (s *JobState) Retry() error {
 	for {
 		old := s.r.Load()
 		if old&terminalMask != 0 {
-			return ErrTerminal
+			return kbx.ErrTerminal
 		}
 		newV := (old | JobRetryingA) &^ JobRunningA
 		if s.r.SetIf(old, newV) {
@@ -98,7 +103,7 @@ func (s *JobState) Complete() error {
 	for {
 		old := s.r.Load()
 		if old&terminalMask != 0 {
-			return ErrTerminal
+			return kbx.ErrTerminal
 		}
 		newV := (old | JobCompletedA) &^ (JobRunningA | JobRetryingA | JobCancelRequestedA)
 		if s.r.SetIf(old, newV) {
@@ -112,7 +117,7 @@ func (s *JobState) Fail() error {
 	for {
 		old := s.r.Load()
 		if old&terminalMask != 0 {
-			return ErrTerminal
+			return kbx.ErrTerminal
 		}
 		newV := (old | JobFailedA) &^ (JobRunningA | JobRetryingA)
 		if s.r.SetIf(old, newV) {
@@ -126,7 +131,7 @@ func (s *JobState) Timeout() error {
 	for {
 		old := s.r.Load()
 		if old&terminalMask != 0 {
-			return ErrTerminal
+			return kbx.ErrTerminal
 		}
 		newV := (old | JobTimedOutA) &^ (JobRunningA | JobRetryingA)
 		if s.r.SetIf(old, newV) {

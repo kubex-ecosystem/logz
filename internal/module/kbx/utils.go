@@ -8,27 +8,21 @@ import (
 	"time"
 )
 
-var (
-	validKindMap = map[string]reflect.Kind{
-		reflect.Struct.String():    reflect.Struct,
-		reflect.Map.String():       reflect.Map,
-		reflect.Slice.String():     reflect.Slice,
-		reflect.Array.String():     reflect.Array,
-		reflect.Chan.String():      reflect.Chan,
-		reflect.Interface.String(): reflect.Interface,
-		reflect.Ptr.String():       reflect.Ptr,
-		reflect.String.String():    reflect.String,
-		reflect.Int.String():       reflect.Int,
-		reflect.Float32.String():   reflect.Float32,
-		reflect.Float64.String():   reflect.Float64,
-		reflect.Bool.String():      reflect.Bool,
-		reflect.Uint.String():      reflect.Uint,
-		reflect.Uint8.String():     reflect.Uint8,
-		reflect.Uint16.String():    reflect.Uint16,
-		reflect.Uint32.String():    reflect.Uint32,
-		reflect.Uint64.String():    reflect.Uint64,
+func IsObjLogEntry(obj any) bool {
+	if !IsObjValid(obj) {
+		return false
 	}
-)
+	_, ok := obj.(Entry)
+	return ok
+}
+
+func GetObjTypeName(obj any) string {
+	t := reflect.TypeOf(obj)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t.Name()
+}
 
 func GetEnvOrDefault(key, defaultValue string) string {
 	value := os.Getenv(key)
