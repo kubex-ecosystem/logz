@@ -1,0 +1,106 @@
+package formatter
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"runtime"
+	"strings"
+
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+)
+
+type TextFormatter struct {
+	DisableColor bool
+	DisableIcon  bool
+}
+
+// --- ICONES E CORES ---------------------------------------------------------
+
+var icons = map[kbx.Level]string{
+	kbx.LevelNotice:  "📝",
+	kbx.LevelTrace:   "🔍",
+	kbx.LevelSuccess: "✅",
+	kbx.LevelDebug:   "🐛",
+	kbx.LevelInfo:    "ℹ️",
+	kbx.LevelWarn:    "⚠️",
+	kbx.LevelError:   "❌",
+	kbx.LevelFatal:   "💀",
+}
+
+var colors = map[kbx.Level]string{
+	kbx.LevelNotice:  "\033[33m",
+	kbx.LevelTrace:   "\033[36m",
+	kbx.LevelSuccess: "\033[32m",
+	kbx.LevelDebug:   "\033[34m",
+	kbx.LevelInfo:    "\033[32m",
+	kbx.LevelWarn:    "\033[33m",
+	kbx.LevelError:   "\033[31m",
+	kbx.LevelFatal:   "\033[35m",
+}
+
+const reset = "\033[0m"
+
+// --- CONSTRUCTOR ------------------------------------------------------------
+
+func NewTextFormatter(pretty bool) Formatter {
+	return &TextFormatter{
+		DisableColor: os.Getenv("LOGZ_NO_COLOR") != "" || runtime.GOOS == "windows",
+		DisableIcon:  os.Getenv("LOGZ_NO_ICON") != "",
+	}
+}
+
+// --- PUBLIC API -------------------------------------------------------------
+
+func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
+	level := e.GetLevel()
+	msg := strings.TrimSpace(e.GetMessage())
+
+	// Level string
+	levelStr := string(level)
+	if !f.DisableColor {
+		if c, ok := colors[level]; ok {
+			levelStr = c + levelStr + reset
+		}
+	}
+
+	// Icon
+	icon := ""
+	if !f.DisableIcon {
+		if ic, ok := icons[level]; ok {
+			icon = ic + " "
+		}
+	}
+
+	// Timestamp (opcional)
+	ts := ""
+	if e.GetTimestamp().Unix() != 0 {
+		ts = e.GetTimestamp().Format("2006-01-02 15:04:05")
+		ts = "[" + ts + "] "
+	}
+
+	// Context
+	ctx := ""
+	if c := e.GetContext(); c != "" {
+		ctx = "(" + c + ") "
+	}
+
+	// Metadata (bonitinho e opcional)
+	meta := ""
+	if m := e.GetFields(); len(m) > 0 {
+		b, _ := json.MarshalIndent(m, "", "  ")
+		meta = "\n" + string(b)
+	}
+
+	// Line final → limpa, previsível, sem comer whitespace
+	line := fmt.Sprintf("%s[%s] %s%s%s%s",
+		ts,
+		levelStr,
+		ctx,
+		icon,
+		msg,
+		meta,
+	)
+
+	return []byte(line), nil
+}

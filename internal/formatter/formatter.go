@@ -1,0 +1,28 @@
+package formatter
+
+import (
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+)
+
+type Formatter interface {
+	Format(e kbx.Entry) ([]byte, error)
+}
+
+// FormatterFunc é uma função que implementa a interface Formatter.
+type FormatterFunc func(e kbx.Entry) ([]byte, error)
+
+// Format formata a entry.
+func (f FormatterFunc) Format(e kbx.Entry) ([]byte, error) {
+	return f(e)
+}
+
+func ParseFormatter(format string, pretty bool) Formatter {
+	switch format {
+	case "json":
+		return NewJSONFormatter(pretty)
+	case "text":
+		return NewTextFormatter(pretty)
+	default:
+		return NewTextFormatter(pretty)
+	}
+}

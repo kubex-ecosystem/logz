@@ -1,303 +1,533 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"log"
-	"sync/atomic"
-
-	//"io"
-	"os"
-	"strings"
+	"runtime"
 	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/formatter"
+	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+
+	"log"
 )
 
-type LogMode string
-type LogFormat string
-
-const (
-	JSON LogFormat = "json"
-	TEXT LogFormat = "text"
-	YAML LogFormat = "yaml"
-	XML  LogFormat = "xml"
-	RAW  LogFormat = "raw"
-)
-
-const (
-	ModeService    LogMode = "service"    // Indicates that the core is being used by a detached process
-	ModeStandalone LogMode = "standalone" // Indicates that the core is being used locally (e.g., CLI)
-)
-
-var logLevels = map[LogLevel]int{
-	DEBUG:   1,
-	TRACE:   2,
-	INFO:    3,
-	NOTICE:  4,
-	SUCCESS: 5,
-	WARN:    6,
-	ERROR:   7,
-	FATAL:   8,
-	SILENT:  9,
-	ANSWER:  10,
-}
-
-// LogzCoreImpl represents a core with configuration and VMetadata.
-type LogzCoreImpl struct {
-	// LogzLogger is a constraint to implement this interface
-	LogzLogger
-
-	// Logger is a promoted global Go Logger
+// Logger é o núcleo do pipeline:
+//
+//	Record (T) -> hooks -> formatter -> io.Writer
+//
+// Não sabe nada de linha, arquivo, CLI, JSON, etc.
+// Isso é responsabilidade do Formatter + destino (io.Writer).
+type Logger struct {
+	mu      sync.RWMutex
+	flushMu sync.Mutex
+	hooksMu sync.Mutex
+	opts    *LoggerOptionsImpl
 	*log.Logger
-
-	out       io.Writer                   // destination for output
-	prefix    atomic.Pointer[string]      // prefix on each line to identify the logger (but see Lmsgprefix)
-	prefixX   atomic.Pointer[*LogzLogger] // prefix on each line to identify the logger (but see Lmsgprefix)
-	flag      atomic.Int32                // properties
-	isDiscard atomic.Bool
-
-	VLevel    LogLevel
-	VWriter   LogWriter[any]
-	VConfig   Config
-	VMetadata map[string]interface{}
-	VMode     LogMode // Mode control: service or standalone
-	Mu        sync.RWMutex
 }
 
-// NewLogger creates a new instance of LogzCoreImpl with the provided configuration.
-func NewLogger(prefix string) LogzLogger {
-	return NewLoggerImpl(prefix)
+// LoggerZ é o núcleo do pipeline:
+//
+//	Record (T) -> hooks -> formatter -> io.Writer
+//
+// Não sabe nada de linha, arquivo, CLI, JSON, etc.
+// Isso é responsabilidade do Formatter + destino (io.Writer).
+type LoggerZ[T kbx.Entry] struct {
+	ID       uuid.UUID
+	flushMuZ sync.Mutex
+	hooksMuZ sync.Mutex
+	muZ      sync.RWMutex
+	optsZ    *LoggerOptionsImpl
+	interfaces.Logger
 }
 
-func NewLoggerImpl(prefix string) *LogzCoreImpl {
-	level := INFO // Default log VLevel
+func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
+	if opts == nil {
+		opts = NewLoggerOptions(kbx.LoggerArgs)
+	}
+	if withDefaults {
+		opts = opts.WithDefaults(opts)
+	}
+	opts.Prefix = prefix
 
-	writer := NewDefaultWriter[any](os.Stdout, &TextFormatter{}) //out, formatter)
-
-	// Read the VMode from Config
-	//VMode := VConfig.Mode()
-	//if VMode != ModeService && VMode != ModeStandalone {
-	mode := ModeStandalone // Default to standalone if not specified
-	//}
-
-	logg := log.New(
-		writer.out,
-		prefix,
-		log.LstdFlags,
+	// Configura o stdlog do Go para usar o mesmo output e prefixo
+	var out io.Writer
+	if opts.Output == nil {
+		opts.Output = io.Discard
+	} else {
+		out = opts.Output
+	}
+	if out == nil {
+		out = io.Discard
+	}
+	opts.Output = out
+	logr := log.New(
+		opts.Output,
+		opts.Prefix,
+		0,
 	)
 
-	lgr := &LogzCoreImpl{
-		Logger:    logg,
-		VLevel:    level,
-		VWriter:   writer,
-		VMetadata: make(map[string]interface{}),
-		VMode:     mode,
+	lgr := &Logger{
+		flushMu: sync.Mutex{},
+		hooksMu: sync.Mutex{},
+		mu:      sync.RWMutex{},
+		opts:    opts,
+		Logger:  logr,
 	}
-
-	lgr.prefix.Store(&prefix)
+	// Reafirma configurações do log padrão
+	lgr.SetFlags(0) // desativa flags automáticas do log padrão
+	if kbx.DefaultFalse(opts.OutputTTY) {
+		// se for TTY, desativa escrita direta no output padrão
+		lgr.SetOutput(io.Discard) // evita escrita direta no output padrão
+	} else {
+		// se não for TTY, mantém escrita direta no output padrão
+		lgr.SetOutput(out)
+	}
+	lgr.SetPrefix(prefix)
+	lgr.SetFormatter(lgr.opts.Formatter)
+	lgr.SetPrefix(lgr.opts.Prefix)
+	lgr.SetMinLevel(lgr.opts.MinLevel)
 
 	return lgr
 }
 
-// SetMetadata sets a VMetadata key-value pair for the LogzCoreImpl.
-func (l *LogzCoreImpl) SetMetadata(key string, value interface{}) {
-	l.Mu.Lock()
-	defer l.Mu.Unlock()
-	l.VMetadata[key] = value
+// NewLoggerZ cria um logger genérico:
+// - formatter: serializa T em []byte
+// - out: destino final (io.Writer global, arquivo, socket, etc)
+// - min: nível mínimo
+func NewLoggerZ[T kbx.Entry](prefix string, opts *LoggerOptionsImpl, withDefaults bool) *LoggerZ[T] {
+	if opts == nil {
+		opts = NewLoggerOptions(kbx.LoggerArgs)
+	}
+	if withDefaults {
+		opts = opts.WithDefaults(opts)
+	}
+	return &LoggerZ[T]{
+		ID: uuid.New(),
+
+		muZ:      sync.RWMutex{},
+		flushMuZ: sync.Mutex{},
+		hooksMuZ: sync.Mutex{},
+
+		optsZ:  opts,
+		Logger: NewLogger(prefix, opts, false), // evita chamada recursiva
+	}
 }
 
-// shouldLog checks if the log VLevel should be logged.
-func (l *LogzCoreImpl) shouldLog(level LogLevel) bool {
-	return logLevels[level] >= logLevels[l.VLevel]
+// NewLoggerZI cria um logger genérico:
+// - formatter: serializa Record em []byte
+// - out: destino final (io.Writer global, arquivo, socket, etc)
+// - min: nível mínimo
+func NewLoggerZI(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
+	if opts == nil {
+		opts = NewLoggerOptions(kbx.LoggerArgs)
+	}
+	if withDefaults {
+		opts = opts.WithDefaults(opts)
+	}
+	opts.Prefix = prefix
+
+	// Configura o stdlog do Go para usar o mesmo output e prefixo
+	var out io.Writer
+	if opts.Output == nil {
+		opts.Output = io.Discard
+	} else {
+		out = opts.Output
+	}
+	if out == nil {
+		out = io.Discard
+	}
+	opts.Output = out
+	logr := log.New(
+		opts.Output,
+		opts.Prefix,
+		0,
+	)
+
+	lgr := &Logger{
+		flushMu: sync.Mutex{},
+		hooksMu: sync.Mutex{},
+		mu:      sync.RWMutex{},
+		opts:    opts,
+		Logger:  logr,
+	}
+	// Reafirma configurações do log padrão
+	lgr.SetFlags(0) // desativa flags automáticas do log padrão
+	if kbx.DefaultFalse(opts.OutputTTY) {
+		// se for TTY, desativa escrita direta no output padrão
+		lgr.SetOutput(io.Discard) // evita escrita direta no output padrão
+	} else {
+		// se não for TTY, mantém escrita direta no output padrão
+		lgr.SetOutput(out)
+	}
+	lgr.SetPrefix(prefix)
+	lgr.SetFormatter(lgr.opts.Formatter)
+	lgr.SetPrefix(lgr.opts.Prefix)
+	lgr.SetMinLevel(lgr.opts.MinLevel)
+
+	return lgr
 }
 
-// log logs a message with the specified VLevel and context.
-func (l *LogzCoreImpl) log(level LogLevel, msg string, ctx map[string]interface{}) {
-	if !l.shouldLog(level) {
+func (l *Logger) SetFormatter(f formatter.Formatter) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.opts.Formatter = f
+}
+
+func (l *Logger) SetOutput(w io.Writer) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.opts.Output = w
+}
+
+func (l *Logger) SetMinLevel(min kbx.Level) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.opts.MinLevel = min
+}
+
+func (l *Logger) AddHook(h interfaces.Hook) {
+	if h == nil {
 		return
 	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.opts.Hooks = append(l.opts.Hooks, h)
+}
 
-	l.Mu.RLock()
-	defer l.Mu.RUnlock()
+func (l *Logger) Enabled(level kbx.Level) bool {
+	l.mu.RLock()
+	min := l.opts.MinLevel
+	l.mu.RUnlock()
+	return level.Severity() >= min.Severity()
+}
 
-	entry := NewLogEntry().
-		WithLevel(level).
-		WithMessage(msg).
-		WithSeverity(logLevels[level])
+func (l *Logger) GetMinLevel() kbx.Level {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.opts.MinLevel
+}
 
-	// Merge global and local VMetadata
-	finalContext := mergeContext(l.VMetadata, ctx)
-	for k, v := range finalContext {
-		entry.AddMetadata(k, v)
+func (l *Logger) GetLevel() kbx.Level {
+	return l.opts.MinLevel
+}
+
+// SetRotate is the setter for setRotate
+func (l *Logger) SetRotate(rotate bool) {
+	// implementação fictícia
+}
+
+// SetRotateMaxSize is the setter for setRotateMaxSize
+func (l *Logger) SetRotateMaxSize(size int64) {
+	// implementação fictícia
+}
+
+// SetRotateMaxBack is the setter for setRotateMaxBack
+func (l *Logger) SetRotateMaxBack(back int64) {
+	// implementação fictícia
+}
+
+// SetRotateMaxAge is the setter for setRotateMaxAge
+func (l *Logger) SetRotateMaxAge(age int64) {
+	// implementação fictícia
+}
+
+// SetCompress is the setter for setCompress
+func (l *Logger) SetCompress(compress bool) {
+	// implementação fictícia
+}
+
+// SetBufferSize is the setter for setBufferSize
+func (l *Logger) SetBufferSize(size int) {
+	// implementação fictícia
+}
+
+// SetFlushInterval is the setter for setFlushInterval
+func (l *Logger) SetFlushInterval(interval time.Duration) {
+	// implementação fictícia
+}
+
+// SetHooks is the setter for setHooks
+func (l *Logger) SetHooks(hooks []interfaces.Hook) {
+	// implementação fictícia
+}
+
+// SetLHooks is the setter for setLHooks
+func (l *Logger) SetLHooks(hooks interfaces.LHook[any]) {
+	// implementação fictícia
+}
+
+// SetMetadata is the setter for setMetadata
+func (l *Logger) SetMetadata(metadata map[string]any) {
+	// implementação fictícia
+}
+
+func (l *Logger) GetConfig() *LoggerOptionsImpl {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.opts
+}
+
+type logParts struct {
+	entries   []kbx.Entry
+	others    []any
+	jobLevel  kbx.Level
+	timestamp time.Time
+}
+
+func (l *Logger) logEntryError(entry *Entry) error {
+	// Ao ser criado o objeto já armazena o timestamp, que inclusive não
+	// pode ser alterado depois.
+	// Então se o timestamp estiver zerado, significa que o objeto
+	// foi criado de forma incorreta. e não será possível corrigir isso aqui.
+	// portanto será logado como erro de implementação.E NÃO SEGUIRÁ O FLUXO COM O RESTO!
+	entryInstanceErrorLog, err := NewEntryImpl(kbx.LevelError)
+	if err != nil {
+		return err
+	}
+	pc, file, _, ok := runtime.Caller(2)
+
+	if ok {
+		fn := runtime.FuncForPC(pc)
+
+		entryInstanceErrorLog = entryInstanceErrorLog.
+			WithField("caller_function", fn.Name()).
+			WithField("caller_file", file).
+			WithField("caller_ok", ok)
 	}
 
-	// Merge global and local VMetadata
-	finalMetadata := mergeMetadata(l.VMetadata, ctx)
-	for k, v := range finalMetadata {
-		entry.AddMetadata(k, v)
+	entryInstanceErrorLog = entryInstanceErrorLog.
+		WithMessage("logz: entry created with zero timestamp; this is an implementation error").
+		WithField("entry_type", "Entry").
+		WithField("entry_value", entry).
+		WithError(fmt.Errorf("entry has zero timestamp"))
+
+	if entryInstanceErrorLog.GetTimestamp().IsZero() {
+		return nil
+	}
+	// Formata a Entry para ser logada
+	b, err := l.opts.Formatter.Format(entryInstanceErrorLog)
+	if err != nil {
+		return err
+	}
+	// Garante newline pra saída de console / arquivos de texto.
+	if len(b) == 0 || b[len(b)-1] != '\n' {
+		b = append(b, '\n')
 	}
 
-	if level != SILENT {
-		// Write the log using the configured VWriter
-		if err := l.VWriter.Write(entry); err != nil {
-			log.Printf("ErrorCtx writing log: %v", err)
+	_, err = l.Writer().Write(b)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Logger) getFormatter() (formatter.Formatter, error) {
+	l.mu.RLock()
+	f := l.opts.Formatter
+	out := l.opts.Output
+	l.mu.RUnlock()
+	if f == nil || out == nil {
+		// logger não inicializado corretamente; falha silenciosa
+		return nil, fmt.Errorf("logger not properly initialized: formatter or output is nil")
+	}
+	return f, nil
+}
+
+func (l *Logger) fireHooks(entry *Entry, stage string) error {
+	// Dispara os hooks "no e para o" estágio especificado
+
+	// TODO: Gerar mapeamento de estados do pipeline de log
+	// Será usado para gerir o fluxo inteiro e permitir abordagens
+	// mais complexas, como FSM, etc.
+
+	hooks := append([]interfaces.LHook[any](nil), l.opts.LHooks)
+
+	for _, h := range hooks {
+		if h != nil {
+			err := h.Fire(entry)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (l *Logger) dispatchLogEntry(entry *Entry) error {
+	// Isso já foi inferido antes de entrar nesse método. Ele é
+	// privado, portanto é para uso interno apenas.
+	// Nós somente iremos reafirmar o que é passível de ser reafirmado.
+	// Como o nível do log. O level DEVE SER PASSADO por argumento.
+	// Porém, como o Entry também possui a informação, nós iremos
+	// considerar o que está no entry SOMENTE QUANDO HOUVER VÁRIOS ENTRIES!!!
+	// Isso porque, se houver vários entries, pode haver intençãoes
+	// diferentes entre eles, podem compor um bloco de log enviado de uma vez.
+	if !l.Enabled(kbx.Level(entry.GetLevel().String())) {
+		return nil
+	}
+
+	// dispara hooks pré-formatação
+	if err := l.fireHooks(entry, "pre-format"); err != nil {
+		return err
+	}
+
+	// obtém o formatter
+
+	f, err := l.getFormatter()
+	if err != nil {
+		return err
+	}
+
+	// formata a Entry
+
+	b, err := f.Format(entry)
+	if err != nil {
+		return err
+	}
+
+	// garante newline pra saída de console / arquivos de texto.
+	if len(b) == 0 || b[len(b)-1] != '\n' {
+		b = append(b, '\n')
+	}
+
+	// dispara hooks pós-formatação
+	if err := l.fireHooks(entry, "post-format"); err != nil {
+		return err
+	}
+
+	// escreve no destino final
+	_, err = l.Writer().Write(b)
+	if err != nil {
+		return err
+	}
+
+	// tudo ok
+	return nil
+}
+
+// Log é o caminho principal: recebe um Record pronto (T),
+// dispara hooks, formata e escreve em out.
+func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
+	if !kbx.IsObjSafe(rec, false) {
+		// nada a fazer, mas não vamos quebrar ninguém
+		return nil
+	}
+
+	var logParts = logParts{
+		entries:   make([]kbx.Entry, 0),
+		others:    make([]any, 0),
+		jobLevel:  lvl,
+		timestamp: time.Now(),
+	}
+	if len(rec) > 0 {
+		for _, r := range rec {
+			if !kbx.IsObjSafe(r, false) {
+				continue
+			}
+			if e, ok := r.(kbx.Entry); ok {
+				logParts.entries = append(logParts.entries, e)
+			} else {
+				logParts.others = append(logParts.others, r)
+			}
 		}
 	}
 
-	// Update metrics in PrometheusManager, if enabled
-	if l.VMode == ModeService {
-		pm := GetPrometheusManager()
-		if pm.IsEnabled() {
-			pm.IncrementMetric("logs_total", 1)
-			pm.IncrementMetric("logs_total_"+string(level), 1)
+	/////////////////////////////////////////////////////////////////////
+	/// Agoa vamos separar o que é Entry do que não é. PRimeiro Entries
+	/// Vamos pegar todas elas e simplesmente disparar um Log para cada
+	/// visto que cada entry possui todo o contexto que compõe o log.
+	/////////////////////////////////////////////////////////////////////
+	for pos, entry := range logParts.entries {
+		// garante que o nível do job seja respeitado
+		if entry.GetLevel() == "" || kbx.Level(entry.GetLevel()).Severity() < logParts.jobLevel.Severity() {
+			entry = entry.(*Entry).WithLevel(logParts.jobLevel)
+		}
+		// garante timestamp
+		if err := entry.Validate(); err != nil {
+			if err := l.logEntryError(entry.(*Entry)); err != nil {
+				return err
+			}
+			logParts.entries[pos] = nil
+			continue
+		} else {
+			if err := l.dispatchLogEntry(entry.(*Entry)); err != nil {
+				return err
+			}
 		}
 	}
 
-	// Terminate the process in case of FATAL log
-	if level == FATAL {
-		os.Exit(1)
+	/////////////////////////////////////////////////////////////////////
+	/// Agora, TODOS OS OUTROS objetos que estavam na lista de argumentos
+	/////////////////////////////////////////////////////////////////////
+	if len(logParts.others) > 0 {
+		entryInstance, err := NewEntryImpl(lvl)
+		if err != nil {
+			return err
+		}
+		entry := entryInstance.
+			WithLevel(lvl)
+
+		var msgParts = make([]string, 0)
+		for _, other := range logParts.others {
+			if str, ok := other.(string); ok {
+				if str != "" {
+					msgParts = append(msgParts, str)
+				}
+			} else if errObj, ok := other.(error); ok {
+				entry = entry.WithError(errObj)
+			} else if m, ok := other.(map[string]any); ok {
+				for k, v := range m {
+					entry = entry.WithField(k, v)
+				}
+			} else {
+				// tenta serializar como json
+				jsonBytes, err := json.MarshalIndent(other, "", "  ")
+				if err == nil && len(jsonBytes) > 0 {
+					msgParts = append(msgParts, string(jsonBytes))
+				} else {
+					// fallback simples
+					msgParts = append(msgParts, fmt.Sprintf("%v", other))
+				}
+			}
+		}
+		entry = entry.WithMessage(fmt.Sprintf("%s", msgParts))
+		// dispara o log
+		if err := l.dispatchLogEntry(entry); err != nil {
+			return err
+		}
 	}
+	/////////////////////////////////////////////////////////////////////
+	/// Fim do pipeline de log para objetos não estruturados.
+	///////////////////////////////////////////////////////////////////
+	return nil
 }
 
-// TraceCtx logs a trace message with context.
-func (l *LogzCoreImpl) TraceCtx(msg string, ctx map[string]interface{}) { l.log(TRACE, msg, ctx) }
-
-// NoticeCtx logs a notice message with context.
-func (l *LogzCoreImpl) NoticeCtx(msg string, ctx map[string]interface{}) { l.log(NOTICE, msg, ctx) }
-
-// SuccessCtx logs a success message with context.
-func (l *LogzCoreImpl) SuccessCtx(msg string, ctx map[string]interface{}) { l.log(SUCCESS, msg, ctx) }
-
-// DebugCtx logs a debug message with context.
-func (l *LogzCoreImpl) DebugCtx(msg string, ctx map[string]interface{}) { l.log(DEBUG, msg, ctx) }
-
-// InfoCtx logs an info message with context.
-func (l *LogzCoreImpl) InfoCtx(msg string, ctx map[string]interface{}) { l.log(INFO, msg, ctx) }
-
-// WarnCtx logs a warning message with context.
-func (l *LogzCoreImpl) WarnCtx(msg string, ctx map[string]interface{}) { l.log(WARN, msg, ctx) }
-
-// ErrorCtx logs an error message with context.
-func (l *LogzCoreImpl) ErrorCtx(msg string, ctx map[string]interface{}) { l.log(ERROR, msg, ctx) }
-
-// FatalCtx logs a fatal message with context and terminates the process.
-func (l *LogzCoreImpl) FatalCtx(msg string, ctx map[string]interface{}) { l.log(FATAL, msg, ctx) }
-
-// SilentCtx logs a message with context without any output.
-func (l *LogzCoreImpl) SilentCtx(msg string, ctx map[string]interface{}) { l.log(SILENT, msg, ctx) }
-
-// AnswerCtx logs an answer message with context.
-func (l *LogzCoreImpl) AnswerCtx(msg string, ctx map[string]interface{}) { l.log(ANSWER, msg, ctx) }
-
-// Silent logs a message without any output.
-func (l *LogzCoreImpl) Silent(msg ...any) {
-	if l.shouldLog(SILENT) {
-		l.log(SILENT, fmt.Sprint(msg...), nil)
+func (l *Logger) LogAny(level kbx.Level, args ...any) error {
+	if l == nil {
+		return nil
 	}
-}
+	if len(args) == 0 {
+		return nil
+	}
 
-// Answer logs a message without any output.
-func (l *LogzCoreImpl) Answer(msg ...any) {
-	if l.shouldLog(ANSWER) {
-		l.log(ANSWER, fmt.Sprint(msg...), nil)
-	}
-}
-func (l *LogzCoreImpl) SetLevel(level interface{}) {
-	l.Mu.Lock()
-	defer l.Mu.Unlock()
-	if lvl, ok := level.(LogLevel); ok {
-		l.VLevel = lvl
-	} else if lvlStr, ok := level.(string); ok {
-		l.VLevel = LogLevel(lvlStr)
-	} else {
-		log.Println("Invalid log level type")
-	}
-}
-func (l *LogzCoreImpl) GetLevel() interface{} {
-	l.Mu.RLock()
-	defer l.Mu.RUnlock()
+	defer func() {
+		if r := recover(); r != nil {
+			if l.Logger != nil {
+				l.Logger.Printf("logz: panic in LogAny: %v (args=%#v)", r, args)
+			}
+		}
+	}()
 
-	if l.VLevel == "" {
-		l.VLevel = INFO
+	// modo moderno: nada garante level → assume Info
+	entry := toEntry(level, args...)
+	if entry.GetLevel() == "" {
+		entry = entry.WithLevel(level)
 	}
-	return l.VLevel
-}
-func (l *LogzCoreImpl) SetWriter(writer any) {
-	l.Mu.Lock()
-	defer l.Mu.Unlock()
-	if osFile, ok := writer.(*os.File); ok {
-		l.VWriter = NewDefaultWriter[any](osFile, &TextFormatter{})
-	} else if logWriter, ok := writer.(LogWriter[any]); ok {
-		l.VWriter = logWriter
-	} else {
-		log.Println("Invalid writer type")
-	}
-}
-func (l *LogzCoreImpl) GetWriter() interface{} {
-	l.Mu.RLock()
-	defer l.Mu.RUnlock()
-	if l.VWriter == nil {
-		l.VWriter = NewDefaultWriter[any](os.Stdout, &TextFormatter{})
-	}
-	return l.VWriter
-}
-func (l *LogzCoreImpl) GetMode() interface{} {
-	l.Mu.RLock()
-	defer l.Mu.RUnlock()
-	if l.VMode == "" {
-		l.VMode = ModeStandalone
-	}
-	return l.VMode
-}
-func (l *LogzCoreImpl) SetConfig(config interface{}) {
-	l.Mu.Lock()
-	defer l.Mu.Unlock()
-	if cfg, ok := config.(Config); ok {
-		l.VConfig = cfg
-	} else {
-		log.Println("Invalid config type")
-	}
-}
-func (l *LogzCoreImpl) GetConfig() interface{} {
-	l.Mu.RLock()
-	defer l.Mu.RUnlock()
-	if l.VConfig == nil {
-		c := NewConfigManager()
-		c2 := *c
-		c3 := c2.GetConfig()
-		l.VConfig = c3
-	}
-	return l.VConfig
-}
 
-// trimFilePath trims the file path to show only the last two segments.
-func trimFilePath(filePath string) string {
-	parts := strings.Split(filePath, "/")
-	if len(parts) > 2 {
-		return strings.Join(parts[len(parts)-2:], "/")
-	}
-	return filePath
-}
-
-// mergeContext merges global and local context maps.
-func mergeContext(global, local map[string]interface{}) map[string]interface{} {
-	merged := make(map[string]interface{})
-	for k, v := range global {
-		merged[k] = v
-	}
-	for k, v := range local {
-		merged[k] = v
-	}
-	return merged
-}
-
-// mergeMetadata merges global and local context maps.
-func mergeMetadata(global, local map[string]interface{}) map[string]interface{} {
-	merged := make(map[string]interface{})
-	for k, v := range global {
-		merged[k] = v
-	}
-	for k, v := range local {
-		merged[k] = v
-	}
-	return merged
+	return l.Log(level, entry.GetLevel().String(), entry)
 }
