@@ -22,6 +22,10 @@ func NewPrettyFormatter() Formatter {
 	}
 }
 
+func (f *PrettyFormatter) Name() string {
+	return "pretty"
+}
+
 func (f *PrettyFormatter) Format(e kbx.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {
 		return nil, err

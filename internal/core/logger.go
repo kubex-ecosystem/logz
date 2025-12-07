@@ -89,7 +89,10 @@ func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logge
 		lgr.SetOutput(out)
 	}
 	lgr.SetPrefix(prefix)
-	lgr.SetFormatter(lgr.opts.Formatter)
+	lgr.SetFormatter(kbx.GetValueOrDefaultSimple(
+		formatter.ParseFormatter(opts.LogzFormatOptions.Format, true),
+		formatter.NewMinimalFormatter(true)),
+	)
 	lgr.SetPrefix(lgr.opts.Prefix)
 	lgr.SetMinLevel(lgr.opts.MinLevel)
 
@@ -176,7 +179,10 @@ func NewLoggerZI(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Log
 func (l *Logger) SetFormatter(f formatter.Formatter) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.opts.Formatter = f
+	if l.opts.LogzFormatOptions == nil {
+		l.opts.LogzFormatOptions = &kbx.LogzFormatOptions{}
+	}
+	l.opts.LogzFormatOptions.Format = f.Name()
 }
 
 func (l *Logger) SetOutput(w io.Writer) {
@@ -329,7 +335,14 @@ func (l *Logger) logEntryError(entry *Entry) error {
 
 func (l *Logger) getFormatter() (formatter.Formatter, error) {
 	l.mu.RLock()
-	f := l.opts.Formatter
+	f := kbx.GetValueOrDefaultSimple(
+		formatter.ParseFormatter(kbx.GetValueOrDefaultSimple(l.opts, &LoggerOptionsImpl{
+			LogzAdvancedOptions: &LogzAdvancedOptions{
+				Formatter: formatter.ParseFormatter("minimal", true),
+			},
+		}).Format, true),
+		formatter.ParseFormatter(l.opts.Format, true),
+	)
 	out := l.opts.Output
 	l.mu.RUnlock()
 	if f == nil || out == nil {
@@ -339,27 +352,17 @@ func (l *Logger) getFormatter() (formatter.Formatter, error) {
 	return f, nil
 }
 
-func (l *Logger) fireHooks(entry *Entry, stage string) error {
-	// Dispara os hooks "no e para o" estágio especificado
-
-	// TODO: Gerar mapeamento de estados do pipeline de log
-	// Será usado para gerir o fluxo inteiro e permitir abordagens
-	// mais complexas, como FSM, etc.
-
-	hooks := append([]interfaces.LHook[any](nil), l.opts.LHooks)
-
-	for _, h := range hooks {
-		if h != nil {
-			err := h.Fire(entry)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (l *Logger) dispatchLogEntry(entry *Entry) error {
+	if l == nil || entry == nil {
+		return nil
+	}
+	if !kbx.IsObjSafe(l, false) {
+		return nil
+	}
+	if !kbx.IsObjSafe(entry, false) {
+		return nil
+	}
+
 	// Isso já foi inferido antes de entrar nesse método. Ele é
 	// privado, portanto é para uso interno apenas.
 	// Nós somente iremos reafirmar o que é passível de ser reafirmado.
@@ -368,13 +371,8 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 	// considerar o que está no entry SOMENTE QUANDO HOUVER VÁRIOS ENTRIES!!!
 	// Isso porque, se houver vários entries, pode haver intençãoes
 	// diferentes entre eles, podem compor um bloco de log enviado de uma vez.
-	if !l.Enabled(kbx.Level(entry.GetLevel().String())) {
+	if !l.Enabled(entry.GetLevel()) {
 		return nil
-	}
-
-	// dispara hooks pré-formatação
-	if err := l.fireHooks(entry, "pre-format"); err != nil {
-		return err
 	}
 
 	// obtém o formatter
@@ -396,9 +394,16 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 		b = append(b, '\n')
 	}
 
-	// dispara hooks pós-formatação
-	if err := l.fireHooks(entry, "post-format"); err != nil {
-		return err
+	// dispara hooks pré-formatação
+	if l.GetConfig() != nil {
+		if l.GetConfig().LogzAdvancedOptions != nil {
+			if l.GetConfig().LogzAdvancedOptions.Hooks != nil {
+				err := l.GetConfig().LHooks.Fire(entry)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	// escreve no destino final
@@ -588,4 +593,73 @@ func (l *LoggerZ[T]) Error(msg ...any) error {
 func (l *LoggerZ[T]) Fatal(msg ...any) {
 	l.Log("fatal", msg...)
 	os.Exit(1)
+}
+
+func (l *LoggerZ[T]) Trace(msg ...any) {
+	l.Log("trace", msg...)
+}
+
+func (l *LoggerZ[T]) Critical(msg ...any) {
+	l.Log("critical", msg...)
+}
+
+func (l *LoggerZ[T]) Answer(msg ...any) {
+	l.Log("answer", msg...)
+}
+
+func (l *LoggerZ[T]) Alert(msg ...any) {
+	l.Log("alert", msg...)
+}
+
+func (l *LoggerZ[T]) Bug(msg ...any) {
+	l.Log("bug", msg...)
+}
+
+func (l *LoggerZ[T]) Panic(msg ...any) {
+	l.Log("panic", msg...)
+}
+func (l *LoggerZ[T]) Println(msg ...any) {
+	l.Log("println", msg...)
+}
+func (l *LoggerZ[T]) Printf(format string, args ...any) {
+	l.Log("printf", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Debugf(format string, args ...any) {
+	l.Log("debug", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Infof(format string, args ...any) {
+	l.Log("info", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Noticef(format string, args ...any) {
+	l.Log("notice", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Successf(format string, args ...any) {
+	l.Log("success", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Warnf(format string, args ...any) {
+	l.Log("warn", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Errorf(format string, args ...any) error {
+	return l.Log("error", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Fatalf(format string, args ...any) {
+	l.Log("fatal", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Tracef(format string, args ...any) {
+	l.Log("trace", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Criticalf(format string, args ...any) {
+	l.Log("critical", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Answerf(format string, args ...any) {
+	l.Log("answer", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Alertf(format string, args ...any) {
+	l.Log("alert", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Bugf(format string, args ...any) {
+	l.Log("bug", fmt.Sprintf(format, args...))
+}
+func (l *LoggerZ[T]) Panicf(format string, args ...any) {
+	l.Log("panic", fmt.Sprintf(format, args...))
 }

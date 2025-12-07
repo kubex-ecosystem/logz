@@ -14,6 +14,10 @@ func NewJSONFormatter(pretty bool) Formatter {
 	return &JSONFormatter{Pretty: pretty}
 }
 
+func (f *JSONFormatter) Name() string {
+	return "json"
+}
+
 func (f *JSONFormatter) Format(e kbx.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {
 		return nil, err

@@ -2,26 +2,26 @@
 package kbx
 
 const (
-	KeyringService        = "canalize"
-	DefaultKubexConfigDir = "$HOME/.canalize"
+	KeyringService        = "kubex"
+	DefaultKubexConfigDir = "$HOME/.kubex"
 
-	DefaultCanalizeBEKeyPath    = "$HOME/.canalize/gobe/gobe-key.pem"
-	DefaultCanalizeBECertPath   = "$HOME/.canalize/gobe/gobe-cert.pem"
-	DefaultCanalizeBECAPath     = "$HOME/.canalize/gobe/ca-cert.pem"
-	DefaultCanalizeBEConfigPath = "$HOME/.canalize/gobe/config/config.json"
+	DefaultKubexBEKeyPath    = "$HOME/.kubex/gobe/gobe-key.pem"
+	DefaultKubexBECertPath   = "$HOME/.kubex/gobe/gobe-cert.pem"
+	DefaultKubexBECAPath     = "$HOME/.kubex/gobe/ca-cert.pem"
+	DefaultKubexBEConfigPath = "$HOME/.kubex/gobe/config/config.json"
 
-	DefaultConfigDir            = "$HOME/.canalize/logz/config"
-	DefaultConfigFile           = "$HOME/.canalize/logz/config.json"
-	DefaultCanalizeDSConfigPath = "$HOME/.canalize/logz/config/config.json"
+	DefaultConfigDir         = "$HOME/.kubex/logz/config"
+	DefaultConfigFile        = "$HOME/.kubex/logz/config.json"
+	DefaultKubexDSConfigPath = "$HOME/.kubex/logz/config/config.json"
 )
 
 const (
-	DefaultVolumesDir     = "$HOME/.canalize/volumes"
-	DefaultRedisVolume    = "$HOME/.canalize/volumes/redis"
-	DefaultPostgresVolume = "$HOME/.canalize/volumes/postgresql"
-	DefaultMongoDBVolume  = "$HOME/.canalize/volumes/mongodb"
-	DefaultMongoVolume    = "$HOME/.canalize/volumes/mongo"
-	DefaultRabbitMQVolume = "$HOME/.canalize/volumes/rabbitmq"
+	DefaultVolumesDir     = "$HOME/.kubex/volumes"
+	DefaultRedisVolume    = "$HOME/.kubex/volumes/redis"
+	DefaultPostgresVolume = "$HOME/.kubex/volumes/postgresql"
+	DefaultMongoDBVolume  = "$HOME/.kubex/volumes/mongodb"
+	DefaultMongoVolume    = "$HOME/.kubex/volumes/mongo"
+	DefaultRabbitMQVolume = "$HOME/.kubex/volumes/rabbitmq"
 )
 
 const (

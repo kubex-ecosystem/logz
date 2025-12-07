@@ -52,6 +52,10 @@ func NewTextFormatter(pretty bool) Formatter {
 
 // --- PUBLIC API -------------------------------------------------------------
 
+func (f *TextFormatter) Name() string {
+	return "text"
+}
+
 func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
 	level := e.GetLevel()
 	msg := strings.TrimSpace(e.GetMessage())

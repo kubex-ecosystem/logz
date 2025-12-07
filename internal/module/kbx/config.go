@@ -18,6 +18,7 @@ type LogzFormatOptions struct {
 	MinLevel Level     `json:"min_level,omitempty" yaml:"min_level,omitempty" mapstructure:"min_level,omitempty"`
 	MaxLevel Level     `json:"max_level,omitempty" yaml:"max_level,omitempty" mapstructure:"max_level,omitempty"`
 	Level    Level     `json:"level,omitempty" yaml:"level,omitempty" mapstructure:"level,omitempty"`
+	Format   string    `json:"format,omitempty" yaml:"format,omitempty" mapstructure:"format,omitempty"`
 }
 
 type LogzOutputOptions struct {

@@ -16,6 +16,10 @@ func NewMinimalFormatter(pretty bool) Formatter {
 	return &MinimalFormatter{pretty: pretty}
 }
 
+func (f *MinimalFormatter) Name() string {
+	return "minimal"
+}
+
 func (f *MinimalFormatter) Format(e kbx.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {
 		return nil, err

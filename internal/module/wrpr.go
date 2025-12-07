@@ -6,10 +6,10 @@ import (
 )
 
 func RegX() *LogZ {
-	var configPath = os.Getenv("CANALIZEDS_CONFIGFILE")
-	var keyPath = os.Getenv("CANALIZEDS_KEYFILE")
-	var certPath = os.Getenv("CANALIZEDS_CERTFILE")
-	var hideBannerV = os.Getenv("CANALIZEDS_HIDEBANNER")
+	var configPath = os.Getenv("KUBEXDS_CONFIGFILE")
+	var keyPath = os.Getenv("KUBEXDS_KEYFILE")
+	var certPath = os.Getenv("KUBEXDS_CERTFILE")
+	var hideBannerV = os.Getenv("KUBEXDS_HIDEBANNER")
 
 	return &LogZ{
 		configPath: configPath,
