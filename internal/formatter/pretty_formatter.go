@@ -109,6 +109,12 @@ func colorForLevel(l kbx.Level, s string) string {
 		redBG   = "\x1b[41m"
 	)
 	switch l {
+	case kbx.LevelAlert:
+		return redBG + blue + s + reset
+	case kbx.LevelAnswer:
+		return blue + s + reset
+	case kbx.LevelBug:
+		return red + s + reset
 	case kbx.LevelDebug:
 		return gray + s + reset
 	case kbx.LevelInfo:
@@ -125,8 +131,6 @@ func colorForLevel(l kbx.Level, s string) string {
 		return cyan + s + reset
 	case kbx.LevelNotice:
 		return white + s + reset
-	case kbx.LevelAlert:
-		return redBG + blue + s + reset
 	default:
 		return s
 	}

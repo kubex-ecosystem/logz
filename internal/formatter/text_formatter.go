@@ -18,25 +18,35 @@ type TextFormatter struct {
 // --- ICONES E CORES ---------------------------------------------------------
 
 var icons = map[kbx.Level]string{
-	kbx.LevelNotice:  "📝",
-	kbx.LevelTrace:   "🔍",
-	kbx.LevelSuccess: "✅",
-	kbx.LevelDebug:   "🐛",
-	kbx.LevelInfo:    "ℹ️",
-	kbx.LevelWarn:    "⚠️",
-	kbx.LevelError:   "❌",
-	kbx.LevelFatal:   "💀",
+	kbx.LevelAlert:    "🚨",
+	kbx.LevelAnswer:   "💡",
+	kbx.LevelNotice:   "📝",
+	kbx.LevelTrace:    "🔍",
+	kbx.LevelSuccess:  "✅",
+	kbx.LevelDebug:    "🐛",
+	kbx.LevelInfo:     "ℹ️",
+	kbx.LevelWarn:     "⚠️",
+	kbx.LevelError:    "❌",
+	kbx.LevelFatal:    "💀",
+	kbx.LevelPanic:    "🔥",
+	kbx.LevelBug:      "🐞",
+	kbx.LevelCritical: "❗",
 }
 
 var colors = map[kbx.Level]string{
-	kbx.LevelNotice:  "\033[33m",
-	kbx.LevelTrace:   "\033[36m",
-	kbx.LevelSuccess: "\033[32m",
-	kbx.LevelDebug:   "\033[34m",
-	kbx.LevelInfo:    "\033[32m",
-	kbx.LevelWarn:    "\033[33m",
-	kbx.LevelError:   "\033[31m",
-	kbx.LevelFatal:   "\033[35m",
+	kbx.LevelAlert:    "\033[31m",
+	kbx.LevelAnswer:   "\033[34m",
+	kbx.LevelNotice:   "\033[33m",
+	kbx.LevelTrace:    "\033[36m",
+	kbx.LevelSuccess:  "\033[32m",
+	kbx.LevelDebug:    "\033[34m",
+	kbx.LevelInfo:     "\033[32m",
+	kbx.LevelWarn:     "\033[33m",
+	kbx.LevelError:    "\033[31m",
+	kbx.LevelFatal:    "\033[35m",
+	kbx.LevelPanic:    "\033[31m",
+	kbx.LevelBug:      "\033[31m",
+	kbx.LevelCritical: "\033[31m",
 }
 
 const reset = "\033[0m"

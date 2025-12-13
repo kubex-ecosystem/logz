@@ -52,7 +52,12 @@ You can configure the logger to suit your application's needs.`
 					kbx.LoggerArgs.Messages = append(kbx.LoggerArgs.Messages, args...)
 				}
 			}
-			kbx.LoggerArgs.Format = kbx.GetValueOrDefaultSimple(kbx.LoggerArgs.Format, kbx.GetValueOrDefaultSimple(Format, kbx.LevelInfo.String()))
+
+			kbx.LoggerArgs.Level = kbx.ParseLevel(Level)
+
+			// Configurar argumentos do logger com valores padrão se não especificados
+
+			kbx.LoggerArgs.Format = kbx.GetValueOrDefaultSimple(kbx.LoggerArgs.Format, kbx.GetValueOrDefaultSimple(Format, "text"))
 			kbx.LoggerArgs.Output = kbx.GetValueOrDefaultSimple(kbx.LoggerArgs.Output, gl.ParseWriter(Output))
 			kbx.LoggerArgs.Level = kbx.GetValueOrDefaultSimple(kbx.LoggerArgs.Level, gl.ParseLevel(Level))
 			kbx.LoggerArgs.MinLevel = kbx.GetValueOrDefaultSimple(kbx.LoggerArgs.MinLevel, gl.ParseLevel(MinLevel))
