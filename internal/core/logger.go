@@ -90,11 +90,17 @@ func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logge
 	}
 	lgr.SetPrefix(prefix)
 	lgr.SetFormatter(kbx.GetValueOrDefaultSimple(
-		formatter.ParseFormatter(opts.LogzFormatOptions.Format, true),
+		formatter.ParseFormatter(opts.Format, true),
 		formatter.NewMinimalFormatter(true)),
 	)
 	lgr.SetPrefix(lgr.opts.Prefix)
 	lgr.SetMinLevel(lgr.opts.MinLevel)
+	lgr.SetConfig(lgr.opts.LoggerConfig)
+	metaData := make(map[string]any)
+	for k, v := range lgr.opts.LoggerConfig.Metadata {
+		metaData[k] = v
+	}
+	lgr.SetMetadata(metaData)
 
 	return lgr
 }
@@ -172,6 +178,12 @@ func NewLoggerZI(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Log
 	lgr.SetFormatter(lgr.opts.Formatter)
 	lgr.SetPrefix(lgr.opts.Prefix)
 	lgr.SetMinLevel(lgr.opts.MinLevel)
+	lgr.SetConfig(opts.LoggerConfig)
+	metaData := make(map[string]any)
+	for k, v := range lgr.opts.LoggerConfig.Metadata {
+		metaData[k] = v
+	}
+	lgr.SetMetadata(metaData)
 
 	return lgr
 }
@@ -180,9 +192,12 @@ func (l *Logger) SetFormatter(f formatter.Formatter) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.opts.LogzFormatOptions == nil {
-		l.opts.LogzFormatOptions = &kbx.LogzFormatOptions{}
+		if kbx.LoggerArgs == nil {
+			kbx.ParseLoggerArgs(l.opts.Level.String(), l.opts.MinLevel.String(), l.opts.MaxLevel.String(), kbx.GetValueOrDefaultSimple(*l.opts.OutputFile, "stdout"))
+		}
+		l.opts.LogzFormatOptions = kbx.LoggerArgs.LogzFormatOptions
 	}
-	l.opts.LogzFormatOptions.Format = f.Name()
+	l.opts.Format = f.Name()
 }
 
 func (l *Logger) SetOutput(w io.Writer) {
