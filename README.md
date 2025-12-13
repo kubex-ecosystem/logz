@@ -641,20 +641,11 @@ logz error \
 
 ---
 
-#### The image below shows the CLI in action
+#### The video below shows the CLI in action
 
 It is demonstrating how to log messages at different levels and formats
 
-<source src="docs/assets/demo.mp4" type="video/mp4">
-  <video controls>
-    <source src="docs/assets/demo.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-    <a href="docs/assets/demo.mp4">Download the video</a>
-    <play controls>
-        Your browser does not support the video tag.
-    </play>
-  </video>
-</source>
+<https://github.com/kubex-ecosystem/logz/blob/8b938d6662204e5fe5461cb9ca0d96510468e5d0/docs/assets/demo.mp4>
 
 ---
 
