@@ -90,7 +90,7 @@ var LoggerArgs *InitArgs = &InitArgs{
 
 func ParseLoggerArgs(level string, minLevel string, maxLevel string, output string) *InitArgs {
 	LoggerArgs.Level = Level(GetValueOrDefaultSimple(level, "info"))
-	LoggerArgs.MinLevel = Level(GetValueOrDefaultSimple(minLevel, "debug"))
+	LoggerArgs.MinLevel = Level(GetValueOrDefaultSimple(minLevel, "info"))
 	LoggerArgs.MaxLevel = Level(GetValueOrDefaultSimple(maxLevel, "fatal"))
 	LoggerArgs.Output = GetValueOrDefaultSimple[io.Writer](writer.ParseWriter(output), os.Stdout)
 	return LoggerArgs

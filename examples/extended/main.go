@@ -20,7 +20,7 @@ func main() {
 			LogzFormatOptions: &kbx.LogzFormatOptions{
 				Output:   os.Stdout,
 				Level:    kbx.LevelDebug,
-				MinLevel: kbx.LevelDebug,
+				MinLevel: kbx.LevelInfo,
 				MaxLevel: kbx.LevelFatal,
 			},
 			LogzOutputOptions:    &kbx.LogzOutputOptions{},

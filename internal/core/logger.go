@@ -43,7 +43,7 @@ type LoggerZ[T kbx.Entry] struct {
 	hooksMuZ sync.Mutex
 	muZ      sync.RWMutex
 	optsZ    *LoggerOptionsImpl
-	interfaces.Logger
+	*Logger
 }
 
 func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
@@ -306,12 +306,11 @@ func (l *Logger) SetConfig(opts *kbx.LogzConfig) {
 	if opts.Output != nil {
 		l.opts.Output = opts.Output
 	}
-	if opts.MinLevel != "" {
-		l.opts.MinLevel = opts.MinLevel
-	}
-	if opts.MaxLevel != "" {
-		l.opts.MaxLevel = opts.MaxLevel
-	}
+
+	l.opts.Level = opts.Level
+	l.opts.MinLevel = opts.MinLevel
+	l.opts.MaxLevel = opts.MaxLevel
+
 	if opts.Prefix != "" {
 		l.opts.Prefix = opts.Prefix
 	}
@@ -371,9 +370,12 @@ func (l *Logger) logEntryError(entry kbx.LogzEntry) error {
 		b = append(b, '\n')
 	}
 
-	_, err = l.Writer().Write(b)
-	if err != nil {
-		return err
+	// Escreve no destino final
+	if l.Enabled(l.GetLevel()) {
+		_, err = l.Writer().Write(b)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -451,12 +453,13 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 		}
 	}
 
-	// escreve no destino final
-	_, err = l.Writer().Write(b)
-	if err != nil {
-		return err
+	if l.Enabled(entry.GetLevel()) {
+		// escreve no destino final
+		_, err = l.Writer().Write(b)
+		if err != nil {
+			return err
+		}
 	}
-
 	// tudo ok
 	return nil
 }
@@ -495,8 +498,10 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 	/////////////////////////////////////////////////////////////////////
 	for pos, entry := range logParts.entries {
 		// garante que o nível do job seja respeitado
-		if entry.GetLevel() == "" || kbx.Level(entry.GetLevel()).Severity() < logParts.jobLevel.Severity() {
+		if l.Enabled(entry.GetLevel()) {
 			entry = entry.(*Entry).WithLevel(logParts.jobLevel)
+		} else {
+			continue
 		}
 		// garante timestamp
 		if err := entry.Validate(); err != nil {
@@ -516,8 +521,7 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 	/// Agora, TODOS OS OUTROS objetos que estavam na lista de argumentos
 	/////////////////////////////////////////////////////////////////////
 	if len(logParts.others) > 0 {
-		entry := NewLogzEntry(lvl).
-			WithLevel(lvl)
+		entry := NewLogzEntry(lvl)
 
 		var msgParts = make([]string, 0)
 		for _, other := range logParts.others {
@@ -565,16 +569,14 @@ func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 	defer func() {
 		if r := recover(); r != nil {
 			if l.Logger != nil {
-				l.Logger.Printf("logz: panic in LogAny: %v (args=%#v)", r, args)
+				l.Printf("logz: panic in LogAny: %v (args=%#v)", r, args)
 			}
 		}
 	}()
 
 	// modo moderno: nada garante level → assume Info
 	entry := toEntry(level, args...)
-	if entry.GetLevel() == "" {
-		entry = entry.WithLevel(level)
-	}
+
 
 	return l.Log(level, entry.GetLevel().String(), entry)
 }
@@ -596,7 +598,7 @@ func (l *LoggerZ[T]) SetDebugMode(debug bool) {
 	if debug {
 		l.SetMinLevel(kbx.LevelDebug)
 	} else {
-		l.SetMinLevel(kbx.LevelInfo)
+		l.SetMinLevel(l.GetMinLevel())
 	}
 }
 

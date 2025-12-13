@@ -21,7 +21,7 @@ func DefaultEntryDecoder(defaultLevel kbx.Level) func([]byte) (kbx.LogzEntry, er
 			return nil, nil
 		}
 
-		return NewLogzEntry(kbx.LevelInfo).
+		return NewLogzEntry(defaultLevel).
 			WithMessage(msg), nil
 	}
 }

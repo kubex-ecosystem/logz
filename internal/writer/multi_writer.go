@@ -37,11 +37,11 @@ func (m *MultiWriter) Write(b []byte) (n int, err error) {
 func (m *MultiWriter) LogzWrite(b []byte) error {
 	var lastErr error
 	for _, w := range m.writers {
-		if lw, ok := w.(LogzWriter); ok {
-			if err := lw.WriteLogz(b); err != nil {
+		// if lw, ok := w; ok {
+			if err := w.WriteLogz(b); err != nil {
 				lastErr = err
 			}
-		}
+		// }
 	}
 	return lastErr
 }
@@ -75,11 +75,11 @@ func (m *MultiWriter) GetOutput() io.Writer {
 func (m *MultiWriter) Sync() error {
 	var lastErr error
 	for _, w := range m.writers {
-		if lw, ok := w.(LogzWriter); ok {
-			if err := lw.Sync(); err != nil {
+		// if lw, ok := w.(LogzWriter); ok {
+			if err := w.Sync(); err != nil {
 				lastErr = err
 			}
-		}
+		// }
 	}
 	return lastErr
 }

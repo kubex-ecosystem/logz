@@ -14,9 +14,9 @@ import (
 // Entry é a unidade básica de log do sistema.
 // Tudo no Kubex que for "log estruturado" deveria conseguir ser expresso nisso.
 type Entry struct {
-	Timestamp time.Time `json:"ts" yaml:"ts" xml:"ts" mapstructure:"ts"`             // Sempre UTC.
-	Level     kbx.Level `json:"level" yaml:"level" xml:"level" mapstructure:"level"` // debug / info / warn / error / fatal / silent
-	Message   string    `json:"msg" yaml:"msg" xml:"msg" mapstructure:"msg"`         // Mensagem humana.
+	Timestamp time.Time `json:"ts" yaml:"ts" xml:"ts" mapstructure:"ts"`
+	Level     kbx.Level `json:"level" yaml:"level" xml:"level" mapstructure:"level"`
+	Message   string    `json:"msg" yaml:"msg" xml:"msg" mapstructure:"msg"`
 
 	ShowColor   bool   `json:"show_color,omitempty" yaml:"show_color,omitempty" xml:"show_color,omitempty" mapstructure:"show_color,omitempty"`             // Habilita cores na saída
 	ShowIcon    bool   `json:"show_icon,omitempty" yaml:"show_icon,omitempty" xml:"show_icon,omitempty" mapstructure:"show_icon,omitempty"`                 // Habilita ícones na saída

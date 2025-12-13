@@ -3,7 +3,6 @@ package core
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
@@ -200,19 +199,4 @@ func ToEntry(level kbx.Level, args ...any) *Entry {
 
 	// 7) fallback
 	return e.WithMessage(fmt.Sprintf("%v", first)).(*Entry)
-}
-
-func normalizeLevel(v any) kbx.Level {
-	switch x := v.(type) {
-	case kbx.Level:
-		return x
-
-	case string:
-		l := kbx.Level(strings.ToLower(strings.TrimSpace(x)))
-		if kbx.IsLevel(l.String()) {
-			return l
-		}
-	}
-
-	return kbx.LevelInfo
 }

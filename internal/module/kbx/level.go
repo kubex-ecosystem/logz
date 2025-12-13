@@ -22,19 +22,19 @@ const (
 	LevelBug      Level = "bug"
 	LevelPanic    Level = "panic"
 
-	LevelSprintf   Level = "sprintf"
-	LevelPrintln   Level = "println"
-	LevelLog       Level = "log"
-	LevelErrorf    Level = "error"
-	LevelWarnf     Level = "warn"
-	LevelInfof     Level = "info"
-	LevelDebugf    Level = "debug"
-	LevelFatalf    Level = "fatal"
-	LevelPanicf    Level = "panic"
-	LevelAlertf    Level = "alert"
-	LevelCriticalf Level = "critical"
-	LevelAnswerf   Level = "answer"
-	LevelBugf      Level = "bug"
+	LevelSprintf Level = "sprintf"
+	LevelPrintln Level = "println"
+	// LevelLog       Level = "log"
+	LevelErrorf    Level = "errorf"
+	LevelWarnf     Level = "warnf"
+	LevelInfof     Level = "infof"
+	LevelDebugf    Level = "debugf"
+	LevelFatalf    Level = "fatalf"
+	LevelPanicf    Level = "panicf"
+	LevelAlertf    Level = "alertf"
+	LevelCriticalf Level = "criticalf"
+	LevelAnswerf   Level = "answerf"
+	LevelBugf      Level = "bugf"
 )
 
 func (l Level) String() string {
@@ -44,83 +44,92 @@ func (l Level) String() string {
 // Severity retorna uma escala numérica estável, usada para filtragem.
 // Quanto maior, mais grave. Silent = 0.
 func (l Level) Severity() int {
-	switch strings.ToLower(string(l)) {
-	case "debug","debug*":
-		return 10
-	case "info","info*":
-		return 20
-	case "warn", "warn*", "warning":
-		return 30
-	case "error", "error*", "err":
-		return 40
-	case "fatal", "fatal*":
-		return 50
-	case "silent", "silent*", "quiet", "quiet*":
+	switch strings.ToLower(strings.ToValidUTF8(string(l), "")) {
+	case string(LevelSilent):
 		return 0
-	case "trace", "trace*":
+	case string(LevelAnswer):
+		return 1
+	case string(LevelTrace):
 		return 5
-	case "notice", "notice*":
+	case string(LevelNotice):
+		return 10
+	case string(LevelDebug):
 		return 15
-	case "success", "success*":
+	case string(LevelInfo):
+		return 20
+	case string(LevelSuccess):
 		return 25
-	case "alert", "alert*":
+	case string(LevelWarn):
+		return 30
+	case string(LevelAlert):
 		return 35
-	case "critical", "critical*":
+	case string(LevelError):
+		return 40
+	case string(LevelCritical):
 		return 45
-	case "answer", "answer*":
-		return 55
-	case "bug", "bug*":
+	case string(LevelFatal):
+		return 50
+	case string(LevelBug):
 		return 60
-	case "panic", "panic*":
+	case string(LevelPanic):
 		return 70
 	default:
-		// fallback seguro: trata como info
-		return 20
+		return 5
 	}
 }
 
 // ParseLevel converte string em Level, com fallback para info.
 func ParseLevel(s string) Level {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "info", "info*":
+	switch strings.ToLower(strings.TrimSpace(strings.ToValidUTF8(s, ""))) {
+	case string(LevelInfo):
 		return LevelInfo
-	case "warn", "warn*", "warning":
+	case string(LevelWarn):
 		return LevelWarn
-	case "error", "error*", "err":
+	case string(LevelError):
 		return LevelError
-	case "fatal", "fatal*":
+	case string(LevelFatal):
 		return LevelFatal
-	case "silent", "silent*", "quiet", "quiet*":
+	case string(LevelSilent):
 		return LevelSilent
-	case "debug", "debug*":
+	case string(LevelDebug):
 		return LevelDebug
-	case "trace", "trace*":
+	case string(LevelTrace):
 		return LevelTrace
-	case "notice", "notice*":
+	case string(LevelNotice):
 		return LevelNotice
-	case "success", "success*":
+	case string(LevelSuccess):
 		return LevelSuccess
-	case "alert", "alert*":
+	case string(LevelAlert):
 		return LevelAlert
-	case "critical", "critical*":
+	case string(LevelCritical):
 		return LevelCritical
-	case "answer", "answer*":
+	case string(LevelAnswer):
 		return LevelAnswer
-	case "bug", "bug*":
+	case string(LevelBug):
 		return LevelBug
-	case "panic", "panic*":
+	case string(LevelPanic):
 		return LevelPanic
 	default:
-		return LevelInfo
+		return LevelDebug
 	}
 }
 
 func IsLevel(s string) bool {
 	switch strings.ToLower(strings.TrimSpace(strings.ToValidUTF8(s, ""))) {
-	case "debug", "debug*", "info", "info*", "warn", "warn*", "warning", "error",
-		"error*", "err", "fatal", "fatal*", "silent", "silent*", "quiet", "quiet*",
-		"trace", "trace*", "notice", "notice*", "success", "success*", "alert", "alert*",
-		"critical", "critical*", "answer", "answer*", "bug", "bug*", "panic", "panic*":
+	case string(LevelInfo),
+		string(LevelWarn),
+		string(LevelError),
+		string(LevelFatal),
+		string(LevelSilent),
+		string(LevelDebug),
+		string(LevelTrace),
+		string(LevelNotice),
+		string(LevelSuccess),
+		string(LevelAlert),
+		string(LevelCritical),
+		string(LevelAnswer),
+		string(LevelBug),
+		string(LevelPanic):
 		return true
 	default:
 		return false

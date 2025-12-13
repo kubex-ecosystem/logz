@@ -66,7 +66,7 @@ func defaultLoggerOptions() *LogzOptions {
 			},
 			LogzFormatOptions: &LogzFormatOptions{
 				Output:   os.Stdout,
-				Level:    kbx.LevelInfo,
+				Level:    kbx.LevelDebug,
 				MinLevel: kbx.LevelInfo,
 				MaxLevel: kbx.LevelFatal,
 			},
@@ -89,11 +89,19 @@ func defaultLogger() *LogzLogger {
 	)
 }
 
+func defaultLoggerZ() *LogzLoggerZ {
+	return C.NewLoggerZ[Entry](
+		"",
+		defaultLoggerOptions(),
+		false,
+	)
+}
+
 // Logger is the global default logger instance.
 var Logger = defaultLogger()
 
-// loggerZ is the global default logger with field support.
-var loggerZ *LogzLoggerZ
+// LoggerLogz is the global default logger with field support.
+var LoggerLogz = defaultLoggerZ()
 
 // NewEntry creates a new log entry with the specified level.
 func NewEntry(level Level) Entry {
@@ -149,17 +157,19 @@ func GetLogger(prefix string) *LogzLogger {
 
 // GetLoggerZ returns the global LoggerZ instance, initializing it if necessary.
 func GetLoggerZ(prefix string) *LogzLoggerZ {
-	if loggerZ == nil {
-		loggerZ = NewLoggerZ(prefix, nil, false)
+	if LoggerLogz == nil {
+		LoggerLogz = defaultLoggerZ()
 	}
-	return loggerZ
+	return LoggerLogz
 }
 
 func SetLogzConfig(opts *LogzConfig) {
-	if Logger == nil {
-		Logger = defaultLogger()
+	if LoggerLogz == nil {
+		LoggerLogz = defaultLoggerZ()
 	}
-
+	if opts == nil {
+		opts = defaultLoggerOptions().LoggerConfig
+	}
 	lgrArgs := kbx.ParseLoggerArgs(
 		opts.Level.String(),
 		opts.MinLevel.String(),
@@ -167,7 +177,7 @@ func SetLogzConfig(opts *LogzConfig) {
 		"",
 	)
 
-	cfg := Logger.GetConfig()
+	cfg := LoggerLogz.GetConfig()
 
 	lgrArgs.ShowColor = opts.ShowColor
 	lgrArgs.ShowIcons = opts.ShowIcons
@@ -184,51 +194,51 @@ func SetLogzConfig(opts *LogzConfig) {
 
 	cfg.LoggerConfig = lgrArgs
 
-	Logger.SetConfig(cfg.LoggerConfig)
+	LoggerLogz.SetConfig(cfg.LoggerConfig)
 }
 
 // Log is the simplest global logging function.
 // Accepts a level as string and variadic messages.
 func Log(level string, msg ...any) error {
-	if Logger == nil {
-		Logger = defaultLogger()
+	if LoggerLogz == nil {
+		LoggerLogz = defaultLoggerZ()
 	}
 	lvl := kbx.ParseLevel(level)
-
-	return Logger.Log(lvl, msg...)
-
-	// e := C.NewLogzEntry(kbx.LoggerArgs.Level).
-	// 	WithMessage(strings.TrimSpace(strings.ToValidUTF8(strings.Join(kbx.LoggerArgs.Messages, " "), ""))).
-	// 	WithColor(kbx.DefaultTrue(kbx.LoggerArgs.ShowColor)).
-	// 	WithIcon(kbx.DefaultTrue(kbx.LoggerArgs.ShowIcons)).
-	// 	WithData(kbx.LoggerArgs.Metadata).
-	// 	WithTraceID(kbx.LoggerArgs.ID.String()).
-	// 	WithShowTraceID(kbx.LoggerArgs.ShowTraceID).
-	// 	WithShowCaller(kbx.LoggerArgs.ShowStack).
-	// 	WithShowFields(kbx.LoggerArgs.ShowFields).
-	// 	WithStack(kbx.LoggerArgs.ShowStack)
-
-	// return Logger.Log(lvl, e)
+	if lvl.Severity() >= 40 {
+		LoggerLogz.Log(lvl, msg...)
+		return fmt.Errorf("%v", msg...)
+	}
+	if LoggerLogz.Enabled(lvl) {
+		return LoggerLogz.Log(lvl, msg...)
+	}
+	return nil
 }
 
 // LogAny is a variant that accepts any type as message.
 func LogAny(level string, msg any) error {
-	if Logger == nil {
-		Logger = defaultLogger()
+	if LoggerLogz == nil {
+		LoggerLogz = defaultLoggerZ()
 	}
 	lvl := kbx.ParseLevel(level)
-	return Logger.LogAny(lvl, msg)
+	if lvl.Severity() >= 40 {
+		LoggerLogz.LogAny(lvl, msg)
+		return fmt.Errorf("%v", msg)
+	}
+	if LoggerLogz.Enabled(lvl) {
+		return LoggerLogz.LogAny(lvl, msg)
+	}
+	return nil
 }
 
 // SetDebugMode enables or disables debug mode for the global logger.
 func SetDebugMode(debug bool) {
-	if Logger == nil {
-		return
+	if LoggerLogz == nil {
+		LoggerLogz = defaultLoggerZ()
 	}
 	if debug {
-		Logger.SetMinLevel(kbx.LevelDebug)
+		LoggerLogz.SetMinLevel(kbx.LevelDebug)
 	} else {
-		Logger.SetMinLevel(kbx.LevelInfo)
+		LoggerLogz.SetMinLevel(kbx.LevelInfo)
 	}
 }
 
@@ -310,7 +320,7 @@ func Sprintf(format string, args ...any) string {
 
 func Debugf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("debug", m)
+	Log("debugf", m)
 	return m
 }
 
@@ -384,7 +394,7 @@ func SetGlobalLogger(logger *LogzLogger) {
 
 // SetGlobalLoggerZ allows setting a custom global LoggerZ instance.
 func SetGlobalLoggerZ(logger *LogzLoggerZ) {
-	loggerZ = logger
+	LoggerLogz = logger
 }
 
 func init() {

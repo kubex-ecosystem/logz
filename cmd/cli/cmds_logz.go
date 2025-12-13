@@ -127,7 +127,7 @@ You can configure the logger to suit your application's needs.`
 
 	loggerCmd.Flags().BoolVarP(&kbx.LoggerArgs.Debug, "debug", "D", false, "Enable debug mode")
 	loggerCmd.Flags().StringVarP(&Level, "level", "l", "info", "Set the logging level (e.g., debug, info, warn, error)")
-	loggerCmd.Flags().StringVarP(&MinLevel, "min-level", "L", "debug", "Set the minimum logging level")
+	loggerCmd.Flags().StringVarP(&MinLevel, "min-level", "L", "info", "Set the minimum logging level")
 	loggerCmd.Flags().StringVarP(&MaxLevel, "max-level", "U", "fatal", "Set the maximum logging level")
 	loggerCmd.Flags().StringVarP(&Output, "output", "o", "stdout", "Set the logging output (e.g., stdout, file)")
 	loggerCmd.Flags().StringVarP(&Format, "format", "f", "text", "Set the logging format (e.g., json, text)")
