@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD033 -->
+<!-- markdownlint-disable MD033 MD034 -->
 # ![Logz Banner](docs/assets/top_banner.png)
 
 [![Kubex Go Dist CI](https://github.com/kubex-ecosystem/logz/actions/workflows/kubex_go_release.yml/badge.svg)](https://github.com/kubex-ecosystem/logz/actions/workflows/kubex_go_release.yml)
@@ -645,7 +645,7 @@ logz error \
 
 It is demonstrating how to log messages at different levels and formats
 
-<https://raw.githubusercontent.com/kubex-ecosystem/logz/refs/heads/main/docs/assets/demo.mp4>
+https://github.com/user-attachments/assets/9ebfd913-99cc-42ca-8dde-9d7b5b0a6394
 
 ---
 
