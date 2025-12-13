@@ -646,7 +646,14 @@ logz error \
 It is demonstrating how to log messages at different levels and formats
 
 <source src="docs/assets/demo.mp4" type="video/mp4">
-  <p>Your browser does not support the video tag.</p>
+  <video controls>
+    <source src="docs/assets/demo.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+    <a href="docs/assets/demo.mp4">Download the video</a>
+    <play controls>
+        Your browser does not support the video tag.
+    </play>
+  </video>
 </source>
 
 ---
