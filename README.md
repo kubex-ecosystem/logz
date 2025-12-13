@@ -645,7 +645,7 @@ logz error \
 
 It is demonstrating how to log messages at different levels and formats
 
-<https://github.com/kubex-ecosystem/logz/blob/8b938d6662204e5fe5461cb9ca0d96510468e5d0/docs/assets/demo.mp4>
+<https://raw.githubusercontent.com/kubex-ecosystem/logz/refs/heads/main/docs/assets/demo.mp4>
 
 ---
 
