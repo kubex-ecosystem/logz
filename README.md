@@ -645,6 +645,7 @@ logz error \
 
 It is demonstrating how to log messages at different levels and formats
 
+![Logz CLI Demo](docs/assets/demo.mp4)
 <video src="docs/assets/demo.mp4" controls width="100%" loop></video>
 
 ---
