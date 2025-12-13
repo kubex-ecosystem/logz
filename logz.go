@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
+
+	// "strings"
 
 	"github.com/kubex-ecosystem/logz/interfaces"
 	C "github.com/kubex-ecosystem/logz/internal/core"
@@ -190,29 +191,30 @@ func SetLogzConfig(opts *LogzConfig) {
 // Accepts a level as string and variadic messages.
 func Log(level string, msg ...any) error {
 	if Logger == nil {
-		return nil
+		Logger = defaultLogger()
 	}
 	lvl := kbx.ParseLevel(level)
 
-	e := C.NewLogzEntry(kbx.LoggerArgs.Level).
-		WithMessage(strings.TrimSpace(strings.ToValidUTF8(strings.Join(kbx.LoggerArgs.Messages, " "), ""))).
-		WithColor(kbx.DefaultTrue(kbx.LoggerArgs.ShowColor)).
-		WithIcon(kbx.DefaultTrue(kbx.LoggerArgs.ShowIcons)).
-		WithData(kbx.LoggerArgs.Metadata).
-		WithTraceID(kbx.LoggerArgs.ID.String()).
-		WithShowTraceID(kbx.LoggerArgs.ShowTraceID).
-		WithShowCaller(kbx.LoggerArgs.ShowStack).
-		WithShowFields(kbx.LoggerArgs.ShowFields).
-		WithStack(kbx.LoggerArgs.ShowStack).
-		WithCaller("CLI")
+	return Logger.Log(lvl, msg...)
 
-	return Logger.Log(lvl, e)
+	// e := C.NewLogzEntry(kbx.LoggerArgs.Level).
+	// 	WithMessage(strings.TrimSpace(strings.ToValidUTF8(strings.Join(kbx.LoggerArgs.Messages, " "), ""))).
+	// 	WithColor(kbx.DefaultTrue(kbx.LoggerArgs.ShowColor)).
+	// 	WithIcon(kbx.DefaultTrue(kbx.LoggerArgs.ShowIcons)).
+	// 	WithData(kbx.LoggerArgs.Metadata).
+	// 	WithTraceID(kbx.LoggerArgs.ID.String()).
+	// 	WithShowTraceID(kbx.LoggerArgs.ShowTraceID).
+	// 	WithShowCaller(kbx.LoggerArgs.ShowStack).
+	// 	WithShowFields(kbx.LoggerArgs.ShowFields).
+	// 	WithStack(kbx.LoggerArgs.ShowStack)
+
+	// return Logger.Log(lvl, e)
 }
 
 // LogAny is a variant that accepts any type as message.
 func LogAny(level string, msg any) error {
 	if Logger == nil {
-		return nil
+		Logger = defaultLogger()
 	}
 	lvl := kbx.ParseLevel(level)
 	return Logger.LogAny(lvl, msg)

@@ -25,16 +25,16 @@ const (
 	LevelSprintf   Level = "sprintf"
 	LevelPrintln   Level = "println"
 	LevelLog       Level = "log"
-	LevelErrorf    Level = "errorf"
-	LevelWarnf     Level = "warnf"
-	LevelInfof     Level = "infof"
-	LevelDebugf    Level = "debugf"
-	LevelFatalf    Level = "fatalf"
-	LevelPanicf    Level = "panicf"
-	LevelAlertf    Level = "alertf"
-	LevelCriticalf Level = "criticalf"
-	LevelAnswerf   Level = "answerf"
-	LevelBugf      Level = "bugf"
+	LevelErrorf    Level = "error"
+	LevelWarnf     Level = "warn"
+	LevelInfof     Level = "info"
+	LevelDebugf    Level = "debug"
+	LevelFatalf    Level = "fatal"
+	LevelPanicf    Level = "panic"
+	LevelAlertf    Level = "alert"
+	LevelCriticalf Level = "critical"
+	LevelAnswerf   Level = "answer"
+	LevelBugf      Level = "bug"
 )
 
 func (l Level) String() string {
@@ -45,33 +45,33 @@ func (l Level) String() string {
 // Quanto maior, mais grave. Silent = 0.
 func (l Level) Severity() int {
 	switch strings.ToLower(string(l)) {
-	case "debug":
+	case "debug","debug*":
 		return 10
-	case "info":
+	case "info","info*":
 		return 20
-	case "warn", "warning":
+	case "warn", "warn*", "warning":
 		return 30
-	case "error", "err":
+	case "error", "error*", "err":
 		return 40
-	case "fatal":
+	case "fatal", "fatal*":
 		return 50
-	case "silent", "quiet":
+	case "silent", "silent*", "quiet", "quiet*":
 		return 0
-	case "trace":
+	case "trace", "trace*":
 		return 5
-	case "notice":
+	case "notice", "notice*":
 		return 15
-	case "success":
+	case "success", "success*":
 		return 25
-	case "alert":
+	case "alert", "alert*":
 		return 35
-	case "critical":
+	case "critical", "critical*":
 		return 45
-	case "answer":
+	case "answer", "answer*":
 		return 55
-	case "bug":
+	case "bug", "bug*":
 		return 60
-	case "panic":
+	case "panic", "panic*":
 		return 70
 	default:
 		// fallback seguro: trata como info
@@ -82,42 +82,45 @@ func (l Level) Severity() int {
 // ParseLevel converte string em Level, com fallback para info.
 func ParseLevel(s string) Level {
 	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "info":
+	case "info", "info*":
 		return LevelInfo
-	case "warn", "warning":
+	case "warn", "warn*", "warning":
 		return LevelWarn
-	case "error", "err":
+	case "error", "error*", "err":
 		return LevelError
-	case "fatal":
+	case "fatal", "fatal*":
 		return LevelFatal
-	case "silent", "quiet":
+	case "silent", "silent*", "quiet", "quiet*":
 		return LevelSilent
-	case "debug":
+	case "debug", "debug*":
 		return LevelDebug
-	case "trace":
+	case "trace", "trace*":
 		return LevelTrace
-	case "notice":
+	case "notice", "notice*":
 		return LevelNotice
-	case "success":
+	case "success", "success*":
 		return LevelSuccess
-	case "alert":
+	case "alert", "alert*":
 		return LevelAlert
-	case "critical":
+	case "critical", "critical*":
 		return LevelCritical
-	case "answer":
+	case "answer", "answer*":
 		return LevelAnswer
-	case "bug":
+	case "bug", "bug*":
 		return LevelBug
-	case "panic":
+	case "panic", "panic*":
 		return LevelPanic
 	default:
-		return LevelDebug
+		return LevelInfo
 	}
 }
 
 func IsLevel(s string) bool {
 	switch strings.ToLower(strings.TrimSpace(strings.ToValidUTF8(s, ""))) {
-	case "debug", "info", "warn", "warning", "error", "err", "fatal", "silent", "quiet", "trace", "notice", "success", "alert", "critical", "answer", "bug", "panic":
+	case "debug", "debug*", "info", "info*", "warn", "warn*", "warning", "error",
+		"error*", "err", "fatal", "fatal*", "silent", "silent*", "quiet", "quiet*",
+		"trace", "trace*", "notice", "notice*", "success", "success*", "alert", "alert*",
+		"critical", "critical*", "answer", "answer*", "bug", "bug*", "panic", "panic*":
 		return true
 	default:
 		return false
