@@ -2,7 +2,9 @@
 package kbx
 
 import (
+	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/google/uuid"
@@ -16,8 +18,23 @@ type glgr interface {
 
 var gl glgr
 
+type defLogger struct{}
+
+func (d *defLogger) Log(level string, parts ...any) {
+	w := writer.NewIOWriter(io.Discard)
+	_ = w.Write([]byte(fmt.Sprint(parts...)))
+}
+
 func SetLogger(logger glgr) {
-	gl = logger
+	if logger != nil {
+		gl = logger
+		return
+	}
+	logger = gl
+	if logger == nil {
+		log.Printf("Warning: No global logger set, defaulting to discard writer")
+		gl = &defLogger{}
+	}
 }
 
 type DBType string
@@ -35,6 +52,10 @@ const (
 
 type InitArgs struct {
 	ID uuid.UUID
+
+	Messages []string `json:"messages,omitempty" yaml:"messages,omitempty" mapstructure:"messages,omitempty"`
+
+	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 
 	*LogzGeneralOptions `json:",inline" yaml:",inline" mapstructure:",squash"`
 
@@ -58,6 +79,8 @@ type RootConfig struct {
 
 var LoggerArgs *InitArgs = &InitArgs{
 	ID:                   uuid.New(),
+	Messages:             []string{},
+	Metadata:             map[string]string{},
 	LogzGeneralOptions:   &LogzGeneralOptions{},
 	LogzFormatOptions:    &LogzFormatOptions{},
 	LogzOutputOptions:    &LogzOutputOptions{},
@@ -77,6 +100,8 @@ func init() {
 	if LoggerArgs == nil {
 		LoggerArgs = &InitArgs{
 			ID:                   uuid.New(),
+			Messages:             []string{},
+			Metadata:             map[string]string{},
 			LogzGeneralOptions:   &LogzGeneralOptions{},
 			LogzFormatOptions:    &LogzFormatOptions{},
 			LogzOutputOptions:    &LogzOutputOptions{},

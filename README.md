@@ -129,7 +129,7 @@ export PATH=$PATH:$(pwd)
 ```go
 package main
 
-import "github.com/kubex-ecosystem/logz/logger"
+import "github.com/kubex-ecosystem/logz"
 
 func main() {
     // Create a new logger instance
@@ -155,7 +155,7 @@ func main() {
 ```go
 package main
 
-import "github.com/kubex-ecosystem/logz/logger"
+import "github.com/kubex-ecosystem/logz"
 
 func main() {
     log := logger.NewLogger("my-service")
@@ -208,7 +208,7 @@ func main() {
 package main
 
 import (
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
     "github.com/kubex-ecosystem/logz/internal/core"
 )
 
@@ -304,7 +304,7 @@ package main
 
 import (
     "sync"
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
 )
 
 func main() {
@@ -342,7 +342,7 @@ import (
     "net/http"
     "time"
     "github.com/gin-gonic/gin"
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
     "github.com/kubex-ecosystem/logz/internal/core"
 )
 
@@ -439,7 +439,7 @@ import (
     "context"
     "fmt"
     "time"
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
     "github.com/kubex-ecosystem/logz/internal/core"
 )
 
@@ -507,7 +507,7 @@ package main
 
 import (
     "errors"
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
     "github.com/kubex-ecosystem/logz/internal/core"
 )
 
@@ -640,7 +640,9 @@ logz error \
 
 ---
 
-#### The image below shows the CLI in action, demonstrating how to log messages at different levels and formats
+#### The image below shows the CLI in action
+
+It is demonstrating how to log messages at different levels and formats
 
 ![img.png](docs/assets/cli_print.png)
 

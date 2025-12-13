@@ -8,7 +8,7 @@ import (
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-func toEntry(level kbx.Level, args ...any) *Entry {
+func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 	if len(args) == 0 {
 		en, err := NewEntry(level)
 		if err != nil {
@@ -130,7 +130,7 @@ func ToEntry(level kbx.Level, args ...any) *Entry {
 	}
 
 	if len(args) == 0 {
-		return e.WithMessage("<empty>")
+		return e.WithMessage("<empty>").(*Entry)
 	}
 
 	first := args[0]
@@ -142,7 +142,7 @@ func ToEntry(level kbx.Level, args ...any) *Entry {
 
 	// 2) se é erro
 	if err, ok := first.(error); ok {
-		e = e.WithError(err)
+		e = e.WithError(err).(*Entry)
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -151,55 +151,55 @@ func ToEntry(level kbx.Level, args ...any) *Entry {
 			}
 		}
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 3) string → mensagem
 	if msg, ok := first.(string); ok {
-		e = e.WithMessage(msg)
+		e = e.WithMessage(msg).(*Entry)
 		if len(args) > 1 {
 			// segundo arg error?
 			if len(args) == 2 {
 				if err, ok := args[1].(error); ok {
-					return e.WithError(err)
+					return e.WithError(err).(*Entry)
 				}
 			}
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 4) map → fields
 	if m, ok := first.(map[string]any); ok {
-		e = e.WithFields(m)
+		e = e.WithFields(m).(*Entry)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 5) []byte → mensagem
 	if b, ok := first.([]byte); ok {
-		e = e.WithMessage(string(b))
+		e = e.WithMessage(string(b)).(*Entry)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 6) struct / qualquer coisa segura
 	if kbx.IsObjSafe(first, false) {
-		e = e.WithMessage(fmt.Sprintf("%T", first)).WithData(first)
+		e = e.WithMessage(fmt.Sprintf("%T", first)).WithData(first).(*Entry)
 		if len(args) > 1 {
-			e = e.WithField("args", args[1:])
+			e = e.WithField("args", args[1:]).(*Entry)
 		}
 		return e
 	}
 
 	// 7) fallback
-	return e.WithMessage(fmt.Sprintf("%v", first))
+	return e.WithMessage(fmt.Sprintf("%v", first)).(*Entry)
 }
 
 func normalizeLevel(v any) kbx.Level {

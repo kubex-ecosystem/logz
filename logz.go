@@ -3,11 +3,15 @@ package logz
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
+	"github.com/kubex-ecosystem/logz/interfaces"
 	C "github.com/kubex-ecosystem/logz/internal/core"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+	"github.com/kubex-ecosystem/logz/internal/writer"
 )
 
 var InitArgs *kbx.InitArgs
@@ -30,8 +34,25 @@ type LogzPrettyFormatter = formatter.PrettyFormatter
 type LogzFormatter = formatter.Formatter
 
 type LoggerZ = LogzLoggerZ
+type EntryImpl = C.Entry
 type Entry = kbx.Entry
 type Level = kbx.Level
+
+type Writer = writer.Writer
+type LogzWriter = writer.LogzWriter
+type LogzIOWriter = writer.IOWriter
+type LogzMultiWriter = writer.MultiWriter
+type LogzEntry = kbx.LogzEntry
+
+type LogzHooks[T any] = interfaces.LHook[T]
+
+func ParseLevel(level string) Level {
+	return kbx.ParseLevel(level)
+}
+
+func ParseWriter(output string) io.Writer {
+	return writer.ParseWriter(output)
+}
 
 // defaultLoggerOptions initializes and returns a pointer to a LogzOptions struct
 // with default configuration values for logging.
@@ -74,8 +95,24 @@ var Logger = defaultLogger()
 var loggerZ *LogzLoggerZ
 
 // NewEntry creates a new log entry with the specified level.
-func NewEntry(level Level) (Entry, error) {
-	return C.NewEntryImpl(level)
+func NewEntry(level Level) Entry {
+	entry, err := C.NewKbxEntry(level)
+	if err != nil {
+		// Handle error by returning a default entry with level Info
+		defaultEntry, _ := C.NewKbxEntry(kbx.LevelInfo)
+		return defaultEntry
+	}
+	return entry
+}
+
+// NewLogzEntry creates a new log entry with the specified level.
+func NewLogzEntry(level Level) kbx.LogzEntry {
+	return C.NewLogzEntry(level)
+}
+
+// NewEntryStrict creates a new log entry with the specified level. (returns error on failure)
+func NewEntryStrict(level Level) (Entry, error) {
+	return C.NewKbxEntry(level)
 }
 
 // NewGlobalLogger creates a new global logger with the specified prefix.
@@ -117,6 +154,38 @@ func GetLoggerZ(prefix string) *LogzLoggerZ {
 	return loggerZ
 }
 
+func SetLogzConfig(opts *LogzConfig) {
+	if Logger == nil {
+		Logger = defaultLogger()
+	}
+
+	lgrArgs := kbx.ParseLoggerArgs(
+		opts.Level.String(),
+		opts.MinLevel.String(),
+		opts.MaxLevel.String(),
+		"",
+	)
+
+	cfg := Logger.GetConfig()
+
+	lgrArgs.ShowColor = opts.ShowColor
+	lgrArgs.ShowIcons = opts.ShowIcons
+	lgrArgs.ShowTraceID = opts.ShowTraceID
+	lgrArgs.ShowFields = opts.ShowFields
+	lgrArgs.ShowStack = opts.ShowStack
+
+	lgrArgs.ID = opts.ID
+	lgrArgs.LogzGeneralOptions = opts.LogzGeneralOptions
+	lgrArgs.LogzFormatOptions = opts.LogzFormatOptions
+	lgrArgs.LogzOutputOptions = opts.LogzOutputOptions
+	lgrArgs.LogzRotatingOptions = opts.LogzRotatingOptions
+	lgrArgs.LogzBufferingOptions = opts.LogzBufferingOptions
+
+	cfg.LoggerConfig = lgrArgs
+
+	Logger.SetConfig(cfg.LoggerConfig)
+}
+
 // Log is the simplest global logging function.
 // Accepts a level as string and variadic messages.
 func Log(level string, msg ...any) error {
@@ -124,7 +193,20 @@ func Log(level string, msg ...any) error {
 		return nil
 	}
 	lvl := kbx.ParseLevel(level)
-	return Logger.Log(lvl, msg...)
+
+	e := C.NewLogzEntry(kbx.LoggerArgs.Level).
+		WithMessage(strings.TrimSpace(strings.ToValidUTF8(strings.Join(kbx.LoggerArgs.Messages, " "), ""))).
+		WithColor(kbx.DefaultTrue(kbx.LoggerArgs.ShowColor)).
+		WithIcon(kbx.DefaultTrue(kbx.LoggerArgs.ShowIcons)).
+		WithData(kbx.LoggerArgs.Metadata).
+		WithTraceID(kbx.LoggerArgs.ID.String()).
+		WithShowTraceID(kbx.LoggerArgs.ShowTraceID).
+		WithShowCaller(kbx.LoggerArgs.ShowStack).
+		WithShowFields(kbx.LoggerArgs.ShowFields).
+		WithStack(kbx.LoggerArgs.ShowStack).
+		WithCaller("CLI")
+
+	return Logger.Log(lvl, e)
 }
 
 // LogAny is a variant that accepts any type as message.
@@ -209,30 +291,48 @@ func Panic(msg ...any) {
 }
 
 func Println(msg ...any) {
-	Log("info", fmt.Sprintf("%s", msg...))
+	Log("println", fmt.Sprintf("%s", msg...))
 }
 
-func Printf(format string, args ...any) {
-	Log("info", fmt.Sprintf(format, args...))
+func Printf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("printf", m)
+	return m
 }
 
-func Debugf(format string, args ...any) {
-	Log("debug", fmt.Sprintf(format, args...))
+func Sprintf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("sprintf", m)
+	return m
 }
 
-func Infof(format string, args ...any) {
-	Log("info", fmt.Sprintf(format, args...))
-}
-func Noticef(format string, args ...any) {
-	Log("notice", fmt.Sprintf(format, args...))
-}
-
-func Successf(format string, args ...any) {
-	Log("success", fmt.Sprintf(format, args...))
+func Debugf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("debug", m)
+	return m
 }
 
-func Warnf(format string, args ...any) {
-	Log("warn", fmt.Sprintf(format, args...))
+func Infof(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("info", m)
+	return m
+}
+func Noticef(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("notice", m)
+	return m
+}
+
+func Successf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("success", m)
+	return m
+}
+
+func Warnf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("warn", m)
+	return m
 }
 
 func Errorf(format string, args ...any) error {
@@ -243,24 +343,32 @@ func Fatalf(format string, args ...any) {
 	os.Exit(1)
 }
 
-func Tracef(format string, args ...any) {
-	Log("trace", fmt.Sprintf(format, args...))
+func Tracef(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("trace", m)
+	return m
 }
 
 func Criticalf(format string, args ...any) {
 	Log("critical", fmt.Sprintf(format, args...))
 }
 
-func Answerf(format string, args ...any) {
-	Log("answer", fmt.Sprintf(format, args...))
+func Answerf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("answer", m)
+	return m
 }
 
-func Alertf(format string, args ...any) {
-	Log("alert", fmt.Sprintf(format, args...))
+func Alertf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("alertf", m)
+	return m
 }
 
-func Bugf(format string, args ...any) {
-	Log("bug", fmt.Sprintf(format, args...))
+func Bugf(format string, args ...any) string {
+	m := fmt.Sprintf(format, args...)
+	Log("bugf", m)
+	return m
 }
 
 func Panicf(format string, args ...any) {
@@ -292,8 +400,29 @@ func NewLogzFormatter(args *LogzFormatOptions, format string) LogzFormatter {
 	case "json":
 		return formatter.NewJSONFormatter(true)
 	case "pretty":
-		return formatter.NewPrettyFormatter()
+		return formatter.NewPrettyFormatter(true)
 	default:
 		return formatter.NewTextFormatter(true)
 	}
+}
+
+func NewLogzWriter(output string, w io.Writer) LogzWriter {
+	if w == nil {
+		w = writer.ParseWriter(output)
+	}
+	return writer.NewLogzWriter(w)
+}
+
+func NewLogzMultiWriter(outputs ...writer.Writer) LogzWriter {
+	return writer.NewMultiWriter(outputs...)
+}
+
+func NewLogzIOWriter(w io.Writer) LogzWriter {
+	if w == nil {
+		w = os.Stdout
+	}
+	if wrt, ok := w.(writer.LogzWriter); ok {
+		return writer.NewDynamicWriter(wrt)
+	}
+	return writer.NewDynamicWriter(writer.NewLogzWriter(w))
 }

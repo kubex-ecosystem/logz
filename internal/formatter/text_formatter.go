@@ -45,8 +45,8 @@ const reset = "\033[0m"
 
 func NewTextFormatter(pretty bool) Formatter {
 	return &TextFormatter{
-		DisableColor: os.Getenv("LOGZ_NO_COLOR") != "" || runtime.GOOS == "windows",
-		DisableIcon:  os.Getenv("LOGZ_NO_ICON") != "",
+		DisableColor: os.Getenv("LOGZ_NO_COLOR") != "" || runtime.GOOS == "windows" || !pretty,
+		DisableIcon:  os.Getenv("LOGZ_NO_ICON") != "" || !pretty,
 	}
 }
 
@@ -57,12 +57,16 @@ func (f *TextFormatter) Name() string {
 }
 
 func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
+	if err := e.Validate(); err != nil {
+		return nil, err
+	}
+
 	level := e.GetLevel()
 	msg := strings.TrimSpace(e.GetMessage())
 
 	// Level string
 	levelStr := string(level)
-	if !f.DisableColor {
+	if !f.DisableColor && e.GetShowColor() {
 		if c, ok := colors[level]; ok {
 			levelStr = c + levelStr + reset
 		}
@@ -70,7 +74,7 @@ func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
 
 	// Icon
 	icon := ""
-	if !f.DisableIcon {
+	if !f.DisableIcon && e.GetShowIcon() {
 		if ic, ok := icons[level]; ok {
 			icon = ic + " "
 		}
@@ -91,13 +95,29 @@ func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
 
 	// Metadata (bonitinho e opcional)
 	meta := ""
-	if m := e.GetFields(); len(m) > 0 {
+	if m := e.GetTags(); len(m) > 0 && e.GetShowStack() {
 		b, _ := json.MarshalIndent(m, "", "  ")
 		meta = "\n" + string(b)
 	}
 
+	// Fields (bonitinho e opcional)
+	if m := e.GetFields(); len(m) > 1 && e.GetShowFields() {
+		b, _ := json.MarshalIndent(m, "", "  ")
+		meta += "\n" + string(b)
+	}
+
+	// TraceID (opcional)
+	if e.GetTraceID() != "" && e.GetShowTraceID() {
+		meta += fmt.Sprintf("\nTraceID: %s", e.GetTraceID())
+	}
+
+	// Caller (opcional)
+	if e.GetShowCaller() || e.GetShowStack() {
+		meta += fmt.Sprintf("\nCaller: %s", e.GetCaller())
+	}
+
 	// Line final → limpa, previsível, sem comer whitespace
-	line := fmt.Sprintf("%s[%s] %s%s%s%s",
+	line := fmt.Sprintf("%s[%s] %s%s %s%s",
 		ts,
 		levelStr,
 		ctx,

@@ -279,6 +279,38 @@ func (l *Logger) GetConfig() *LoggerOptionsImpl {
 	return l.opts
 }
 
+func (l *Logger) SetConfig(opts *kbx.LogzConfig) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if opts == nil {
+		return
+	}
+	if opts.LogzFormatOptions != nil {
+		l.opts.LogzFormatOptions = opts.LogzFormatOptions
+	}
+	if opts.Output != nil {
+		l.opts.Output = opts.Output
+	}
+	if opts.MinLevel != "" {
+		l.opts.MinLevel = opts.MinLevel
+	}
+	if opts.MaxLevel != "" {
+		l.opts.MaxLevel = opts.MaxLevel
+	}
+	if opts.Prefix != "" {
+		l.opts.Prefix = opts.Prefix
+	}
+
+	l.opts.ShowFields = opts.ShowFields
+	l.opts.ShowIcons = opts.ShowIcons
+	l.opts.ShowColor = opts.ShowColor
+	l.opts.ShowStack = opts.ShowStack
+	l.opts.ShowTraceID = opts.ShowTraceID
+	l.opts.Output = opts.Output
+	l.opts.LoggerConfig.Metadata = opts.Metadata
+	l.opts.StackTrace = opts.StackTrace
+}
+
 type logParts struct {
 	entries   []kbx.Entry
 	others    []any
@@ -286,18 +318,14 @@ type logParts struct {
 	timestamp time.Time
 }
 
-func (l *Logger) logEntryError(entry *Entry) error {
+func (l *Logger) logEntryError(entry kbx.LogzEntry) error {
 	// Ao ser criado o objeto já armazena o timestamp, que inclusive não
 	// pode ser alterado depois.
 	// Então se o timestamp estiver zerado, significa que o objeto
 	// foi criado de forma incorreta. e não será possível corrigir isso aqui.
 	// portanto será logado como erro de implementação.E NÃO SEGUIRÁ O FLUXO COM O RESTO!
-	entryInstanceErrorLog, err := NewEntryImpl(kbx.LevelError)
-	if err != nil {
-		return err
-	}
+	entryInstanceErrorLog := NewLogzEntry(kbx.LevelError)
 	pc, file, _, ok := runtime.Caller(2)
-
 	if ok {
 		fn := runtime.FuncForPC(pc)
 
@@ -307,11 +335,13 @@ func (l *Logger) logEntryError(entry *Entry) error {
 			WithField("caller_ok", ok)
 	}
 
-	entryInstanceErrorLog = entryInstanceErrorLog.
-		WithMessage("logz: entry created with zero timestamp; this is an implementation error").
-		WithField("entry_type", "Entry").
-		WithField("entry_value", entry).
-		WithError(fmt.Errorf("entry has zero timestamp"))
+	if entry.GetTimestamp().IsZero() {
+		entryInstanceErrorLog = entryInstanceErrorLog.
+			WithMessage("logz: entry created with zero timestamp; this is an implementation error").
+			WithField("entry_type", "Entry").
+			WithField("entry_value", entry).
+			WithError(fmt.Errorf("entry has zero timestamp"))
+	}
 
 	if entryInstanceErrorLog.GetTimestamp().IsZero() {
 		return nil
@@ -471,11 +501,7 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 	/// Agora, TODOS OS OUTROS objetos que estavam na lista de argumentos
 	/////////////////////////////////////////////////////////////////////
 	if len(logParts.others) > 0 {
-		entryInstance, err := NewEntryImpl(lvl)
-		if err != nil {
-			return err
-		}
-		entry := entryInstance.
+		entry := NewLogzEntry(lvl).
 			WithLevel(lvl)
 
 		var msgParts = make([]string, 0)
@@ -503,7 +529,7 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 		}
 		entry = entry.WithMessage(fmt.Sprintf("%s", msgParts))
 		// dispara o log
-		if err := l.dispatchLogEntry(entry); err != nil {
+		if err := l.dispatchLogEntry(entry.(*Entry)); err != nil {
 			return err
 		}
 	}

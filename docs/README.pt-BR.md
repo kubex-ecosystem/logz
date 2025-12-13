@@ -120,7 +120,7 @@ export PATH=$PATH:$(pwd)
 ```go
 package main
 
-import "github.com/kubex-ecosystem/logz/logger"
+import "github.com/kubex-ecosystem/logz"
 
 func main() {
     // Criar uma nova instância do logger
@@ -146,7 +146,7 @@ func main() {
 ```go
 package main
 
-import "github.com/kubex-ecosystem/logz/logger"
+import "github.com/kubex-ecosystem/logz"
 
 func main() {
     log := logger.NewLogger("meu-servico")
@@ -198,7 +198,7 @@ func main() {
 package main
 
 import (
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
     "github.com/kubex-ecosystem/logz/internal/core"
 )
 
@@ -294,7 +294,7 @@ package main
 
 import (
     "sync"
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
 )
 
 func main() {
@@ -331,7 +331,7 @@ import (
     "net/http"
     "time"
     "github.com/gin-gonic/gin"
-    "github.com/kubex-ecosystem/logz/logger"
+    "github.com/kubex-ecosystem/logz"
     "github.com/kubex-ecosystem/logz/internal/core"
 )
 

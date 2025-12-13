@@ -24,6 +24,6 @@ func (f *MinimalFormatter) Format(e kbx.Entry) ([]byte, error) {
 	if err := e.Validate(); err != nil {
 		return nil, err
 	}
-	line := fmt.Sprintf("%s %s\n", e.GetLevel(), e.String())
+	line := fmt.Sprintf("%s %s\n", e.GetLevel(), e.GetMessage())
 	return []byte(line), nil
 }

@@ -25,6 +25,7 @@ type Logger interface {
 	SetHooks(hooks []Hook)
 	SetLHooks(hooks LHook[any])
 	SetMetadata(metadata map[string]any)
+	SetConfig(config *kbx.LogzConfig)
 
 	Log(lvl kbx.Level, args ...any) error
 	LogAny(level kbx.Level, args ...any) error
@@ -38,6 +39,7 @@ type LoggerZ[T Hook | *kbx.Entry] interface {
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
 	Enabled(level kbx.Level) bool
+	SetConfig(config *kbx.LogzConfig)
 
 	Log(level kbx.Level, rec T) error
 
@@ -78,6 +80,7 @@ type LoggerFunc interface {
 	SetFormatter(f formatter.FormatterFunc)
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
+	SetConfig(config *kbx.LogzConfig)
 	Enabled(level kbx.Level) bool
 
 	Log(level kbx.Level, rec kbx.Entry) error
@@ -89,6 +92,7 @@ type LoggerFuncG[T Hook | *kbx.Entry] interface {
 	SetFormatter(f formatter.FormatterFunc)
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
+	SetConfig(config *kbx.LogzConfig)
 	Enabled(level kbx.Level) bool
 
 	Log(level kbx.Level, rec T) error

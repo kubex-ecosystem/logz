@@ -29,6 +29,12 @@ func ParseFormatter(format string, pretty bool) Formatter {
 		return NewJSONFormatter(pretty)
 	case "text":
 		return NewTextFormatter(pretty)
+	case "yaml":
+		return NewYamlFormatter(pretty)
+	case "csv":
+		return NewCSVFormatter(pretty)
+	case "xml":
+		return NewXMLFormatter(pretty)
 	default:
 		return NewTextFormatter(pretty)
 	}

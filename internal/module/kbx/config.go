@@ -7,10 +7,13 @@ import (
 
 type LogzGeneralOptions struct {
 	// General options
-	Prefix    string `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix,omitempty"`
-	Debug     bool   `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug,omitempty"`
-	ShowColor *bool  `json:"show_color,omitempty" yaml:"show_color,omitempty" mapstructure:"show_color,omitempty"`
-	ShowIcons *bool  `json:"show_icons,omitempty" yaml:"show_icons,omitempty" mapstructure:"show_icons,omitempty"`
+	Prefix      string `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix,omitempty"`
+	Debug       bool   `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug,omitempty"`
+	ShowColor   *bool  `json:"show_color,omitempty" yaml:"show_color,omitempty" mapstructure:"show_color,omitempty"`
+	ShowIcons   *bool  `json:"show_icons,omitempty" yaml:"show_icons,omitempty" mapstructure:"show_icons,omitempty"`
+	ShowTraceID bool   `json:"show_trace_id,omitempty" yaml:"show_trace_id,omitempty" mapstructure:"show_trace_id,omitempty"`
+	ShowStack   bool   `json:"show_caller,omitempty" yaml:"show_caller,omitempty" mapstructure:"show_caller,omitempty"`
+	ShowFields  bool   `json:"show_stack,omitempty" yaml:"show_stack,omitempty" mapstructure:"show_stack,omitempty"`
 }
 
 type LogzFormatOptions struct {
@@ -46,3 +49,7 @@ type LogzBufferingOptions struct {
 	BufferSize    *int           `json:"buffer_size,omitempty" yaml:"buffer_size,omitempty" mapstructure:"buffer_size,omitempty"`
 	FlushInterval *time.Duration `json:"flush_interval,omitempty" yaml:"flush_interval,omitempty" mapstructure:"flush_interval,omitempty"`
 }
+
+type LogzConfig = InitArgs
+
+func NewConfig() *LogzConfig { return LoggerArgs }

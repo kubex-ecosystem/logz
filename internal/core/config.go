@@ -50,6 +50,8 @@ func NewLoggerOptions(initArgs *kbx.InitArgs) *LoggerOptionsImpl {
 	return &LoggerOptionsImpl{
 		LoggerConfig: &LoggerConfig{
 			ID:                   uuid.New(),
+			Messages:             []string{},
+			Metadata:             map[string]string{},
 			LogzGeneralOptions:   &kbx.LogzGeneralOptions{},
 			LogzFormatOptions:    &kbx.LogzFormatOptions{},
 			LogzOutputOptions:    &kbx.LogzOutputOptions{},
@@ -111,15 +113,22 @@ func (o *LoggerOptionsImpl) Hydrate(prefix string) *LoggerOptionsImpl {
 
 func (o *LoggerOptionsImpl) Clone() *LoggerOptionsImpl {
 	return &LoggerOptionsImpl{
-		&kbx.InitArgs{
+		LoggerConfig: &kbx.InitArgs{
 			ID:                   o.ID,
+			Messages:             o.Messages,
+			Metadata:             o.LoggerConfig.Metadata,
 			LogzGeneralOptions:   o.LogzGeneralOptions,
 			LogzFormatOptions:    o.LogzFormatOptions,
 			LogzOutputOptions:    o.LogzOutputOptions,
 			LogzRotatingOptions:  o.LogzRotatingOptions,
 			LogzBufferingOptions: o.LogzBufferingOptions,
 		},
-		o.LogzAdvancedOptions,
+		LogzAdvancedOptions: &LogzAdvancedOptions{
+			Formatter: o.Formatter,
+			Hooks:     o.Hooks,
+			LHooks:    o.LHooks,
+			Metadata:  o.LogzAdvancedOptions.Metadata,
+		},
 	}
 }
 
@@ -253,7 +262,7 @@ func (o *LoggerOptionsImpl) Get(key string) any {
 	case "lhooks":
 		return o.LHooks
 	case "metadata":
-		return o.Metadata
+		return o.LoggerConfig.Metadata
 	}
 	return nil
 }
@@ -289,7 +298,7 @@ func (o *LoggerOptionsImpl) Set(key string, value any) {
 	case "lhooks":
 		o.LHooks = value.(interfaces.LHook[any])
 	case "metadata":
-		o.Metadata = value.(map[string]any)
+		o.LogzAdvancedOptions.Metadata = value.(map[string]any)
 	}
 }
 
