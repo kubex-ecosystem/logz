@@ -14,15 +14,44 @@ import (
 )
 
 const (
-	LevelNotice  kbx.Level = "notice"
-	LevelDebug   kbx.Level = "debug"
-	LevelTrace   kbx.Level = "trace"
-	LevelSuccess kbx.Level = "success"
-	LevelInfo    kbx.Level = "info"
-	LevelWarn    kbx.Level = "warn"
-	LevelError   kbx.Level = "error"
-	LevelFatal   kbx.Level = "fatal"
-	LevelSilent  kbx.Level = "silent"
+	LevelNotice   kbx.Level = "notice"
+	LevelDebug    kbx.Level = "debug"
+	LevelTrace    kbx.Level = "trace"
+	LevelSuccess  kbx.Level = "success"
+	LevelInfo     kbx.Level = "info"
+	LevelWarn     kbx.Level = "warn"
+	LevelError    kbx.Level = "error"
+	LevelFatal    kbx.Level = "fatal"
+	LevelSilent   kbx.Level = "silent"
+	LevelAlert    kbx.Level = "alert"
+	LevelCritical kbx.Level = "critical"
+	LevelAnswer   kbx.Level = "answer"
+	LevelBug      kbx.Level = "bug"
+	LevelPanic    kbx.Level = "panic"
+
+	LevelNoticef   kbx.Level = "notice"
+	LevelDebugf    kbx.Level = "debug"
+	LevelTracef    kbx.Level = "trace"
+	LevelSuccessf  kbx.Level = "success"
+	LevelInfof     kbx.Level = "info"
+	LevelWarnf     kbx.Level = "warn"
+	LevelErrorf    kbx.Level = "error"
+	LevelFatalf    kbx.Level = "fatal"
+	LevelSilentf   kbx.Level = "silent"
+	LevelAlertf    kbx.Level = "alert"
+	LevelCriticalf kbx.Level = "critical"
+	LevelAnswerf   kbx.Level = "answer"
+	LevelBugf      kbx.Level = "bug"
+	LevelPanicf    kbx.Level = "panic"
+
+	LevelSprintf kbx.Level = "sprintf"
+	LevelPrintln kbx.Level = "println"
+	LevelLog     kbx.Level = "log"
+	LevelPrint   kbx.Level = "print"
+	LevelPrintf  kbx.Level = "printf"
+	LevelLogf    kbx.Level = "logf"
+
+	LevelDefault kbx.Level = "info"
 )
 
 type LogzAdvancedOptions struct {
