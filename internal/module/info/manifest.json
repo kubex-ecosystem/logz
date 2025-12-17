@@ -1,44 +1,45 @@
 {
   "name": "Kubex Logz",
   "application": "logz",
-  "version": "1.6.5",
+  "version": "1.6.7",
   "private": false,
   "published": true,
-  "aliases": [
-    "logz"
-  ],
+  "aliases": [ "logz" ],
+  "slug": "kubex-logz",
   "repository": "https://github.com/kubex-ecosystem/logz",
   "homepage": "https://github.com/kubex-ecosystem/logz",
+  "documentation_url": "https://logz.kubex.world/docs",
+  "support_url": "https://logz.kubex.world/support",
   "description": "Kubex Logz: A complete logging solution for your applications.",
+  "platform": "go",
+  "type": "executable+library",
   "main": "cmd/main.go",
   "go_version": "1.25.5",
+  "go_toolchain": {
+    "min": "1.23",
+    "max": "1.25"
+  },
   "bin": "logz",
-  "author": "Rafael Mori <faelmori@gmail.com>",
+  "author": "Rafael Mori <faelmori@live.com>",
   "organization": "kubex-ecosystem",
   "license": "MIT",
-  "keywords": [
-    "logz",
-    "kubex",
-    "control",
-    "command-line",
-    "tool",
-    "management"
-  ],
-  "platforms": [
-    "linux/amd64",
-    "linux/arm64",
-    "darwin/amd64",
-    "darwin/arm64",
-    "windows/amd64",
-    "windows/386"
-  ],
-  "dependencies": [
-    "tar",
-    "gzip",
-    "curl",
-    "git",
-    "zip",
-    "unzip",
-    "jq"
+  "tags": [ "logging", "log management", "log control", "kubex module" ],
+  "keywords": [ "logz", "kubex", "tool", "golang", "devops", "logging", "control", "management", "command-line" ],
+  "platforms": [ "linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/386" ],
+  "dependencies": [ "tar", "gzip", "curl", "git", "zip", "unzip", "jq" ],
+  "scripts": {
+    "install": "make install",
+    "build": "make build",
+    "build:dev": "make build-dev",
+    "test": "make test",
+    "lint": "make lint",
+    "clean": "make clean",
+    "docs:build": "make build-docs",
+    "docs:serve": "make serve-docs"
+  },
+  "examples": [
+    { "description": "Install Kubex Logz", "code": "kubex module install logz" },
+    { "description": "View logs from all applications", "code": "logz view --all" },
+    { "description": "Search logs for a specific keyword", "code": "logz search --keyword 'error'" }
   ]
 }
