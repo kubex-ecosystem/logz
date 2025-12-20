@@ -460,6 +460,13 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 			return err
 		}
 	}
+
+	if entry.GetLevel() == kbx.LevelFatal ||
+		entry.GetLevel() == kbx.LevelPanic ||
+		entry.GetLevel() == kbx.LevelCritical {
+		os.Exit(1)
+	}
+
 	// tudo ok
 	return nil
 }

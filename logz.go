@@ -385,6 +385,7 @@ func Bugf(format string, args ...any) string {
 
 func Panicf(format string, args ...any) {
 	Log("panic", fmt.Sprintf(format, args...))
+	panic(fmt.Sprintf(format, args...))
 }
 
 // SetGlobalLogger allows setting a custom global logger instance.
