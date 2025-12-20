@@ -303,53 +303,100 @@ func Panic(msg ...any) {
 }
 
 func Println(msg ...any) {
-	Log("println", fmt.Sprintf("%s", msg...))
+	m := fmt.Sprintln(msg...)
+	if len(msg) > 1 && msg[len(msg)-1] == "%log=true%" {
+		Log("println", fmt.Sprintf("%s", msg...))
+	}
+	fmt.Print(m)
 }
 
-func Printf(format string, args ...any) string {
-	m := fmt.Sprintf(format, args...)
-	Log("printf", m)
+func Sprintln(msg ...any) string {
+	m := fmt.Sprintln(msg...)
+	if len(msg) > 1 && msg[len(msg)-1] == "%log=true%" {
+		Log("sprintln", m)
+	}
 	return m
 }
 
+func Fprintf(format string, args ...any) {
+	m := fmt.Sprintf(format, args...)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("fprintf", m)
+	}
+	fmt.Print(m)
+}
+
+func Printf(format string, args ...any) {
+	m := fmt.Sprintf(format, args...)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("printf", m)
+	}
+	fmt.Print(m)
+}
+
+func Errorf(format string, args ...any) error {
+	m := fmt.Errorf(format, args...)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("error", m)
+	}
+	return m
+}
+
+// func Printf(format string, args ...any) string {
+// 	m := fmt.Sprintf(format, args...)
+// 	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+// 		Log("printf", m)
+// 	}
+// 	return m
+// }
+
 func Sprintf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("sprintf", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("sprintf", m)
+	}
 	return m
 }
 
 func Debugf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("debugf", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("debug", m)
+	}
 	return m
 }
 
 func Infof(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("info", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("info", m)
+	}
 	return m
 }
 func Noticef(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("notice", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("notice", m)
+	}
 	return m
 }
 
 func Successf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("success", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("success", m)
+	}
 	return m
 }
 
 func Warnf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("warn", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("warn", m)
+	}
 	return m
 }
 
-func Errorf(format string, args ...any) error {
-	return Log("error", fmt.Sprintf(format, args...))
-}
 func Fatalf(format string, args ...any) {
 	Log("fatal", fmt.Sprintf(format, args...))
 	os.Exit(1)
@@ -357,7 +404,9 @@ func Fatalf(format string, args ...any) {
 
 func Tracef(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("trace", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("trace", m)
+	}
 	return m
 }
 
@@ -367,19 +416,25 @@ func Criticalf(format string, args ...any) {
 
 func Answerf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("answer", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("answer", m)
+	}
 	return m
 }
 
 func Alertf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("alertf", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("alert", m)
+	}
 	return m
 }
 
 func Bugf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
-	Log("bugf", m)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("bug", m)
+	}
 	return m
 }
 
