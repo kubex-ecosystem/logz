@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync/atomic"
 
 	// "strings"
 
+	"github.com/google/uuid"
 	"github.com/kubex-ecosystem/logz/interfaces"
 	C "github.com/kubex-ecosystem/logz/internal/core"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
@@ -47,6 +49,37 @@ type LogzEntry = kbx.LogzEntry
 
 type LogzHooks[T any] = interfaces.LHook[T]
 
+func NewLogzOptions(withDefaults bool) *LogzOptions {
+	if withDefaults {
+		return defaultLoggerOptions()
+	}
+	if kbx.LoggerArgs == nil {
+		//kbx.NewConfig()
+		kbx.LoggerArgs = &kbx.InitArgs{
+			ID:                   uuid.New(),
+			Metadata:             make(map[string]string),
+			LogzGeneralOptions:   &LogzGeneralOptions{},
+			LogzFormatOptions:    &LogzFormatOptions{},
+			LogzOutputOptions:    &LogzOutputOptions{},
+			LogzRotatingOptions:  &LogzRotatingOptions{},
+			LogzBufferingOptions: &LogzBufferingOptions{},
+		}
+	}
+	opts := C.NewLoggerOptions(kbx.LoggerArgs)
+
+	opts.Level = ParseLevel(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_LEVEL", kbx.DefaultLogLevel))
+	opts.MinLevel = ParseLevel(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_MIN_LEVEL", kbx.DefaultLogMinLevel))
+	opts.MaxLevel = ParseLevel(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_MAX_LEVEL", kbx.DefaultLogMaxLevel))
+	opts.Output = ParseWriter(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_OUTPUT", kbx.DefaultLogOutput))
+	opts.ShowColor = kbx.BoolPtr(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_COLOR", kbx.DefaultShowColor))
+	opts.ShowIcons = kbx.BoolPtr(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_ICONS", kbx.DefaultShowIcons))
+	opts.ShowTraceID = kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_TRACE_ID", kbx.DefaultShowTraceID)
+	opts.ShowFields = kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_FIELDS", kbx.DefaultShowFields)
+	opts.ShowStack = kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_STACK", kbx.DefaultShowStack)
+
+	return opts
+}
+
 func ParseLevel(level string) Level {
 	return kbx.ParseLevel(level)
 }
@@ -65,10 +98,10 @@ func defaultLoggerOptions() *LogzOptions {
 				Prefix: "",
 			},
 			LogzFormatOptions: &LogzFormatOptions{
-				Output:   os.Stdout,
-				Level:    kbx.LevelDebug,
-				MinLevel: kbx.LevelInfo,
-				MaxLevel: kbx.LevelFatal,
+				Output:   ParseWriter(kbx.DefaultLogOutput),
+				Level:    ParseLevel(kbx.DefaultLogLevel),
+				MinLevel: ParseLevel(kbx.DefaultLogMinLevel),
+				MaxLevel: ParseLevel(kbx.DefaultLogMaxLevel),
 			},
 			LogzOutputOptions:    &LogzOutputOptions{},
 			LogzRotatingOptions:  &LogzRotatingOptions{},
@@ -76,32 +109,46 @@ func defaultLoggerOptions() *LogzOptions {
 		},
 		LogzAdvancedOptions: &LogzAdvancedOptions{},
 	}
-	opts.Formatter = formatter.NewTextFormatter(false)
+	opts.Formatter = formatter.ParseFormatter(kbx.DefaultLogFormat, kbx.DefaultShowColor)
 	return opts
 }
 
 // defaultLogger creates a default logger configured for global use.
 func defaultLogger() *LogzLogger {
-	return C.NewLogger(
+	l := logger.Load()
+	if l != nil {
+		return l
+	}
+	l = C.NewLogger(
 		"",
 		defaultLoggerOptions(),
 		false,
 	)
+	logger.Store(l)
+	return l
 }
 
 func defaultLoggerZ() *LogzLoggerZ {
-	return C.NewLoggerZ[Entry](
+	l := loggerLogz.Load()
+	if l != nil {
+		return l
+	}
+	l = C.NewLoggerZ[Entry](
 		"",
 		defaultLoggerOptions(),
 		false,
 	)
+	loggerLogz.Store(l)
+	return l
 }
 
 // Logger is the global default logger instance.
-var Logger = defaultLogger()
+var logger atomic.Pointer[LogzLogger]
+var Logger *LogzLogger
 
 // LoggerLogz is the global default logger with field support.
-var LoggerLogz = defaultLoggerZ()
+var loggerLogz atomic.Pointer[LogzLoggerZ]
+var LoggerLogz *LogzLoggerZ
 
 // NewEntry creates a new log entry with the specified level.
 func NewEntry(level Level) Entry {
@@ -443,6 +490,14 @@ func Ssuccessf(format string, args ...any) string {
 	return m
 }
 
+func Serrorf(format string, args ...any) error {
+	m := fmt.Errorf(format, args...)
+	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
+		Log("error", m)
+	}
+	return m
+}
+
 func Swarnf(format string, args ...any) string {
 	m := fmt.Sprintf(format, args...)
 	if len(args) > 1 && args[len(args)-1] == "%log=true%" {
@@ -491,13 +546,21 @@ func SetGlobalLoggerZ(logger *LogzLoggerZ) {
 }
 
 func init() {
-	kbx.ParseLoggerArgs(
-		"info",
-		"notice",
-		"fatal",
-		"stdout",
-	)
-	InitArgs = kbx.LoggerArgs
+	if InitArgs == nil || kbx.LoggerArgs == nil {
+		kbx.ParseLoggerArgs(
+			kbx.DefaultLogLevel,
+			kbx.DefaultLogMinLevel,
+			kbx.DefaultLogMaxLevel,
+			kbx.DefaultLogOutput,
+		)
+		InitArgs = kbx.LoggerArgs
+	}
+	if Logger == nil {
+		Logger = defaultLogger()
+	}
+	if LoggerLogz == nil {
+		LoggerLogz = defaultLoggerZ()
+	}
 }
 
 func NewLogzFormatter(args *LogzFormatOptions, format string) LogzFormatter {

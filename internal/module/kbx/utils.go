@@ -120,20 +120,26 @@ func IsObjSafe(obj any, strict bool) bool {
 
 func GetEnvOrDefaultWithType[T any](key string, defaultValue T) T {
 	value := os.Getenv(key)
+
 	// Sempre vem texto da env
 	if len(value) == 0 {
 		return defaultValue
 	}
+
 	if reflect.ValueOf(value).CanConvert(reflect.TypeFor[T]()) {
 		return reflect.ValueOf(value).Convert(reflect.TypeFor[T]()).Interface().(T)
 	}
+
 	var result T
+
 	if err := json.Unmarshal([]byte(value), &result); err != nil {
 		return defaultValue
 	}
-	if IsObjValid(result) {
+
+	if IsObjSafe(result, false) {
 		return result
 	}
+
 	return result
 }
 

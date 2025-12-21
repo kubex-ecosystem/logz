@@ -24,22 +24,9 @@ const (
 
 	LevelSprintf Level = "sprintf"
 	LevelPrintln Level = "println"
-	// LevelLog       Level = "log"
-	LevelErrorf    Level = "errorf"
-	LevelWarnf     Level = "warnf"
-	LevelInfof     Level = "infof"
-	LevelDebugf    Level = "debugf"
-	LevelFatalf    Level = "fatalf"
-	LevelPanicf    Level = "panicf"
-	LevelAlertf    Level = "alertf"
-	LevelCriticalf Level = "criticalf"
-	LevelAnswerf   Level = "answerf"
-	LevelBugf      Level = "bugf"
 )
 
-func (l Level) String() string {
-	return string(l)
-}
+func (l Level) String() string { return string(l) }
 
 // Severity retorna uma escala numérica estável, usada para filtragem.
 // Quanto maior, mais grave. Silent = 0.
@@ -110,7 +97,7 @@ func ParseLevel(s string) Level {
 	case string(LevelPanic):
 		return LevelPanic
 	default:
-		return LevelDebug
+		return LevelSilent
 	}
 }
 

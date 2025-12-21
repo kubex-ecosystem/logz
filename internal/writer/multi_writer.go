@@ -38,9 +38,9 @@ func (m *MultiWriter) LogzWrite(b []byte) error {
 	var lastErr error
 	for _, w := range m.writers {
 		// if lw, ok := w; ok {
-			if err := w.WriteLogz(b); err != nil {
-				lastErr = err
-			}
+		if err := w.WriteLogz(b); err != nil {
+			lastErr = err
+		}
 		// }
 	}
 	return lastErr
@@ -76,9 +76,9 @@ func (m *MultiWriter) Sync() error {
 	var lastErr error
 	for _, w := range m.writers {
 		// if lw, ok := w.(LogzWriter); ok {
-			if err := w.Sync(); err != nil {
-				lastErr = err
-			}
+		if err := w.Sync(); err != nil {
+			lastErr = err
+		}
 		// }
 	}
 	return lastErr

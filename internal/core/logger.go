@@ -584,7 +584,6 @@ func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 	// modo moderno: nada garante level → assume Info
 	entry := toEntry(level, args...)
 
-
 	return l.Log(level, entry.GetLevel().String(), entry)
 }
 

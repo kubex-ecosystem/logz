@@ -33,7 +33,6 @@ type Logger interface {
 	AddHook(h Hook)
 }
 
-
 type LoggerZ[T Hook | *kbx.Entry] interface {
 	SetFormatter(f formatter.Formatter)
 	SetOutput(w io.Writer)

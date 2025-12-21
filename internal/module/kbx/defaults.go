@@ -2,67 +2,39 @@
 package kbx
 
 const (
+	DefaultLogLevel    = "info"
+	DefaultLogMinLevel = "info"
+	DefaultLogMaxLevel = "fatal"
+	DefaultLogOutput   = "stdout"
+	DefaultLogFormat   = "text"
+
+	DefaultLogTimezone     = "UTC"
+	DefaultLogLocale       = "en_US"
+	DefaultLogDateFormat   = "2006-01-02"
+	DefaultTimestampFormat = "2006-01-02 15:04:05"
+
+	DefaultDebugMode   = false
+	DefaultShowColor   = true
+	DefaultShowIcons   = true
+	DefaultShowCaller  = false
+	DefaultShowTraceID = false
+	DefaultShowFields  = false
+	DefaultShowStack   = false
+
+	DefaultMaxLogFileSize   = 10 // in MB
+	DefaultMaxBackups       = 5
+	DefaultMaxAge           = 30 // in days
+	DefaultCompressLogFiles = true
+	DefaultLogRotationTime  = "24h"
+)
+
+const (
 	KeyringService        = "kubex"
 	DefaultKubexConfigDir = "$HOME/.kubex"
-
-	DefaultKubexBEKeyPath    = "$HOME/.kubex/gobe/gobe-key.pem"
-	DefaultKubexBECertPath   = "$HOME/.kubex/gobe/gobe-cert.pem"
-	DefaultKubexBECAPath     = "$HOME/.kubex/gobe/ca-cert.pem"
-	DefaultKubexBEConfigPath = "$HOME/.kubex/gobe/config/config.json"
 
 	DefaultConfigDir         = "$HOME/.kubex/logz/config"
 	DefaultConfigFile        = "$HOME/.kubex/logz/config.json"
 	DefaultKubexDSConfigPath = "$HOME/.kubex/logz/config/config.json"
-)
-
-const (
-	DefaultVolumesDir     = "$HOME/.kubex/volumes"
-	DefaultRedisVolume    = "$HOME/.kubex/volumes/redis"
-	DefaultPostgresVolume = "$HOME/.kubex/volumes/postgresql"
-	DefaultMongoDBVolume  = "$HOME/.kubex/volumes/mongodb"
-	DefaultMongoVolume    = "$HOME/.kubex/volumes/mongo"
-	DefaultRabbitMQVolume = "$HOME/.kubex/volumes/rabbitmq"
-)
-
-const (
-	DefaultRateLimitLimit  = 100
-	DefaultRateLimitBurst  = 100
-	DefaultRequestWindow   = 1 * 60 * 1000 // 1 minute
-	DefaultRateLimitJitter = 0.1
-)
-
-const (
-	DefaultMaxRetries = 3
-	DefaultRetryDelay = 1 * 1000 // 1 second
-)
-
-const (
-	DefaultMaxIdleConns          = 100
-	DefaultMaxIdleConnsPerHost   = 100
-	DefaultIdleConnTimeout       = 90 * 1000 // 90 seconds
-	DefaultTLSHandshakeTimeout   = 10 * 1000 // 10 seconds
-	DefaultExpectContinueTimeout = 1 * 1000  // 1 second
-	DefaultResponseHeaderTimeout = 5 * 1000  // 5 seconds
-	DefaultTimeout               = 30 * 1000 // 30 seconds
-	DefaultKeepAlive             = 30 * 1000 // 30 seconds
-	DefaultMaxConnsPerHost       = 100
-)
-
-const (
-	DefaultLLMProvider    = "gemini"
-	DefaultLLMModel       = "gemini-2.0-flash"
-	DefaultLLMMaxTokens   = 1024
-	DefaultLLMTemperature = 0.3
-)
-
-const (
-	DefaultApprovalRequireForResponses = false
-	DefaultApprovalTimeoutMinutes      = 15
-)
-
-const (
-	DefaultServerPort = "5000"
-	DefaultServerHost = "0.0.0.0"
 )
 
 type ValidationError struct {

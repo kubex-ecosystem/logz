@@ -11,6 +11,7 @@ import (
 	"github.com/kubex-ecosystem/logz/interfaces"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+	"github.com/kubex-ecosystem/logz/internal/writer"
 )
 
 const (
@@ -71,6 +72,15 @@ type LoggerOptionsImpl struct {
 
 func NewLoggerOptions(initArgs *kbx.InitArgs) *LoggerOptionsImpl {
 	if initArgs != nil {
+		initArgs.Level = kbx.ParseLevel(kbx.GetValueOrDefaultSimple(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_LEVEL", initArgs.Level.String()), kbx.DefaultLogLevel))
+		initArgs.MinLevel = kbx.ParseLevel(kbx.GetValueOrDefaultSimple(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_MIN_LEVEL", initArgs.MinLevel.String()), kbx.DefaultLogMinLevel))
+		initArgs.MaxLevel = kbx.ParseLevel(kbx.GetValueOrDefaultSimple(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_MAX_LEVEL", initArgs.MaxLevel.String()), kbx.DefaultLogMaxLevel))
+		initArgs.Output = kbx.GetValueOrDefaultSimple(initArgs.Output, io.Writer(writer.ParseWriter(kbx.GetEnvOrDefault("LOGZ_LOG_OUTPUT", kbx.DefaultLogOutput))))
+		initArgs.ShowColor = kbx.GetValueOrDefaultSimple(initArgs.ShowColor, kbx.BoolPtr(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_COLOR", kbx.DefaultShowColor)))
+		initArgs.ShowIcons = kbx.GetValueOrDefaultSimple(initArgs.ShowIcons, kbx.BoolPtr(kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_ICONS", kbx.DefaultShowIcons)))
+		initArgs.ShowTraceID = kbx.GetValueOrDefaultSimple(initArgs.ShowTraceID, kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_TRACE_ID", kbx.DefaultShowTraceID))
+		initArgs.ShowFields = kbx.GetValueOrDefaultSimple(initArgs.ShowFields, kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_FIELDS", kbx.DefaultShowFields))
+		initArgs.ShowStack = kbx.GetValueOrDefaultSimple(initArgs.ShowStack, kbx.GetEnvOrDefaultWithType("LOGZ_LOG_SHOW_STACK", kbx.DefaultShowStack))
 		return &LoggerOptionsImpl{
 			LoggerConfig:        initArgs,
 			LogzAdvancedOptions: &LogzAdvancedOptions{},
