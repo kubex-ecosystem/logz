@@ -1,7 +1,7 @@
 {
   "name": "Kubex Logz",
   "application": "logz",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "private": false,
   "published": true,
   "aliases": [ "logz" ],
