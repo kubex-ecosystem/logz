@@ -1,8 +1,8 @@
 # .pre-commit-config.yaml
 
 default_language_version:
-  python: python3
-  node: 22.19.0
+  python: python3.14
+  node: 24.13.1
 
 exclude: |
   (?x)^(
@@ -126,7 +126,7 @@ repos:
         pass_filenames: false
         require_serial: true
         always_run: false
-        language_version: go1.25.3
+        language_version: go1.26.0
 
   # - repo: local
   #   rev: v1.0.0

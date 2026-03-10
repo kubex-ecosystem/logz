@@ -1,6 +1,6 @@
 module github.com/kubex-ecosystem/logz
 
-go 1.25.5
+go 1.26.0
 
 require (
 	github.com/fatih/color v1.18.0
@@ -16,5 +16,3 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
-
-// replace github.com/kubex-ecosystem/kbx => ../kbx

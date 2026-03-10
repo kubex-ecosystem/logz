@@ -1,10 +1,10 @@
 {
   "name": "Kubex Logz",
   "application": "logz",
-  "version": "1.6.8",
+  "version": "1.6.9",
   "private": false,
   "published": true,
-  "aliases": [ "logz" ],
+  "aliases": ["logz"],
   "slug": "kubex-logz",
   "repository": "https://github.com/kubex-ecosystem/logz",
   "homepage": "https://github.com/kubex-ecosystem/logz",
@@ -14,19 +14,36 @@
   "platform": "go",
   "type": "executable+library",
   "main": "cmd/main.go",
-  "go_version": "1.25.5",
+  "go_version": "1.26.0",
   "go_toolchain": {
     "min": "1.23",
-    "max": "1.25"
+    "max": "1.26"
   },
   "bin": "logz",
   "author": "Rafael Mori <faelmori@live.com>",
   "organization": "kubex-ecosystem",
   "license": "MIT",
-  "tags": [ "logging", "log management", "log control", "kubex module" ],
-  "keywords": [ "logz", "kubex", "tool", "golang", "devops", "logging", "control", "management", "command-line" ],
-  "platforms": [ "linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/386" ],
-  "dependencies": [ "tar", "gzip", "curl", "git", "zip", "unzip", "jq" ],
+  "tags": ["logging", "log management", "log control", "kubex module"],
+  "keywords": [
+    "logz",
+    "kubex",
+    "tool",
+    "golang",
+    "devops",
+    "logging",
+    "control",
+    "management",
+    "command-line"
+  ],
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64",
+    "darwin/amd64",
+    "darwin/arm64",
+    "windows/amd64",
+    "windows/386"
+  ],
+  "dependencies": ["tar", "gzip", "curl", "git", "zip", "unzip", "jq"],
   "scripts": {
     "install": "make install",
     "build": "make build",
@@ -38,8 +55,17 @@
     "docs:serve": "make serve-docs"
   },
   "examples": [
-    { "description": "Install Kubex Logz", "code": "kubex module install logz" },
-    { "description": "View logs from all applications", "code": "logz view --all" },
-    { "description": "Search logs for a specific keyword", "code": "logz search --keyword 'error'" }
+    {
+      "description": "Install Kubex Logz",
+      "code": "kubex module install logz"
+    },
+    {
+      "description": "View logs from all applications",
+      "code": "logz view --all"
+    },
+    {
+      "description": "Search logs for a specific keyword",
+      "code": "logz search --keyword 'error'"
+    }
   ]
 }
