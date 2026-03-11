@@ -14,7 +14,7 @@
   "platform": "go",
   "type": "executable+library",
   "main": "cmd/main.go",
-  "go_version": "1.26.0",
+  "go_version": "1.26.1",
   "go_toolchain": {
     "min": "1.23",
     "max": "1.26"
