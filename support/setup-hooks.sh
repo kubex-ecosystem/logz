@@ -3,17 +3,17 @@
 
 # Script Metadata
 __secure_logic_version="1.0.0"
-__secure_logic_date="$( date +%Y-%m-%d )"
+__secure_logic_date="$(date +%Y-%m-%d)"
 __secure_logic_author="Rafael Mori"
 __secure_logic_use_type="exec"
 __secure_logic_init_timestamp="$(date +%s)"
 __secure_logic_elapsed_time=0
 
-set -o errexit # Exit immediately if a command exits with a non-zero status
-set -o nounset # Treat unset variables as an error when substituting
-set -o pipefail # Return the exit status of the last command in the pipeline that failed
-set -o errtrace # If a command fails, the shell will exit immediately
-set -o functrace # If a function fails, the shell will exit immediately
+set -o errexit           # Exit immediately if a command exits with a non-zero status
+set -o nounset           # Treat unset variables as an error when substituting
+set -o pipefail          # Return the exit status of the last command in the pipeline that failed
+set -o errtrace          # If a command fails, the shell will exit immediately
+set -o functrace         # If a function fails, the shell will exit immediately
 shopt -s inherit_errexit # Inherit the errexit option in functions
 
 # Get the root directory of the git project
@@ -34,7 +34,7 @@ repos:
     hooks:
       - id: docs-sanitize
         name: docs-sanitize (deny secrets-looking strings in docs)
-        entry: python3 support/hooks/.check_docs_secrets.py
+        entry: python support/hooks/.check_docs_secrets.py
         language: system
         files: \.(md|mdx|rst|txt|adoc|html)$
         fail_fast: false
@@ -169,8 +169,8 @@ _install_pre_commit_tools() {
   echo "🚀 Configurando pre-commit hooks (installs)..."
   # Create and activate a virtual environment for hooks
   if [[ ! -d .venv-hooks ]]; then
-    python3 -m venv .venv-hooks
-    echo '.venv-hooks' >> .gitignore
+    python -m venv .venv-hooks
+    echo '.venv-hooks' >>.gitignore
   fi
   if [[ ! -f .venv-hooks/bin/activate ]]; then
     echo "❌ Falha ao encontrar o ambiente virtual em .venv-hooks"
@@ -182,11 +182,11 @@ _install_pre_commit_tools() {
 
   # Install requirements file from support/ if it exists
   if [[ -f support/hooks/requirements-hooks.txt ]]; then
-    pip install -r support/hooks/requirements-hooks.txt
+    python -m pip install -r support/hooks/requirements-hooks.txt
   fi
 
-  pip install -U pip setuptools wheel
-  pip install pre-commit detect-secrets
+  python -m pip install -U pip setuptools wheel
+  python -m pip install pre-commit detect-secrets
 
   # Install pre-commit hooks
   pre-commit install --config support/hooks/.pre-commit-config.yaml --install-hooks
@@ -195,7 +195,7 @@ _install_pre_commit_tools() {
 _create_baseline() {
   # Create a baseline for detect-secrets if it doesn't exist
   if [[ ! -f .secrets.baseline ]]; then
-    detect-secrets scan > .secrets.baseline
+    detect-secrets scan >.secrets.baseline
     git add .secrets.baseline
     git commit -m "chore(secrets): add baseline" || true
   fi
@@ -219,5 +219,5 @@ _main() {
 
 _main "$@"
 
-__secure_logic_elapsed_time=$(( $(date +%s) - __secure_logic_init_timestamp ))
+__secure_logic_elapsed_time=$(($(date +%s) - __secure_logic_init_timestamp))
 echo "⏱️  Script executed in $__secure_logic_elapsed_time seconds."

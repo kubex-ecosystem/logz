@@ -46,20 +46,25 @@ type LoggerZ[T Hook | *kbx.Entry] interface {
 
 	SetDebugMode(debug bool)
 	Debug(msg ...any)
-	Notice(msg ...any)
+
 	Info(msg ...any)
 	Success(msg ...any)
 	Warn(msg ...any)
 	Error(msg ...any) error
-	Fatal(msg ...any)
+
+	Notice(msg ...any)
 	Trace(msg ...any)
-	Critical(msg ...any)
 	Answer(msg ...any)
-	Alert(msg ...any)
+
 	Bug(msg ...any)
+	Alert(msg ...any)
+	Fatal(msg ...any)
+	Critical(msg ...any)
 	Panic(msg ...any)
+
 	Println(msg ...any)
 	Printf(format string, args ...any)
+
 	Debugf(format string, args ...any)
 	Infof(format string, args ...any)
 	Noticef(format string, args ...any)
