@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/events"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 	"github.com/kubex-ecosystem/logz/internal/writer"
@@ -57,10 +57,10 @@ const (
 
 type LogzAdvancedOptions struct {
 	// Hooks
-	Formatter formatter.Formatter   `json:"formatter,omitempty" yaml:"formatter,omitempty" mapstructure:"formatter,omitempty"`
-	Hooks     []interfaces.Hook     `json:"hooks,omitempty" yaml:"hooks,omitempty" mapstructure:"hooks,omitempty"`
-	LHooks    interfaces.LHook[any] `json:"l_hooks,omitempty" yaml:"l_hooks,omitempty" mapstructure:"l_hooks,omitempty"`
-	Metadata  map[string]any        `json:"metadata,omitempty" yaml:"metadata,omitempty" mapstructure:"metadata,omitempty"`
+	Formatter formatter.Formatter `json:"formatter,omitempty" yaml:"formatter,omitempty" mapstructure:"formatter,omitempty"`
+	Hooks     []events.Hook       `json:"hooks,omitempty" yaml:"hooks,omitempty" mapstructure:"hooks,omitempty"`
+	LHooks    events.LHook[any]   `json:"l_hooks,omitempty" yaml:"l_hooks,omitempty" mapstructure:"l_hooks,omitempty"`
+	Metadata  map[string]any      `json:"metadata,omitempty" yaml:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 }
 
 type LoggerConfig = kbx.InitArgs
@@ -251,13 +251,13 @@ func init() {
 	// ---- Hooks ----
 
 	RegisterOptionSetter("hooks", func(l *Logger, v any) {
-		if h, ok := v.([]interfaces.Hook); ok {
+		if h, ok := v.([]events.Hook); ok {
 			l.SetHooks(h)
 		}
 	})
 
 	RegisterOptionSetter("lhooks", func(l *Logger, v any) {
-		if h, ok := v.(interfaces.LHook[any]); ok {
+		if h, ok := v.(events.LHook[any]); ok {
 			l.SetLHooks(h)
 		}
 	})
@@ -333,14 +333,17 @@ func (o *LoggerOptionsImpl) Set(key string, value any) {
 		o.FlushInterval = kbx.PtrDuration(value.(time.Duration))
 
 	case "hooks":
-		o.Hooks = value.([]interfaces.Hook)
+		o.Hooks = value.([]events.Hook)
 	case "lhooks":
-		o.LHooks = value.(interfaces.LHook[any])
+		o.LHooks = value.(events.LHook[any])
 	case "metadata":
 		o.LogzAdvancedOptions.Metadata = value.(map[string]any)
 	}
 }
 
+// LoadFromEnvTyped loads a value from an environment variable.
+// It uses the default value to determine the type of the value to load.
+// It returns the value if the environment variable is set, otherwise it returns the default value.
 func LoadFromEnvTyped(key string, defaultValue any) any {
 	val := os.Getenv(key)
 	if val == "" {

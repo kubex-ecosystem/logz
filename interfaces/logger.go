@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/kubex-ecosystem/logz/internal/events"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
@@ -22,18 +23,18 @@ type Logger interface {
 	SetCompress(compress bool)
 	SetBufferSize(size int)
 	SetFlushInterval(interval time.Duration)
-	SetHooks(hooks []Hook)
-	SetLHooks(hooks LHook[any])
+	SetHooks(hooks []events.Hook)
+	SetLHooks(hooks events.LHook[any])
 	SetMetadata(metadata map[string]any)
 	SetConfig(config *kbx.LogzConfig)
 
 	Log(lvl kbx.Level, args ...any) error
 	LogAny(level kbx.Level, args ...any) error
 
-	AddHook(h Hook)
+	AddHook(h events.Hook)
 }
 
-type LoggerZ[T Hook | *kbx.Entry] interface {
+type LoggerZ[T events.Hook | *kbx.Entry] interface {
 	SetFormatter(f formatter.Formatter)
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
@@ -42,7 +43,7 @@ type LoggerZ[T Hook | *kbx.Entry] interface {
 
 	Log(level kbx.Level, rec T) error
 
-	AddHook(h HookG[T])
+	AddHook(h events.HookG[T])
 
 	SetDebugMode(debug bool)
 	Debug(msg ...any)
@@ -89,10 +90,10 @@ type LoggerFunc interface {
 
 	Log(level kbx.Level, rec kbx.Entry) error
 
-	AddHook(h HookFunc)
+	AddHook(h events.HookFunc)
 }
 
-type LoggerFuncG[T Hook | *kbx.Entry] interface {
+type LoggerFuncG[T events.Hook | *kbx.Entry] interface {
 	SetFormatter(f formatter.FormatterFunc)
 	SetOutput(w io.Writer)
 	SetMinLevel(min kbx.Level)
@@ -101,5 +102,5 @@ type LoggerFuncG[T Hook | *kbx.Entry] interface {
 
 	Log(level kbx.Level, rec T) error
 
-	AddHook(h HookFuncG[T])
+	AddHook(h events.HookFuncG[T])
 }

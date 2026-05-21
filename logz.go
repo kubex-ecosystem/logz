@@ -10,8 +10,8 @@ import (
 	// "strings"
 
 	"github.com/google/uuid"
-	"github.com/kubex-ecosystem/logz/interfaces"
 	C "github.com/kubex-ecosystem/logz/internal/core"
+	"github.com/kubex-ecosystem/logz/internal/events"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 	"github.com/kubex-ecosystem/logz/internal/writer"
@@ -47,7 +47,7 @@ type LogzIOWriter = writer.IOWriter
 type LogzMultiWriter = writer.MultiWriter
 type LogzEntry = kbx.LogzEntry
 
-type LogzHooks[T any] = interfaces.LHook[T]
+type LogzHooks[T any] = events.LHook[T]
 
 func NewLogzOptions(withDefaults bool) *LogzOptions {
 	if withDefaults {

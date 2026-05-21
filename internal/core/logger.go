@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kubex-ecosystem/logz/interfaces"
+	"github.com/kubex-ecosystem/logz/internal/events"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 
@@ -38,11 +38,9 @@ type Logger struct {
 // Não sabe nada de linha, arquivo, CLI, JSON, etc.
 // Isso é responsabilidade do Formatter + destino (io.Writer).
 type LoggerZ[T kbx.Entry] struct {
-	ID       uuid.UUID
-	flushMuZ sync.Mutex
-	hooksMuZ sync.Mutex
-	muZ      sync.RWMutex
-	optsZ    *LoggerOptionsImpl
+	ID    uuid.UUID
+	muZ   sync.RWMutex
+	optsZ *LoggerOptionsImpl
 	*Logger
 }
 
@@ -119,9 +117,7 @@ func NewLoggerZ[T kbx.Entry](prefix string, opts *LoggerOptionsImpl, withDefault
 	return &LoggerZ[T]{
 		ID: uuid.New(),
 
-		muZ:      sync.RWMutex{},
-		flushMuZ: sync.Mutex{},
-		hooksMuZ: sync.Mutex{},
+		muZ: sync.RWMutex{},
 
 		optsZ:  opts,
 		Logger: NewLogger(prefix, opts, false), // evita chamada recursiva
@@ -188,6 +184,7 @@ func NewLoggerZI(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Log
 	return lgr
 }
 
+// SetFormatter sets the formatter for the logger.
 func (l *Logger) SetFormatter(f formatter.Formatter) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -200,19 +197,22 @@ func (l *Logger) SetFormatter(f formatter.Formatter) {
 	l.opts.Format = f.Name()
 }
 
+// SetOutput sets the output writer for the logger.
 func (l *Logger) SetOutput(w io.Writer) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.opts.Output = w
 }
 
+// SetMinLevel sets the minimum level for the logger.
 func (l *Logger) SetMinLevel(min kbx.Level) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.opts.MinLevel = min
 }
 
-func (l *Logger) AddHook(h interfaces.Hook) {
+// AddHook adds a hook to the logger.
+func (l *Logger) AddHook(h events.Hook) {
 	if h == nil {
 		return
 	}
@@ -221,6 +221,7 @@ func (l *Logger) AddHook(h interfaces.Hook) {
 	l.opts.Hooks = append(l.opts.Hooks, h)
 }
 
+// Enabled checks if the logger is enabled for the given level.
 func (l *Logger) Enabled(level kbx.Level) bool {
 	l.mu.RLock()
 	min := l.opts.MinLevel
@@ -228,12 +229,14 @@ func (l *Logger) Enabled(level kbx.Level) bool {
 	return level.Severity() >= min.Severity()
 }
 
+// GetMinLevel returns the minimum level for the logger.
 func (l *Logger) GetMinLevel() kbx.Level {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return l.opts.MinLevel
 }
 
+// GetLevel returns the level for the logger.
 func (l *Logger) GetLevel() kbx.Level {
 	return l.opts.MinLevel
 }
@@ -274,12 +277,12 @@ func (l *Logger) SetFlushInterval(interval time.Duration) {
 }
 
 // SetHooks is the setter for setHooks
-func (l *Logger) SetHooks(hooks []interfaces.Hook) {
+func (l *Logger) SetHooks(hooks []events.Hook) {
 	// implementação fictícia
 }
 
 // SetLHooks is the setter for setLHooks
-func (l *Logger) SetLHooks(hooks interfaces.LHook[any]) {
+func (l *Logger) SetLHooks(hooks events.LHook[any]) {
 	// implementação fictícia
 }
 
@@ -288,12 +291,14 @@ func (l *Logger) SetMetadata(metadata map[string]any) {
 	// implementação fictícia
 }
 
+// GetConfig returns the config for the logger.
 func (l *Logger) GetConfig() *LoggerOptionsImpl {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return l.opts
 }
 
+// SetConfig sets the config for the logger.
 func (l *Logger) SetConfig(opts *kbx.LogzConfig) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -471,8 +476,10 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 	return nil
 }
 
-// Log é o caminho principal: recebe um Record pronto (T),
-// dispara hooks, formata e escreve em out.
+// Log is the main entrypoint to log:
+//   - dispatches hooks
+//   - formats
+//   - writes to out
 func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 	if !kbx.IsObjSafe(rec, false) {
 		// nada a fazer, mas não vamos quebrar ninguém
@@ -565,6 +572,8 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 	return nil
 }
 
+// LogAny is a wrapper around Log for logging arbitrary arguments.
+// If len(args) == 0, it will return nil.
 func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 	if l == nil {
 		return nil
@@ -587,6 +596,8 @@ func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 	return l.Log(level, entry.GetLevel().String(), entry)
 }
 
+// Clone returns a copy of the logger with the same configuration.
+// This is useful for creating a logger with a different prefix.
 func (l *LoggerZ[T]) Clone() *LoggerZ[T] {
 	l.muZ.RLock()
 	defer l.muZ.RUnlock()
@@ -594,9 +605,9 @@ func (l *LoggerZ[T]) Clone() *LoggerZ[T] {
 	return NewLoggerZ[T](l.optsZ.Prefix, newOpts, false)
 }
 
-// SetDebugMode habilita ou desabilita o modo debug do logger global.
-// Quando debug=true, mostra logs de todos os níveis (incluindo debug e trace).
-// Quando debug=false, mostra apenas logs de nível info ou superior.
+// SetDebugMode sets the debug mode of the logger.
+// When debug=true, it shows logs of all levels (including debug and trace).
+// When debug=false, it shows only logs of level info or higher.
 func (l *LoggerZ[T]) SetDebugMode(debug bool) {
 	if l == nil {
 		return
@@ -608,107 +619,143 @@ func (l *LoggerZ[T]) SetDebugMode(debug bool) {
 	}
 }
 
-// Debug loga uma mensagem de debug
+// Debug logs a debug message.
 func (l *LoggerZ[T]) Debug(msg ...any) {
 	l.Log("debug", msg...)
 }
 
-// Notice loga uma mensagem de notice
+// Notice logs a notice message.
 func (l *LoggerZ[T]) Notice(msg ...any) {
 	l.Log("notice", msg...)
 }
 
-// Info loga uma mensagem informativa
+// Info logs an info message.
 func (l *LoggerZ[T]) Info(msg ...any) {
 	l.Log("info", msg...)
 }
 
-// Success loga uma mensagem de sucesso
+// Success logs a success message.
 func (l *LoggerZ[T]) Success(msg ...any) {
 	l.Log("success", msg...)
 }
 
-// Warn loga um aviso
+// Warn logs a warn message.
 func (l *LoggerZ[T]) Warn(msg ...any) {
 	l.Log("warn", msg...)
 }
 
-// Error loga um erro e retorna error
+// Error logs an error message and returns an error.
 func (l *LoggerZ[T]) Error(msg ...any) error {
 	return l.Log("error", msg...)
 }
 
-// Fatal loga uma mensagem fatal e encerra o programa com exit code 1
+// Fatal logs a fatal message and exits the program with exit code 1.
 func (l *LoggerZ[T]) Fatal(msg ...any) {
 	l.Log("fatal", msg...)
 	os.Exit(1)
 }
 
+// Trace logs a trace message.
 func (l *LoggerZ[T]) Trace(msg ...any) {
 	l.Log("trace", msg...)
 }
 
+// Critical logs a critical message.
 func (l *LoggerZ[T]) Critical(msg ...any) {
 	l.Log("critical", msg...)
 }
 
+// Answer logs an answer message.
 func (l *LoggerZ[T]) Answer(msg ...any) {
 	l.Log("answer", msg...)
 }
 
+// Alert logs an alert message.
 func (l *LoggerZ[T]) Alert(msg ...any) {
 	l.Log("alert", msg...)
 }
 
+// Bug logs a bug message.
 func (l *LoggerZ[T]) Bug(msg ...any) {
 	l.Log("bug", msg...)
 }
 
+// Panic logs a panic message.
 func (l *LoggerZ[T]) Panic(msg ...any) {
 	l.Log("panic", msg...)
 }
+
+// Println logs a println message.
 func (l *LoggerZ[T]) Println(msg ...any) {
 	l.Log("println", msg...)
 }
+
+// Printf logs a formatted message.
 func (l *LoggerZ[T]) Printf(format string, args ...any) {
 	l.Log("printf", fmt.Sprintf(format, args...))
 }
+
+// Debugf logs a formatted debug message.
 func (l *LoggerZ[T]) Debugf(format string, args ...any) {
 	l.Log("debug", fmt.Sprintf(format, args...))
 }
+
+// Infof logs a formatted info message.
 func (l *LoggerZ[T]) Infof(format string, args ...any) {
 	l.Log("info", fmt.Sprintf(format, args...))
 }
+
+// Noticef logs a formatted notice message.
 func (l *LoggerZ[T]) Noticef(format string, args ...any) {
 	l.Log("notice", fmt.Sprintf(format, args...))
 }
+
+// Successf logs a formatted success message.
 func (l *LoggerZ[T]) Successf(format string, args ...any) {
 	l.Log("success", fmt.Sprintf(format, args...))
 }
+
+// Warnf logs a formatted warning message.
 func (l *LoggerZ[T]) Warnf(format string, args ...any) {
 	l.Log("warn", fmt.Sprintf(format, args...))
 }
+
+// Errorf logs a formatted error message and returns an error.
 func (l *LoggerZ[T]) Errorf(format string, args ...any) error {
 	return l.Log("error", fmt.Sprintf(format, args...))
 }
+
+// Fatalf logs a formatted fatal message.
 func (l *LoggerZ[T]) Fatalf(format string, args ...any) {
 	l.Log("fatal", fmt.Sprintf(format, args...))
 }
+
+// Tracef logs a formatted trace message.
 func (l *LoggerZ[T]) Tracef(format string, args ...any) {
 	l.Log("trace", fmt.Sprintf(format, args...))
 }
+
+// Criticalf logs a formatted critical message.
 func (l *LoggerZ[T]) Criticalf(format string, args ...any) {
 	l.Log("critical", fmt.Sprintf(format, args...))
 }
+
+// Answerf logs a formatted answer message.
 func (l *LoggerZ[T]) Answerf(format string, args ...any) {
 	l.Log("answer", fmt.Sprintf(format, args...))
 }
+
+// Alertf logs a formatted alert message.
 func (l *LoggerZ[T]) Alertf(format string, args ...any) {
 	l.Log("alert", fmt.Sprintf(format, args...))
 }
+
+// Bugf logs a formatted bug message.
 func (l *LoggerZ[T]) Bugf(format string, args ...any) {
 	l.Log("bug", fmt.Sprintf(format, args...))
 }
+
+// Panicf logs a formatted panic message.
 func (l *LoggerZ[T]) Panicf(format string, args ...any) {
 	l.Log("panic", fmt.Sprintf(format, args...))
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
 	"github.com/kubex-ecosystem/logz/internal/core"
+	"github.com/kubex-ecosystem/logz/internal/events"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
@@ -24,7 +24,7 @@ func (m *Manager) stageValidate(entry *core.Entry) error {
 
 func (m *Manager) stagePreHooks(ctx context.Context, entry *core.Entry) error {
 	m.mu.RLock()
-	hooks := append([]interfaces.LHook[any](nil), m.hooks...)
+	hooks := append([]events.LHook[any](nil), m.hooks...)
 	m.mu.RUnlock()
 
 	for _, h := range hooks {
@@ -66,7 +66,7 @@ func (m *Manager) stagePostHooks(ctx context.Context, entry kbx.Entry) error {
 	// hoje você não diferencia pre/post de verdade;
 	// aqui você tem liberdade de, no futuro, separar hooks por fase.
 	m.mu.RLock()
-	hooks := append([]interfaces.LHook[any](nil), m.hooks...)
+	hooks := append([]events.LHook[any](nil), m.hooks...)
 	m.mu.RUnlock()
 
 	for _, h := range hooks {

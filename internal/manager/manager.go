@@ -7,25 +7,25 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/kubex-ecosystem/logz/internal/events"
 	control "github.com/kubex-ecosystem/logz/internal/manager/control"
+
 	// . "github.com/kubex-ecosystem/logz/internal/manager/control"
 
 	// . "github.com/kubex-ecosystem/logz/internal/module/kbx"
 
-	"github.com/kubex-ecosystem/logz/interfaces"
 	"github.com/kubex-ecosystem/logz/internal/core"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-// Entry aqui é o seu tipo concreto.
-// No seu código, você tem *Entry, então sigo essa linha.
+// Entry aqui é o tipo concreto.
 type Manager struct {
 	mu sync.RWMutex
 
-	formatter    Formatter               // normalmente l.opts.Formatter
-	writer       io.Writer               // normalmente l.Writer()
-	hooks        []interfaces.LHook[any] // normalmente l.opts.LHooks
-	levelEnabled func(kbx.Level) bool    // ponte pro Enabled do logger (por enquanto)
+	formatter    Formatter            // normalmente l.opts.Formatter
+	writer       io.Writer            // normalmente l.Writer()
+	hooks        []events.LHook[any]  // normalmente l.opts.LHooks
+	levelEnabled func(kbx.Level) bool // ponte pro Enabled do logger (por enquanto)
 
 	stage atomic.Uint32
 	state atomic.Uint32
@@ -35,7 +35,7 @@ type Manager struct {
 	ctl     control.ManagerControl
 }
 
-// Formatter é o contrato já existente no seu logger.
+// Formatter é o contrato já existente no logger.
 type Formatter interface {
 	Format(e *core.Entry) ([]byte, error)
 }
@@ -46,7 +46,7 @@ func (m *Manager) IsTerminal() bool {
 }
 
 // Process é o pipeline principal para ENTRIES saudáveis/sóbrios.
-// Logger NÃO faz mais formatação, hooks, write — só chama isso aqui.
+// Logger NÃO faz formatação, hooks, write — só chama isso aqui.
 func (m *Manager) Process(ctx context.Context, entry *core.Entry) error {
 	if entry == nil {
 		return nil
