@@ -283,7 +283,7 @@ func SetDebugMode(debug bool) {
 		LoggerLogz = defaultLoggerZ()
 	}
 	if debug {
-		LoggerLogz.SetMinLevel(kbx.LevelDebug)
+		LoggerLogz.SetMinLevel(kbx.LevelNotice)
 	} else {
 		LoggerLogz.SetMinLevel(kbx.LevelInfo)
 	}
