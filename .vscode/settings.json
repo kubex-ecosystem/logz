@@ -4,5 +4,6 @@
   "git.alwaysSignOff": true,
   "git.enableCommitSigning": true,
   "remoteHub.gitProtocol": "ssh",
-  "editor.tabCompletion": "on"
+  "editor.tabCompletion": "on",
+  "go.lintTool": "golangci-lint"
 }

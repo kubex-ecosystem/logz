@@ -9,7 +9,7 @@ import (
 
 func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 	if len(args) == 0 {
-		en, err := NewEntry(level)
+		en, err := NewEntry(string(level))
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -29,7 +29,7 @@ func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 
 	// Se for error
 	if _, ok := args[0].(error); ok {
-		en, err := NewEntry(kbx.LevelError)
+		en, err := NewEntry(kbx.LevelError.String())
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -46,7 +46,7 @@ func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 
 	// Se for string
 	if s, ok := args[0].(string); ok {
-		en, err := NewEntry(level)
+		en, err := NewEntry(level.String())
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -60,7 +60,7 @@ func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 
 	// Se for []byte
 	if b, ok := args[0].([]byte); ok {
-		en, err := NewEntry(level)
+		en, err := NewEntry(level.String())
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -73,7 +73,7 @@ func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 
 	// Se for map
 	if m, ok := args[0].(map[string]any); ok {
-		en, err := NewEntry(level)
+		en, err := NewEntry(level.String())
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -90,7 +90,7 @@ func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 	// Se for struct (fallback leve SEM panic)
 	val := args[0]
 	if kbx.IsObjSafe(val, false) {
-		en, err := NewEntry(level)
+		en, err := NewEntry(level.String())
 		if err != nil {
 			// fallback bruto
 			return &Entry{
@@ -104,7 +104,7 @@ func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 			WithData(val)
 	}
 
-	en, err := NewEntry(level)
+	en, err := NewEntry(level.String())
 	if err != nil {
 		// fallback bruto
 		return &Entry{
@@ -119,7 +119,7 @@ func toEntry(level kbx.Level, args ...any) kbx.LogzEntry {
 }
 
 func ToEntry(level kbx.Level, args ...any) *Entry {
-	e, err := NewEntry(level)
+	e, err := NewEntry(level.String())
 	if err != nil {
 		// fallback bruto
 		return &Entry{

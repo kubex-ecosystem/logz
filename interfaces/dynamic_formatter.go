@@ -39,16 +39,16 @@ func (f *DynamicFormatter[T]) Format(e T) ([]byte, error) {
 
 	// 3. Heurística de formato
 	switch {
-	case e.GetLevel() >= f.jsonThreshold:
+	case kbx.ParseLevel(e.GetLevel()) >= f.jsonThreshold:
 		return json.Marshal(e)
 
-	case e.GetLevel() >= f.prettyThreshold:
+	case kbx.ParseLevel(e.GetLevel()) >= f.prettyThreshold:
 		return f.Format(e)
 
-	case e.GetLevel() >= f.compactThreshold:
+	case kbx.ParseLevel(e.GetLevel()) >= f.compactThreshold:
 		return f.Format(e)
 
-	case e.GetLevel() == f.hudThreshold:
+	case kbx.ParseLevel(e.GetLevel()) == f.hudThreshold:
 		return f.Format(e)
 	default:
 		return f.Format(e)

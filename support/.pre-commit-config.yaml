@@ -74,5 +74,5 @@ repos:
       - id: go-fmt
       - id: go-vet
       - id: go-mod-tidy
-        # - id: golangci-lint
-        # args: ["run", "--config=./support/.golangci.yaml"]
+      - id: golangci-lint
+        args: ["run", "--config=./support/hooks/.golangci.yaml"]

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	uuid "github.com/google/uuid"
 	"github.com/kubex-ecosystem/logz/internal/events"
 	"github.com/kubex-ecosystem/logz/internal/formatter"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"

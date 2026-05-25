@@ -2,6 +2,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -11,22 +12,36 @@ import (
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
-// Entry é a unidade básica de log do sistema.
-// Tudo no Kubex que for "log estruturado" deveria conseguir ser expresso nisso.
+// Entry é a unidade básica de log do sistema. E a maior diferença estrutural
+// entre o logz e o stdlog. Ele encaminha tudo no fim para o stdlog? Não.
+// Ele é capaz de lidar e trabalhar com outputs customizados, que são interfaces de io.Writer.
+// Porém, ele conta com fmt para parsear algumas strings e formatar algumas saídas (não são todas: vide package writer)
+// Tudo no Kubex que for "log estruturado" deveria conseguir ser expresso nisso. Se não vier nesse formato,
+// nós fazemos um parse para transformar nessa estrutura. Ela é a "vida" do sistema.
+// Tudo aqui deve ser serializável, para que possamos enviar para um output customizado, se não for, fazemos
+// de forma que seja o mais compatível possível.
 type Entry struct {
+	ctx context.Context `json:"-" yaml:"-" xml:"-"` // Atribuído na criação, no TraceID, e usado no Writer (output)
+
 	Timestamp time.Time `json:"ts" yaml:"ts" xml:"ts" mapstructure:"ts"`
 	Level     kbx.Level `json:"level" yaml:"level" xml:"level" mapstructure:"level"`
 	Message   string    `json:"msg" yaml:"msg" xml:"msg" mapstructure:"msg"`
 
-	ShowColor   bool   `json:"show_color,omitempty" yaml:"show_color,omitempty" xml:"show_color,omitempty" mapstructure:"show_color,omitempty"`             // Habilita cores na saída
-	ShowIcon    bool   `json:"show_icon,omitempty" yaml:"show_icon,omitempty" xml:"show_icon,omitempty" mapstructure:"show_icon,omitempty"`                 // Habilita ícones na saída
-	ShowTraceID bool   `json:"show_trace_id,omitempty" yaml:"show_trace_id,omitempty" xml:"show_trace_id,omitempty" mapstructure:"show_trace_id,omitempty"` // Habilita o ID de rastreamento na saída
-	ShowCaller  bool   `json:"show_caller,omitempty" yaml:"show_caller,omitempty" xml:"show_caller,omitempty" mapstructure:"show_caller,omitempty"`         // Habilita informações do chamador na saída
-	ShowStack   bool   `json:"show_stack,omitempty" yaml:"show_stack,omitempty" xml:"show_stack,omitempty" mapstructure:"show_stack,omitempty"`             // Habilita informações da pilha de chamadas na saída
-	ShowFields  bool   `json:"show_fields,omitempty" yaml:"show_fields,omitempty" xml:"show_fields,omitempty" mapstructure:"show_fields,omitempty"`         // Habilita campos adicionais na saída
-	Format      string `json:"format,omitempty" yaml:"format,omitempty" xml:"format,omitempty" mapstructure:"format,omitempty"`                             // json / text / xml / etc.
+	ShowColor   bool `json:"show_color,omitempty" yaml:"show_color,omitempty" xml:"show_color,omitempty" mapstructure:"show_color,omitempty"`             // Habilita cores na saída
+	ShowIcon    bool `json:"show_icon,omitempty" yaml:"show_icon,omitempty" xml:"show_icon,omitempty" mapstructure:"show_icon,omitempty"`                 // Habilita ícones na saída
+	ShowTraceID bool `json:"show_trace_id,omitempty" yaml:"show_trace_id,omitempty" xml:"show_trace_id,omitempty" mapstructure:"show_trace_id,omitempty"` // Habilita o ID de rastreamento na saída
+	ShowCaller  bool `json:"show_caller,omitempty" yaml:"show_caller,omitempty" xml:"show_caller,omitempty" mapstructure:"show_caller,omitempty"`         // Habilita informações do chamador na saída
+	ShowStack   bool `json:"show_stack,omitempty" yaml:"show_stack,omitempty" xml:"show_stack,omitempty" mapstructure:"show_stack,omitempty"`             // Habilita informações da pilha de chamadas na saída
+	ShowFields  bool `json:"show_fields,omitempty" yaml:"show_fields,omitempty" xml:"show_fields,omitempty" mapstructure:"show_fields,omitempty"`         // Habilita campos adicionais na saída
 
-	Context  string `json:"ctx,omitempty" yaml:"ctx,omitempty" xml:"ctx,omitempty" mapstructure:"ctx,omitempty"`             // ex: "auth", "db", "billing"
+	// O formatter é armazenado somente como texto de referência ao tipo, e instanciado no momento da formatação.
+	Format string `json:"format,omitempty" yaml:"format,omitempty" xml:"format,omitempty" mapstructure:"format,omitempty"` // json / text / xml / etc.
+
+	Context string `json:"ctx,omitempty" yaml:"ctx,omitempty" xml:"ctx,omitempty" mapstructure:"ctx,omitempty"` // ex: "auth", "db", "billing"
+
+	// Os campos Source, TraceID e Caller são campos com valores adquiridos por libs de sistema.
+	// Mesmo se tentarem ser alterados via builder/chainable, o valor original será preservado e exibido que houve alteração na saída.
+	// Garantindo que o valor verdadeiro seja sempre preservado.
 	Source   string `json:"src,omitempty" yaml:"src,omitempty" xml:"src,omitempty" mapstructure:"src,omitempty"`             // componente/módulo/serviço
 	TraceID  string `json:"trace,omitempty" yaml:"trace,omitempty" xml:"trace,omitempty" mapstructure:"trace,omitempty"`     // correlação
 	Caller   string `json:"caller,omitempty" yaml:"caller,omitempty" xml:"caller,omitempty" mapstructure:"caller,omitempty"` // arquivo:linha função
@@ -35,15 +50,17 @@ type Entry struct {
 	Tags   map[string]string `json:"tags,omitempty" yaml:"tags,omitempty" xml:"-" mapstructure:"tags,omitempty"`       // metadados arbitrários
 	Fields map[string]any    `json:"fields,omitempty" yaml:"fields,omitempty" xml:"-" mapstructure:"fields,omitempty"` // dados estruturados arbitrários
 
-	Error error `json:"error,omitempty"` // erro associado (se houver)
+	err error `json:"-" yaml:"-" xml:"-" mapstructure:"-"` // erro associado (se houver)
 }
 
 func NewKbxEntry(level kbx.Level) (kbx.LogzEntry, error) {
-	return NewEntryImpl(level)
+	return NewEntryImpl(string(level))
 }
 
-func NewEntry(level kbx.Level) (*Entry, error) {
+func NewEntry(level string) (*Entry, error) {
+	l := kbx.ParseLevel(level)
 	return &Entry{
+		ctx:         context.Background(),
 		ShowColor:   true,
 		ShowIcon:    true,
 		ShowTraceID: false,
@@ -51,8 +68,8 @@ func NewEntry(level kbx.Level) (*Entry, error) {
 		Tags:        make(map[string]string),
 		Fields:      make(map[string]any),
 		Caller:      captureCaller(3),
-		Level:       level,
-		Severity:    level.Severity(),
+		Level:       l,
+		Severity:    l.Severity(),
 	}, nil
 }
 
@@ -60,7 +77,8 @@ func NewEntry(level kbx.Level) (*Entry, error) {
 // - timestamp UTC
 // - maps inicializados
 // - caller capturado
-func NewEntryImpl(level kbx.Level) (*Entry, error) {
+// - context
+func NewEntryImpl(level string) (*Entry, error) {
 	e, err := NewEntry(level)
 	if err != nil {
 		return nil, err
@@ -82,14 +100,22 @@ func NewLogzEntry(level kbx.Level) kbx.LogzEntry {
 // ---------- Chainable builders ----------
 //
 
-func (e *Entry) WithLevel(l kbx.Level) kbx.LogzEntry {
-	e.Level = l
-	e.Severity = l.Severity()
+func (e *Entry) WithLevel(level string) kbx.LogzEntry {
+	e.Level = kbx.Level(level)
+	e.Severity = e.Level.Severity()
 	return e
 }
 
+// TODO: Fazer de forma que seja possível atribuir um context.Context.
+// Vai ficar pra depois...
 func (e *Entry) WithTraceID(id string) kbx.LogzEntry {
 	e.TraceID = id
+	return e
+}
+
+// TODO: Fazer de forma que seja possível atribuir um contexto.
+func (e *Entry) WithContext(ctx context.Context) kbx.LogzEntry {
+	e.ctx = ctx
 	return e
 }
 
@@ -104,12 +130,19 @@ func (e *Entry) WithIcon(icon bool) kbx.LogzEntry {
 }
 
 func (e *Entry) WithMessage(msg string) kbx.LogzEntry {
+	// Aqui não é feita nenhum processamento, somente a atribuição e retorno do ponteiro.
+	// o uso de variadic arguments na criação dos métodos do logger já fazem a concatenação
+	// e formatação dos valores em uma única string, o que facilita a vida do usuário.
+	// TODO: A montagem da mensagem ocorre no formatter, porém aqui a propriedade deveria empilhar para
+	// permitir que fosse feita somente lá.
+	// Fazer essa implementação NÃO vai exigir uma pequena mudança na interface do io.Writer. Mas sim nos formatters.
+	// Hoje a interface do io.Writer é simplesmente um escritor (io.Writer), ela só lida com []byte.
+	// A montagem ocorre no Formatter, no método de dispatch. Porque assim permitimos que durante o ciclo de vida
+	// do Entry (com o log original), só seja alterada no próprio formatter, preservando a que está aqui.
+	// Nós recebemos o valor do formatter e o direcionamos para o writer, que irá escrever no output (io.Writer), independete
+	// da mensagem ou do destino (console, arquivo, socket, etc.). Ele só escreve. O formatter só formata. É o que permite
+	// ter uma lógica mais limpa e separada.
 	e.Message = msg
-	return e
-}
-
-func (e *Entry) WithContext(ctx string) kbx.LogzEntry {
-	e.Context = ctx
 	return e
 }
 
@@ -147,7 +180,7 @@ func (e *Entry) WithData(data any) kbx.LogzEntry {
 }
 
 func (e *Entry) WithError(err error) kbx.LogzEntry {
-	e.Error = err
+	e.err = err
 	return e
 }
 
@@ -159,12 +192,12 @@ func (e *Entry) Tag(k, v string) kbx.LogzEntry {
 	return any(e).(kbx.LogzEntry)
 }
 
-func (e *Entry) Field(k string, v any) kbx.Entry {
+func (e *Entry) Field(k string, v any) kbx.LogzEntry {
 	if e.Fields == nil {
 		e.Fields = make(map[string]any)
 	}
 	e.Fields[k] = v
-	return any(e).(kbx.Entry)
+	return e
 }
 
 func (e *Entry) WithCaller(c string) kbx.LogzEntry {
@@ -356,11 +389,11 @@ func (e *Entry) GetMessage() string {
 // ---------- Record interface ----------
 //
 
-func (e *Entry) GetLevel() kbx.Level {
+func (e *Entry) GetLevel() string {
 	if e == nil {
-		return kbx.LevelSilent
+		return string(kbx.LevelSilent)
 	}
-	return e.Level
+	return string(e.Level)
 }
 
 //
@@ -387,11 +420,21 @@ func (e *Entry) Validate() error {
 	return nil
 }
 
+func (e *Entry) Error() error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
 //
 // ---------- Debug-friendly String() ----------
 //
 
 func (e *Entry) String() string {
+	// Montagem da mensagem sem formatação especial/LogzFormatter.
+	// Isso serve para que o usuário possa fazer um "fmt.Println(entry)" e
+	// obter uma saída legível sem precisar chamar um formatter específico.
 	if e == nil {
 		return "<nil entry>"
 	}
@@ -401,6 +444,64 @@ func (e *Entry) String() string {
 		e.Level,
 		e.Message,
 	)
+}
+
+//
+// ---------- Métodos de Destruição/Descarte ----------
+//
+
+// Reset reseta os campos da Entry
+//
+// Importante: O Reset não zera o TraceID, pois ele é gerado no momento da criação
+// do Logger ou pelo método WithTraceID, e pode ser reutilizado em diversos Entries.
+// Isso é feito propositalmente para que o TraceID seja preservado entre as chamadas
+// do Logger, permitindo o monitoramento contínuo do fluxo de requisições.
+// Isso também evita que a chave TraceID apareça em cada entrada individualmente.
+//
+
+func (e *Entry) Reset() {
+	if e == nil {
+		return
+	}
+
+	e.Message = ""
+	e.Timestamp = time.Time{}
+	e.Level = kbx.LevelSilent
+	e.Severity = 0
+	e.Caller = ""
+	e.Context = ""
+	e.Source = ""
+	e.Format = ""
+	e.err = nil
+	e.Tags = nil
+	e.Fields = nil
+	e.ShowColor = true
+	e.ShowStack = false
+	e.ShowCaller = false
+	e.ShowFields = false
+	e.ShowIcon = false
+	e.ShowTraceID = false
+	e.TraceID = ""
+}
+
+// Propagate propaga a os eventos de relativos à entrada.
+// O entry não vê o logger, ele só acessa os fluxos e estruturas que
+// são utilizadas através dos dados alocados na própria entry.
+// Isso faz com que o entry tenha um acoplamento baixo com o logger.
+// E possa ser usado de forma independente, além de permitir a definição
+// de diferentes fluxos de saída (IOBridge) para cenários mais complexos,
+// flexíveis e com o máximo de customizações possíveis considerando a lógica
+// de um logger moderno e robusto.
+func (e *Entry) Propagate() error {
+	if e == nil {
+		return errors.New("entry is nil")
+	}
+	// lgr := logz.GetLoggerZ("")
+
+	// lgr.
+
+	// return e.Logger.Output(e.Formatter.Format(e))
+	return nil
 }
 
 //

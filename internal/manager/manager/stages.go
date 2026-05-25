@@ -10,7 +10,7 @@ func (m *Manager) stageValidate(entry logz.Entry) error {
 	if m.levelEnabled == nil {
 		return nil
 	}
-	lvl := logz.Level(entry.GetLevel().String())
+	lvl := logz.Level(entry.GetLevel())
 	if !m.levelEnabled(lvl) {
 		return errors.New("level not enabled")
 	}

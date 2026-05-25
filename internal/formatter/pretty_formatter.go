@@ -39,7 +39,7 @@ func (f *PrettyFormatter) Format(e kbx.Entry) ([]byte, error) {
 
 	levelStr := level
 	if f.WithColors || e.GetShowColor() {
-		levelStr = colorForLevel(e.GetLevel(), level)
+		levelStr = colorForLevel(kbx.ParseLevel(level), level)
 	}
 
 	fmt.Fprintf(&buf, "%s  %s  %s", ts, levelStr, msg)

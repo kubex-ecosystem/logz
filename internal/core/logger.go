@@ -1,7 +1,9 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,11 +26,14 @@ import (
 // Não sabe nada de linha, arquivo, CLI, JSON, etc.
 // Isso é responsabilidade do Formatter + destino (io.Writer).
 type Logger struct {
+	// Aqui a struct do stdlog está agregada ao logger, promovendo (herdando) todos os métodos do stdlog
+	// Ela é um ponteiro, logo deve ser instanciada e atribuída sempre ao criar um Logger
+	*log.Logger
+	ID      uuid.UUID
 	mu      sync.RWMutex
 	flushMu sync.Mutex
 	hooksMu sync.Mutex
 	opts    *LoggerOptionsImpl
-	*log.Logger
 }
 
 // LoggerZ é o núcleo do pipeline:
@@ -38,13 +43,24 @@ type Logger struct {
 // Não sabe nada de linha, arquivo, CLI, JSON, etc.
 // Isso é responsabilidade do Formatter + destino (io.Writer).
 type LoggerZ[T kbx.Entry] struct {
-	ID    uuid.UUID
-	muZ   sync.RWMutex
-	optsZ *LoggerOptionsImpl
-	*Logger
+	ID      uuid.UUID
+	muZ     sync.RWMutex
+	optsZ   *LoggerOptionsImpl
+	*Logger // Essa struct promove a struct global do stdlog
 }
 
+// NewLogger is the same as NewLoggerWithLogger but with nil logger and false withDefaults
+// Compatibility constructor
+// @deprecated
 func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
+	return NewLoggerWithLogger(nil, prefix, opts, withDefaults)
+}
+
+// NewLoggerWithLogger creates a new logger with the specified prefix.
+// If l is not nil, it will use the same logger as l.
+// If opts is not nil, it will use the same options as opts.
+// If withDefaults is true, it will use the default options.
+func NewLoggerWithLogger(l *log.Logger, prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logger {
 	if opts == nil {
 		opts = NewLoggerOptions(kbx.LoggerArgs)
 	}
@@ -52,8 +68,6 @@ func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logge
 		opts = opts.WithDefaults(opts)
 	}
 	opts.Prefix = prefix
-
-	// Configura o stdlog do Go para usar o mesmo output e prefixo
 	var out io.Writer
 	if opts.Output == nil {
 		opts.Output = io.Discard
@@ -61,23 +75,62 @@ func NewLogger(prefix string, opts *LoggerOptionsImpl, withDefaults bool) *Logge
 		out = opts.Output
 	}
 	if out == nil {
-		out = io.Discard
+		out = io.Discard // Se for nulo, inicializa com o Discard
 	}
 	opts.Output = out
-	logr := log.New(
-		opts.Output,
-		opts.Prefix,
-		0,
-	)
-
+	// Configura o stdlog do Go para usar o mesmo output e prefixo
+	if l == nil {
+		// Aqui nós terminamos de checar todas as configurações e preenchemos com padrões as que são requeridas
+		// Agora podemos criar o logger padrão
+		l = log.New(opts.Output, opts.Prefix, 0)
+	} else {
+		// Configura o stdlog do Go para usar o mesmo output e prefixo
+		l.SetOutput(out)
+		l.SetPrefix(prefix)
+		l.SetFlags(0)
+	}
+	// Cria o Logger do logz, com o stdlog (log.Logger) em composition
+	// Nós estamos compondo com um ponteiro do log.Logger global
+	// Isso permite que o Logger tenha em sua struct todos os métodos e propriedades
+	// do stdlog. Com isso, além de conseguir extrair a instância original
+	// do stdlog com o método .Logger(), nós conseguimos usar todos os métodos
+	// do stdlog diretamente no Logger. Por isso, quando criarmos uma nova instância
+	// Se não passamos a instância do logger global, nós criamos uma nova baseada nas configurações
+	// do Logger (logz.LoggerOptions), com isso, o logz segue com as capacidades do stdlog.
+	// Porém o logz pode ser usado standalone, sem depender do stdlog, caso seja setado um writer
+	// e outras configurações estruturais, como formatador e etc.. ele não irá utilizar o stdlog.
+	// Nós preservamos a instância do stdlog para permitir uma propagação de mensagens e outras coisas
+	// que o stdlog não promove de formá passível de ser manipulada de qualquer lib externa.
+	// Quando o usuário não fornece uma instância do stdlog, criamos uma nova baseada nas configurações
+	// do Logger (logz.LoggerOptions) somente para propagar determinados comportamentos e outras propriedades
+	// que demandam a instância dele. Porém, nesse caso nós usamos os nossos próprios mecanismos para logging,
+	// o que garante que o logz funcione de forma independente, sem precisar do stdlog.
+	// Por isso, quando usamos essa opção de criar uma nova instância do stdlog,
+	// A nossa estrutura é dotada de métodos chainable, que nos permite configurar o logger de forma encadeada
+	// independente da instância do stdlog. Por isso, quando criamos uma nova instância
+	// do stdlog, nós não inicializamos as outras configurações, já que serão "clonadas/herdadas" através
+	// de qualquer método chainable acionado
 	lgr := &Logger{
 		flushMu: sync.Mutex{},
 		hooksMu: sync.Mutex{},
 		mu:      sync.RWMutex{},
 		opts:    opts,
-		Logger:  logr,
+		// Aqui é inserida a instância original do stdlog. A primeira e única que o logz usa para ocupar essa instância.
+		// Ela possui esse nome Logger, porque da forma que o Go é estruturado, o composition que promove a estrutura
+		// inteira é somente com um ponteiro na raiz da struct, para evitar que se crie outra instância.
+		Logger: l,
 	}
+
+	// A cada chamada desse constructor será criada uma nova instância do logger global...
+	// Mas isso só acontece se o dev/usuario NÃO fornecer uma instância do stdlog nas suas
+	// chamadas desse constructor, ou se ele simplesmente não criar infinitos loggers.
+	// De qualquer forma, o logz possui uma vida curta e será destruído em pouco tempo, a não ser
+	// que a instância seja globalizada ao ser declarada na raiz de algum módulo/package do projeto que
+	// esteja utilizando o logz. Nesse ultimo caso, será criada apenas uma instância do logger global,
+	// e essa única instância será compartilhada por todos os módulos/packages do projeto.
+
 	// Reafirma configurações do log padrão
+	//
 	lgr.SetFlags(0) // desativa flags automáticas do log padrão
 	if kbx.DefaultFalse(opts.OutputTTY) {
 		// se for TTY, desativa escrita direta no output padrão
@@ -120,7 +173,7 @@ func NewLoggerZ[T kbx.Entry](prefix string, opts *LoggerOptionsImpl, withDefault
 		muZ: sync.RWMutex{},
 
 		optsZ:  opts,
-		Logger: NewLogger(prefix, opts, false), // evita chamada recursiva
+		Logger: NewLoggerWithLogger(nil, prefix, opts, false), // evita chamada recursiva
 	}
 }
 
@@ -331,7 +384,7 @@ func (l *Logger) SetConfig(opts *kbx.LogzConfig) {
 }
 
 type logParts struct {
-	entries   []kbx.Entry
+	entries   []kbx.LogzEntry
 	others    []any
 	jobLevel  kbx.Level
 	timestamp time.Time
@@ -404,7 +457,7 @@ func (l *Logger) getFormatter() (formatter.Formatter, error) {
 	return f, nil
 }
 
-func (l *Logger) dispatchLogEntry(entry *Entry) error {
+func (l *Logger) dispatchLogEntry(entry kbx.LogzEntry) error {
 	if l == nil || entry == nil {
 		return nil
 	}
@@ -423,30 +476,33 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 	// considerar o que está no entry SOMENTE QUANDO HOUVER VÁRIOS ENTRIES!!!
 	// Isso porque, se houver vários entries, pode haver intençãoes
 	// diferentes entre eles, podem compor um bloco de log enviado de uma vez.
-	if !l.Enabled(entry.GetLevel()) {
+	if !l.Enabled(kbx.Level(entry.GetLevel())) {
 		return nil
 	}
 
-	// obtém o formatter
+	// Obtém o formatter escolhido e alocado na Entry
 
 	f, err := l.getFormatter()
 	if err != nil {
 		return err
 	}
 
-	// formata a Entry
-
+	// Formata a Entry utilizando o Formatter correto e transformando-a em []byte
+	// O valor formatado é armazenado na variável b. Se b não for nil, significa que o log foi formatado corretamente.
+	// Se b for nil, significa que o log não foi formatado corretamente e será escrito no destino final, porém em formato de erro.
+	// O método Format tem essa responsabilidade de, caso ocorra um erro no processo, o erro é logado no formato de erro
+	// e é retornando a Entry formatada com level de erro.
 	b, err := f.Format(entry)
 	if err != nil {
 		return err
 	}
 
-	// garante newline pra saída de console / arquivos de texto.
+	// Garante newline pra saída de console / arquivos de texto.
 	if len(b) == 0 || b[len(b)-1] != '\n' {
 		b = append(b, '\n')
 	}
 
-	// dispara hooks pré-formatação
+	// Dispara hooks pré-formatação (se houver algum anexado à Entry, ou global no próprio Logger)
 	if l.GetConfig() != nil {
 		if l.GetConfig().LogzAdvancedOptions != nil {
 			if l.GetConfig().LogzAdvancedOptions.Hooks != nil {
@@ -458,7 +514,10 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 		}
 	}
 
-	if l.Enabled(entry.GetLevel()) {
+	// Se a entry estiver desabilitada, o logger não escreve ela no output. Porém
+	// todos os outros métodos como o disparo do hook, etc, vão ocorrer normalmente permitindo
+	// que haja observabilidade, monitoramento, etc... Conforme o usuário definir.
+	if l.Enabled(kbx.Level(entry.GetLevel())) {
 		// escreve no destino final
 		_, err = l.Writer().Write(b)
 		if err != nil {
@@ -466,13 +525,19 @@ func (l *Logger) dispatchLogEntry(entry *Entry) error {
 		}
 	}
 
-	if entry.GetLevel() == kbx.LevelFatal ||
-		entry.GetLevel() == kbx.LevelPanic ||
-		entry.GetLevel() == kbx.LevelCritical {
+	// Após escrevermos a mensagem no destino final,
+	// verificamos se o nível é Fatal, Panic, ou Critical.
+	// Se for, o logger deve ser encerrado imediatamente e é enviado um SIGNAL para
+	// informar o sistema operacional que a aplicação deve ser encerrada.
+	if entry.GetLevel() == kbx.LevelFatal.String() ||
+		entry.GetLevel() == kbx.LevelPanic.String() ||
+		entry.GetLevel() == kbx.LevelCritical.String() {
 		os.Exit(1)
+
+		entry.Reset()
 	}
 
-	// tudo ok
+	// Finalizamos o fluxo das Entries e Logging.
 	return nil
 }
 
@@ -486,18 +551,72 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 		return nil
 	}
 
+	if lvl.Severity() < l.GetMinLevel().Severity() {
+		// Quem determina se o log será impresso é a lógica
+		// do dispatcher.
+		// O minimum level é somente para evitar que
+		// se grave níveis abaixo do mínimo no output, mesmo caso
+		// o usuário não tenha passado nenhuma configuração (resiliente)
+		// O método Enable faz a validação imperativa se o logger
+		// estará habilitado ou não.. O Entry também possui
+		// essa propriedade, portanto a configuração pode ser
+		// granular e definida em diferentes níveis.
+		// O entry só é definido no parser ou caso o usuário tenha
+		// instanciado ele e utilizado ele diretamente em qualquer método de logging.
+		// Do Nothing... Não fazemos literalmente nada aqui, esse trecho só está
+		// aqui para informação/documentação. Deixamos o fluxo seguir para
+		// que todas as capacidades e funcionalidades do logz possam ser utilizadas
+		// em toda sua plenitude. (hooks, file output, notifiers, observability, metrics, etc..)
+	}
+
 	var logParts = logParts{
-		entries:   make([]kbx.Entry, 0),
+		entries:   make([]kbx.LogzEntry, 0),
 		others:    make([]any, 0),
 		jobLevel:  lvl,
 		timestamp: time.Now(),
 	}
+
+	/////////////////////////////////////////////////////////////////////
+	/// Aqui fazemos a primeira triagem nos argumentos recebidos.
+	/// nós pegamos do array de parâmetros (rec) o que é Entry
+	/// e o que não é e separamos em coleções distintas.
+	///
+	/// Apenas Entries serão tratadas no bloco
+	/// O que for Entry é passível de seguir o fluxo principal e final
+	/// da vida útil de um Entry enquanto veículo e portador da informação enquanto log.
+	/// ```go
+	///  //...
+	///   if e, ok := r.(kbx.Entry); ok {
+	///     logParts.entries = append(logParts.entries, e)
+	///   }
+	///   //...
+	/// ```
+	///
+	/// As outras coisas serão tratadas no bloco
+	/// Aqui o sistema irá montar uma coleção de objetos (any) para criar um novo log.
+	/// O único modo de se criar um Log Entry é utilizando NewLogzEntry() ou NewEntry() que
+	/// já inicializa informações imutáveis como o timestamp, etc... Todo restante é passível
+	/// de atribuição através dos métodos chainable (entry.WithXXX(val XXX) Entry).
+	/// O Entry é imutável, portanto cada chamada a WithXXX retorna um clone do Entry com as propriedades
+	/// imutáveis e as que já foram atribuídas, porém a alocação na memória é somente para
+	/// essa chamada, que quando é finalizada o GC irá liberar, permanecendo somente o clone.
+	/// Não confunda o ENTRY com o Objeto Logger, que são completamente diferentes. O Entry é apenas um veículo
+	/// portador da informação. Ele é descartado a cada ciclo do método Log.
+	/// "if len(logParts.others) > 0" (abaixo)
+	/// ```go
+	///   //...
+	///   else {
+	///     logParts.others = append(logParts.others, r)
+	///   }
+	///   //...
+	/// ```
+	/////////////////////////////////////////////////////////////////////
 	if len(rec) > 0 {
 		for _, r := range rec {
 			if !kbx.IsObjSafe(r, false) {
 				continue
 			}
-			if e, ok := r.(kbx.Entry); ok {
+			if e, ok := r.(*Entry); ok {
 				logParts.entries = append(logParts.entries, e)
 			} else {
 				logParts.others = append(logParts.others, r)
@@ -505,37 +624,137 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 		}
 	}
 
+	lz, ok := any(l).(*LoggerZ[kbx.Entry])
+	if !ok || lz == nil {
+		lz = NewLoggerZ[kbx.Entry](l.Prefix(), l.GetConfig(), false)
+		if lz == nil {
+			// return l.Errorf("erro ao criar loggerz")
+			ee := NewLogzEntry(kbx.LevelError).
+				WithMessage("erro ao criar loggerz").
+				WithError(errors.New("erro ao criar loggerz")).
+				WithContext(context.Background()). // l.ctx é o contexto do Logger
+				WithFields(map[string]any{
+					"logger": "loggerz",
+					"error":  errors.New("erro ao criar loggerz"),
+				}).
+				WithShowFields(l.GetConfig().ShowFields).
+				WithShowCaller(l.GetConfig().ShowStack).
+				WithShowTraceID(l.GetConfig().ShowTraceID).
+				WithColor(*l.GetConfig().ShowColor).
+				WithIcon(*l.GetConfig().ShowIcons).
+				WithFormat(l.GetConfig().Format)
+
+			_ = l.Log(kbx.LevelError, ee)
+		}
+	}
 	/////////////////////////////////////////////////////////////////////
-	/// Agoa vamos separar o que é Entry do que não é. PRimeiro Entries
-	/// Vamos pegar todas elas e simplesmente disparar um Log para cada
-	/// visto que cada entry possui todo o contexto que compõe o log.
+	/// 1º) Aqui percorremos todos os Entries para disparar os logs.
+	/// Como cada Entry já é um veículo completo de informação,
+	/// basta fazer o despacho de cada um deles individualmente.
+	/// ```go
+	///   //...
+	///   if e, ok := r.(kbx.Entry); ok {
+	///     logParts.entries = append(logParts.entries, e)
+	///   }
+	///   //...
+	/// ```
 	/////////////////////////////////////////////////////////////////////
 	for pos, entry := range logParts.entries {
 		// garante que o nível do job seja respeitado
-		if l.Enabled(entry.GetLevel()) {
-			entry = entry.(*Entry).WithLevel(logParts.jobLevel)
+		if l.Enabled(kbx.Level(entry.GetLevel())) {
+			entry = entry.WithLevel(string(logParts.jobLevel))
 		} else {
 			continue
 		}
 		// garante timestamp
 		if err := entry.Validate(); err != nil {
-			if err := l.logEntryError(entry.(*Entry)); err != nil {
-				return err
-			}
+			// aqui não retornamos o erro, pois não queremos quebrar o fluxo do método log.
+			// mas registramos o erro que ocorreu.
+			lz.logEntryError(entry)
 			logParts.entries[pos] = nil
+
+			// O erro será registrado aqui, com level Debug.
+			// lz.logEntryError(entry.(kbx.LogzEntry))
 			continue
 		} else {
-			if err := l.dispatchLogEntry(entry.(*Entry)); err != nil {
-				return err
+			// Caso não haja erros de validação, disparamos os hooks e encaminhamos para o output final.
+			if err := l.dispatchLogEntry(entry); err != nil {
+				// aqui não retornamos o erro, pois não queremos quebrar o fluxo do método log.
+				// mas registramos o erro que ocorreu.
+				// l.logEntryError(entry.(*Entry)) // Esse método dispara um Log de erro com o conteúdo do entry que falhou.
+				// removemos o entry da lista de entries
+				logParts.entries[pos] = nil
+				continue
 			}
 		}
 	}
 
 	/////////////////////////////////////////////////////////////////////
-	/// Agora, TODOS OS OUTROS objetos que estavam na lista de argumentos
+	/// 2º) Agora, TODOS OS OUTROS objetos que estavam na lista de argumentos
+	/// Aqui o sistema irá montar uma coleção de objetos (any) para criar um novo log.
+	/// O único modo de se criar um Log Entry é utilizando NewLogzEntry() ou NewEntry() que
+	/// já inicializa informações imutáveis como o timestamp, etc... Todo restante é passível
+	/// de atribuição através dos métodos chainable (entry.WithXXX(val XXX) Entry).
+	/// O Entry é imutável, portanto cada chamada a WithXXX retorna um clone do Entry com as propriedades
+	/// imutáveis e as que já foram atribuídas, porém a alocação na memória é somente para
+	/// essa chamada, que quando é finalizada o GC irá liberar, permanecendo somente o clone.
+	/// Não confunda o ENTRY com o Objeto Logger, que são completamente diferentes. O Entry é apenas um veículo
+	/// portador da informação. Ele é descartado a cada ciclo do método Log.
+	/// - utilizamos o level do logger e não da Entry em si, somente se tiver sido passado um level
+	/// na chamada do método Log. Se não tivermos a informação do level
+	/// - para preencher a mensagem, nós validamos o tipo de cada argumento, para que ele
+	/// seja impresso da melhor forma possível, sempre mantendo o order de recebimento dos argumentos.
+	/// - para preencher os campos (fields), nós validamos o tipo de cada argumento, para que ele
+	/// seja impresso da melhor forma possível, sempre mantendo o order de recebimento dos argumentos.
+	/// - para preencher os erros, nós validamos o tipo de cada argumento, para que ele
+	/// seja impresso da melhor forma possível, sempre mantendo o order de recebimento dos argumentos.
+	///
+	/// ```go
+	///   var entry LogzEntry = NewEntry(lvl)
+	///   //...
+	///   entry = entry.WithField("key", "value")
+	///   //...
+	///   entry = entry.WithError(errors.New("error"))
+	///   //...
+	///   entry = entry.WithMessage("message")
+	/// ```
+	///
+	/// Para essas situações inesperadas e relativamente comuns, priorizamos a
+	/// performance evitando parseamentos complexos e onerosos.
+	/// Tentamos identificar o tipo de objeto de forma rápida e direta, sem
+	/// criar overhead desnecessário. Portanto, se você precisar de um log estruturado
+	/// ou personalizado, utilize o método LogEntry(), ou envie textos com level
+	/// corretamente, pois como já falamos, a ordem dos parâmetros é importante.
+	/// >NOTA: Os métodos de conveniência são wrappers para o método Log()
+	/// e portanto seguem as mesmas regras. Se você utiliza strings como mensagem e
+	/// insere o level corretamente, entrada por entrada, o logz irá montar a mensagem
+	/// automaticamente, para o log level correspondente com um Entry novo para cada
+	/// entrada, e isso tornará o log totalmente nativo com um Entry limpo.
+	/// Esse é o método mais simples e de menor overhead para criação de logs.
+	///
+	/// ```go
+	/// // errado
+	/// logger.Error(kbx.Error, "Mensagem", errors.New("erro"))
+	///
+	/// // errado
+	/// logger.Log(kbx.Error, errors.New("erro"), "Mensagem")
+	///
+	/// // certo
+	/// logger.Log(kbx.Error, "Mensagem", "Erro", errors.New("erro"))
+	///
+	/// // ou use o método LogEntry() que é mais flexível.
+	/// entry := NewEntry(kbx.Error)
+	/// entry = entry.WithMessage("Mensagem 1")
+	/// entry = entry.WithMessage("Mensagem 2")
+	/// entry = entry.WithMessage("Mensagem 3")
+	/// entry = entry.WithMessage("Mensagem 4")
+	/// entry = entry.WithError(errors.New("erro"))
+	/// logger.LogEntry(entry)
+	/// ```
+	///
 	/////////////////////////////////////////////////////////////////////
 	if len(logParts.others) > 0 {
-		entry := NewLogzEntry(lvl)
+		entry := NewLogzEntry(lvl).(*Entry)
 
 		var msgParts = make([]string, 0)
 		for _, other := range logParts.others {
@@ -544,10 +763,10 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 					msgParts = append(msgParts, str)
 				}
 			} else if errObj, ok := other.(error); ok {
-				entry = entry.WithError(errObj)
+				entry = entry.WithError(errObj).(*Entry)
 			} else if m, ok := other.(map[string]any); ok {
 				for k, v := range m {
-					entry = entry.WithField(k, v)
+					entry = entry.WithField(k, v).(*Entry)
 				}
 			} else {
 				// tenta serializar como json
@@ -555,14 +774,13 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 				if err == nil && len(jsonBytes) > 0 {
 					msgParts = append(msgParts, string(jsonBytes))
 				} else {
-					// fallback simples
+					// fallback simples (formatando o objeto de forma literal)
 					msgParts = append(msgParts, fmt.Sprintf("%v", other))
 				}
 			}
 		}
-		entry = entry.WithMessage(fmt.Sprintf("%s", msgParts))
-		// dispara o log
-		if err := l.dispatchLogEntry(entry.(*Entry)); err != nil {
+		entry = entry.WithMessage(fmt.Sprintf("%s", msgParts)).(*Entry)
+		if err := l.dispatchLogEntry(entry); err != nil {
 			return err
 		}
 	}
@@ -574,6 +792,7 @@ func (l *Logger) Log(lvl kbx.Level, rec ...any) error {
 
 // LogAny is a wrapper around Log for logging arbitrary arguments.
 // If len(args) == 0, it will return nil.
+// Note: this method is not thread-safe. Use LoggerZ for a thread-safe logger.
 func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 	if l == nil {
 		return nil
@@ -589,11 +808,7 @@ func (l *Logger) LogAny(level kbx.Level, args ...any) error {
 			}
 		}
 	}()
-
-	// modo moderno: nada garante level → assume Info
-	entry := toEntry(level, args...)
-
-	return l.Log(level, entry.GetLevel().String(), entry)
+	return l.Log(level, args...)
 }
 
 // Clone returns a copy of the logger with the same configuration.

@@ -43,13 +43,13 @@ func (f *HUDFormatter) Format(entry kbx.Entry) ([]byte, error) {
 	// 2. Configurações visuais dinâmicas baseadas no Level
 	var levelColor, icon, levelStr string
 	switch entry.GetLevel() {
-	case kbx.LevelDebug:
+	case kbx.LevelDebug.String():
 		levelColor, icon, levelStr = "\033[36m", "⚙", "DBG" // Cyan
-	case kbx.LevelInfo:
+	case kbx.LevelInfo.String():
 		levelColor, icon, levelStr = "\033[32m", "●", "INF" // Green
-	case kbx.LevelWarn:
+	case kbx.LevelWarn.String():
 		levelColor, icon, levelStr = "\033[33m", "▲", "WRN" // Yellow
-	case kbx.LevelError, kbx.LevelFatal:
+	case kbx.LevelError.String(), kbx.LevelFatal.String():
 		levelColor, icon, levelStr = "\033[31m", "✖", "ERR" // Red
 	default:
 		levelColor, icon, levelStr = "\033[37m", "○", "LOG" // White
