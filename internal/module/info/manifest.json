@@ -4,7 +4,9 @@
   "version": "1.6.90",
   "private": false,
   "published": true,
-  "aliases": ["logz"],
+  "aliases": [
+    "logz"
+  ],
   "slug": "kubex-logz",
   "repository": "https://github.com/kubex-ecosystem/logz",
   "homepage": "https://github.com/kubex-ecosystem/logz",
@@ -14,7 +16,7 @@
   "platform": "go",
   "type": "executable+library",
   "main": "cmd/main.go",
-  "go_version": "1.26.2",
+  "go_version": "1.26.3",
   "go_toolchain": {
     "min": "1.23",
     "max": "1.26"
@@ -23,7 +25,12 @@
   "author": "Rafael Mori <faelmori@live.com>",
   "organization": "kubex-ecosystem",
   "license": "MIT",
-  "tags": ["logging", "log management", "log control", "kubex module"],
+  "tags": [
+    "logging",
+    "log management",
+    "log control",
+    "kubex module"
+  ],
   "keywords": [
     "logz",
     "kubex",
@@ -43,7 +50,15 @@
     "windows/amd64",
     "windows/386"
   ],
-  "dependencies": ["tar", "gzip", "curl", "git", "zip", "unzip", "jq"],
+  "dependencies": [
+    "tar",
+    "gzip",
+    "curl",
+    "git",
+    "zip",
+    "unzip",
+    "jq"
+  ],
   "scripts": {
     "install": "make install",
     "build": "make build",
