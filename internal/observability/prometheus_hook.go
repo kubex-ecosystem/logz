@@ -1,4 +1,3 @@
-// Package observability exports observability hooks for Logz.
 package observability
 
 import (
@@ -7,25 +6,54 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// logzEntriesCounter increments for each logz entry processed.
-// It is registered with the default Prometheus registry.
-//
-// *********************WARNING*********************:
-// Do not modify this variable directly.
-// Do not use this variable in production code.
-// It is initialized in the init() function.
-// It is used internally by the Logz package.
-var logzEntriesCounter = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "logz_entries_total",
-		Help: "Total number of logz entries processed",
-	},
-	[]string{"level", "source", "context"}, // Dimensions
+var (
+	// Métricas Gerais (Logz)
+	logzEntriesCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "logz_entries_total", Help: "Total logz entries"},
+		[]string{"level", "source", "context"},
+	)
+
+	// Métricas do Lab (Genkit & FSM)
+	GnyxRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "gnyx_requests_total", Help: "Total requests processed"},
+		[]string{"provider", "status"},
+	)
+
+	GnyxRequestLatency = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gnyx_request_latency_seconds",
+			Help:    "Request latency TTFT",
+			Buckets: []float64{0.1, 0.5, 1.0, 2.0, 5.0},
+		},
+		[]string{"provider"},
+	)
+
+	GnyxOutputTokens = prometheus.NewCounter(
+		prometheus.CounterOpts{Name: "gnyx_output_tokens_total", Help: "Total tokens"},
+	)
+
+	// FSM State Vector (A Magia do Zero Allocation)
+	ethyrFsmTransitions = prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "ethyr_fsm_transitions_total", Help: "FSM Atômica"},
+		[]string{"state"},
+	)
+
+	// CACHE DE PONTEIROS (Alocado no startup, custo zero no runtime)
+	FsmStatePreparing prometheus.Counter
+	FsmStateExecuting prometheus.Counter
+	FsmStateParsing   prometheus.Counter
 )
 
 func init() {
-	// Registers the metric at system boot
-	prometheus.MustRegister(logzEntriesCounter)
+	prometheus.MustRegister(
+		logzEntriesCounter, GnyxRequestsTotal, GnyxRequestLatency,
+		GnyxOutputTokens, ethyrFsmTransitions,
+	)
+
+	// Pré-alocando os ponteiros! O Ethyr vai chamar só isso: `observability.FsmStateExecuting.Inc()`
+	FsmStatePreparing = ethyrFsmTransitions.WithLabelValues("StateCogPreparing")
+	FsmStateExecuting = ethyrFsmTransitions.WithLabelValues("StateCogExecuting")
+	FsmStateParsing = ethyrFsmTransitions.WithLabelValues("StateCogParsing")
 }
 
 // NewPrometheusHook creates a new hook that collects Prometheus metrics.

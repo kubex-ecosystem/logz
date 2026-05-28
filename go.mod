@@ -30,4 +30,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/kubex-ecosystem/ethyr => /ALL/BELLUBE/kubex-pulse/ethyr
+replace github.com/kubex-ecosystem/ethyr => /projects/kubex/ethyr

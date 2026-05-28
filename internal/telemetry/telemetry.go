@@ -3,10 +3,12 @@ package telemetry
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/kubex-ecosystem/logz/interfaces"
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Observer is an alias for interfaces.Observer
@@ -56,10 +58,17 @@ func (t *CollectorImpl[O, C]) Error() error {
 	return t.error
 }
 
+// Handler devolve a interface HTTP para o roteador do GNyx plugar na rota /metrics
+func (t *CollectorImpl[O, C]) Handler() http.Handler {
+	return promhttp.Handler()
+}
+
 func (t *CollectorImpl[O, C]) Run(ctx context.Context) error {
 	t.context = ctx
 
-	// TODO: Implement!
+	// O Run() do logz pode ser usado apenas para
+	// iniciar rotinas de limpeza do metricsCache interno se você usar, ou dar flush.
+	// Por enquanto, ele apenas sinaliza que a telemetria está pronta.
 
 	return nil
 }
