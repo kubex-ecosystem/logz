@@ -25,7 +25,7 @@ type Entry struct {
 
 	Timestamp time.Time `json:"ts" yaml:"ts" xml:"ts" mapstructure:"ts"`
 	Level     kbx.Level `json:"level" yaml:"level" xml:"level" mapstructure:"level"`
-	Message   string    `json:"msg" yaml:"msg" xml:"msg" mapstructure:"msg"`
+	Message   any       `json:"msg" yaml:"msg" xml:"msg" mapstructure:"msg"`
 
 	ShowColor   bool `json:"show_color,omitempty" yaml:"show_color,omitempty" xml:"show_color,omitempty" mapstructure:"show_color,omitempty"`             // Habilita cores na saída
 	ShowIcon    bool `json:"show_icon,omitempty" yaml:"show_icon,omitempty" xml:"show_icon,omitempty" mapstructure:"show_icon,omitempty"`                 // Habilita ícones na saída
@@ -129,7 +129,7 @@ func (e *Entry) WithIcon(icon bool) kbx.LogzEntry {
 	return e
 }
 
-func (e *Entry) WithMessage(msg string) kbx.LogzEntry {
+func (e *Entry) WithMessage(msg any) kbx.LogzEntry {
 	// Aqui não é feita nenhum processamento, somente a atribuição e retorno do ponteiro.
 	// o uso de variadic arguments na criação dos métodos do logger já fazem a concatenação
 	// e formatação dos valores em uma única string, o que facilita a vida do usuário.
@@ -143,6 +143,27 @@ func (e *Entry) WithMessage(msg string) kbx.LogzEntry {
 	// da mensagem ou do destino (console, arquivo, socket, etc.). Ele só escreve. O formatter só formata. É o que permite
 	// ter uma lógica mais limpa e separada.
 	e.Message = msg
+	return e
+}
+
+func (e *Entry) WithMessages(msgs ...any) kbx.LogzEntry {
+	// Aqui não é feita nenhum processamento, somente a atribuição e retorno do ponteiro.
+	// o uso de variadic arguments na criação dos métodos do logger já fazem a concatenação
+	// e formatação dos valores em uma única string, o que facilita a vida do usuário.
+	// TODO: A montagem da mensagem ocorre no formatter, porém aqui a propriedade deveria empilhar para
+	// permitir que fosse feita somente lá.
+	// Fazer essa implementação NÃO vai exigir uma pequena mudança na interface do io.Writer. Mas sim nos formatters.
+	// Hoje a interface do io.Writer é simplesmente um escritor (io.Writer), ela só lida com []byte.
+	// A montagem ocorre no Formatter, no método de dispatch. Porque assim permitimos que durante o ciclo de vida
+	// do Entry (com o log original), só seja alterada no próprio formatter, preservando a que está aqui.
+	// Nós recebemos o valor do formatter e o direcionamos para o writer, que irá escrever no output (io.Writer), independete
+	// da mensagem ou do destino (console, arquivo, socket, etc.). Ele só escreve. O formatter só formata. É o que permite
+	// ter uma lógica mais limpa e separada.
+	var msg []any
+	for _, m := range msgs {
+		msg = append(msg, m)
+	}
+	e.Message = fmt.Sprintf("%v", msg)
 	return e
 }
 
@@ -382,7 +403,7 @@ func (e *Entry) GetMessage() string {
 	if e == nil {
 		return ""
 	}
-	return e.Message
+	return fmt.Sprintf("%v", e.Message)
 }
 
 //
@@ -410,7 +431,7 @@ func (e *Entry) Validate() error {
 	if len(strings.TrimSpace(string(e.Level))) == 0 {
 		return errors.New("level is required")
 	}
-	if len(strings.TrimSpace(e.Message)) == 0 {
+	if len(strings.TrimSpace(fmt.Sprintf("%v", e.Message))) == 0 {
 		return errors.New("message is required")
 	}
 	// Silent pode ter severidade 0.

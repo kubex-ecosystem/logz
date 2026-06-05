@@ -48,7 +48,8 @@ type LogzEntry interface {
 	Entry
 
 	WithLevel(l string) LogzEntry
-	WithMessage(msg string) LogzEntry
+	WithMessage(msg any) LogzEntry
+	WithMessages(msg ...any) LogzEntry
 	WithSource(src string) LogzEntry
 	WithTraceID(id string) LogzEntry
 	WithError(err error) LogzEntry
