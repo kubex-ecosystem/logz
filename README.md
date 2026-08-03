@@ -10,6 +10,8 @@
 
 **An advanced logging and metrics management tool with native support for Prometheus integration, dynamic notifications, and a powerful CLI.**
 
+Ecosystem architecture blueprint: [gnyx/docs/BLUEPRINT.md](https://github.com/kubex-ecosystem/gnyx/blob/main/docs/BLUEPRINT.md) — how Logz fits into the wider Kubex platform.
+
 ---
 
 ## **Table of Contents**
