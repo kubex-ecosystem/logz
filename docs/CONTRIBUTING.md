@@ -27,33 +27,39 @@ There are several ways to contribute to [Logz](https://github.com/kubex-ecosyste
 ## **Getting Started**
 
 ### 1. **Clone the Repository**
+
 ```bash
 git clone https://github.com/kubex-ecosystem/logz.git
 cd logz
 ```
 
 ### 2. **Set Up the Environment**
+
 Make sure you have Go installed:
 
 You can install Go using one of the following methods:
 
-- [A super easy way to install Go](https://github.com/kubex-ecosystem/go-installer)
+- [A super easy way to install Go](https://github.com/kubex-ecosystem/gosetup)
+
   ```shell
-    curl -sSfL 'https://raw.githubusercontent.com/faelmori/go-installer/refs/heads/main/go.sh' | bash
+    bash -c "$(curl -sSfL 'https://raw.githubusercontent.com/kubex-ecosystem/gosetup/main/go.sh')" -s install
   ```
 
 - [Convencional way to download Go](https://go.dev/dl/)
 
 ### 3. **Install Dependencies**
+
 ```bash
 # Download the necessary packages
 go mod download
 ```
 
 ### 4. **Run Tests**
+
 Before making changes, run the existing tests:
+
 ```bash
-go test ./...
+go test -v ./...
 ```
 
 ---
@@ -61,26 +67,33 @@ go test ./...
 ## **Creating a Pull Request**
 
 ### **1. Fork the Repository**
+
 Create a fork of the project to your own GitHub.
 
 ### **2. Create a New Branch**
+
 ```bash
 git checkout -b your-feature
 ```
 
 ### **3. Make Changes**
+
 Make sure to follow the project's code conventions and best practices.
 
 ### **4. Add Tests (if applicable)**
+
 Include test cases to validate the added functionality.
 
 ### **5. Run Tests**
+
 Ensure all changes and tests are working:
+
 ```bash
-go test ./...
+go test -v ./...
 ```
 
 ### **6. Commit and Push**
+
 ```bash
 git add .
 git commit -m "Brief description of the change"
@@ -88,6 +101,7 @@ git push origin your-feature
 ```
 
 ### **7. Open the Pull Request**
+
 Go to the original repository on GitHub and open a pull request explaining your changes.
 
 ---
@@ -95,8 +109,11 @@ Go to the original repository on GitHub and open a pull request explaining your 
 ## **Code Standards**
 
 ### **Code Style**
+
 This project follows Go's code conventions. Some recommendations:
+
 - Use `gofmt` to format the code:
+
 ```bash
 gofmt -w .
 ```
@@ -105,7 +122,9 @@ gofmt -w .
 - Break down long functions into smaller parts whenever possible.
 
 ### **Commits**
+
 Commits should be clear and descriptive. Examples:
+
 - `fix: fix bug in notification logic`
 - `feat: add support for Slack notifier`
 
@@ -113,16 +132,16 @@ Commits should be clear and descriptive. Examples:
 
 ## **Best Practices**
 
-1. **Be Respectful and Welcoming**  
+1. **Be Respectful and Welcoming**
    This is an open-source project for everyone. Respect other contributors and collaborate constructively.
 
-2. **Document Your Changes**  
+2. **Document Your Changes**
    Update the `README.md` or documentation, if necessary, to include your changes.
 
-3. **Add Tests When Possible**  
+3. **Add Tests When Possible**
    Ensure any new functionality is accompanied by tests.
 
-4. **Be Clear in Issue Reports**  
+4. **Be Clear in Issue Reports**
    When opening an issue, be detailed and provide as much context as possible.
 
 ---
@@ -130,6 +149,7 @@ Commits should be clear and descriptive. Examples:
 ## **Where to Get Help**
 
 If you need assistance, feel free to:
+
 - Open an issue with the `question` tag.
 - Contact me via the email or LinkedIn listed in the `README.md`.
 

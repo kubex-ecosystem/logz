@@ -76,7 +76,7 @@ func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
 	// Level string
 	levelStr := string(e.GetLevel())
 	if !f.DisableColor && e.GetShowColor() {
-		if c, ok := colors[e.GetLevel()]; ok {
+		if c, ok := colors[kbx.ParseLevel(e.GetLevel())]; ok {
 			levelStr = c + levelStr + reset
 		}
 	}
@@ -84,7 +84,7 @@ func (f *TextFormatter) Format(e kbx.Entry) ([]byte, error) {
 	// Icon
 	icon := ""
 	if !f.DisableIcon && e.GetShowIcon() {
-		if ic, ok := icons[e.GetLevel()]; ok {
+		if ic, ok := icons[kbx.ParseLevel(e.GetLevel())]; ok {
 			icon = ic + " "
 		}
 	}

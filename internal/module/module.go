@@ -85,6 +85,7 @@ func (m *LogZ) Command() *cobra.Command {
 
 	cmd.AddCommand(version.CliCommand())
 	cmd.AddCommand(cli.LogzCmd())
+	cmd.AddCommand(cli.MetricsCmd())
 
 	setUsageDefinition(cmd)
 	for _, c := range cmd.Commands() {

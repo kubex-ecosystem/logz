@@ -28,6 +28,13 @@ const (
 
 func (l Level) String() string { return string(l) }
 
+func (l Level) StringUpper() string { return strings.ToUpper(string(l)) }
+
+// LogLevel é o mesmo que Level, mas em uppercase.
+type LogLevel Level
+
+func (l LogLevel) String() string { return string(l) }
+
 // Severity retorna uma escala numérica estável, usada para filtragem.
 // Quanto maior, mais grave. Silent = 0.
 func (l Level) Severity() int {
