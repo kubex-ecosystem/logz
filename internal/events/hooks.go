@@ -1,4 +1,5 @@
-package interfaces
+// Package events provides events for Logz.
+package events
 
 import (
 	"fmt"
@@ -6,6 +7,7 @@ import (
 	"github.com/kubex-ecosystem/logz/internal/module/kbx"
 )
 
+// LHook defines the interface for a hook that can be fired with a record.
 type LHook[T any] interface {
 	Fire(record T) error
 	String() string
@@ -13,6 +15,7 @@ type LHook[T any] interface {
 	Type() T
 }
 
+// FHook is a function type that processes a record of type T.
 type FHook[T any] func(record T) error
 
 func (f FHook[T]) Fire(record T) error {
@@ -27,8 +30,10 @@ func (f FHook[T]) Clone() FHook[T] {
 	return f
 }
 
+// Hook is a function type that takes a kbx.Entry and returns an error.
 type Hook func(record kbx.Entry) error
 
+// Hooks is a collection of Hook functions.
 type Hooks []Hook
 
 // Add adiciona um hook à coleção.
@@ -36,9 +41,7 @@ func (h Hooks) Add(hook Hook) (Hooks, error) {
 	if h == nil {
 		h = make(Hooks, 0)
 	}
-	if hook == nil {
-		return nil, fmt.Errorf("hook is nil")
-	} else {
+	if hook != nil {
 		newHook := true
 		if len(h) > 0 {
 			for _, hkk := range h {
@@ -55,8 +58,9 @@ func (h Hooks) Add(hook Hook) (Hooks, error) {
 		} else {
 			return h, fmt.Errorf("hook already exists in collection")
 		}
+		return h, nil
 	}
-	return h, nil
+	return nil, fmt.Errorf("hook is nil")
 }
 
 // Fire executa todos os hooks da coleção.
@@ -78,17 +82,17 @@ type HookG[T any] func(T) error
 type HooksG[T any] []HookG[T]
 
 // Add adiciona um hook à coleção.
-func (h *HooksG[T]) Add(hook HookG[T]) error {
+func (f *HooksG[T]) Add(hook HookG[T]) error {
 	if hook == nil {
 		return fmt.Errorf("hook is nil")
 	}
-	*h = append(*h, hook)
+	*f = append(*f, hook)
 	return nil
 }
 
 // Fire executa todos os hooks da coleção.
-func (h HooksG[T]) Fire(record T) error {
-	for _, hook := range h {
+func (f HooksG[T]) Fire(record T) error {
+	for _, hook := range f {
 		err := hook(record)
 		if err != nil {
 			return err
@@ -100,15 +104,15 @@ func (h HooksG[T]) Fire(record T) error {
 // HookFunc é uma função que implementa a interface Hook.
 type HookFunc func(record kbx.Entry) error
 
-// Run executa o hook.
-func (f HookFunc) Run(record kbx.Entry) error {
+// Fire executa o hook.
+func (f HookFunc) Fire(record kbx.Entry) error {
 	return f(record)
 }
 
 // HookFuncG é uma função genérica que implementa a interface HookG.
 type HookFuncG[T Hook | *kbx.Entry] func(record T) error
 
-// Run executa o hook genérico.
-func (f HookFuncG[T]) Run(record T) error {
+// Fire executa o hook genérico.
+func (f HookFuncG[T]) Fire(record T) error {
 	return f(record)
 }

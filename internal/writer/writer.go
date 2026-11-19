@@ -7,7 +7,7 @@ import (
 )
 
 // Writer recebe bytes já formatados e empurra pra algum destino.
-// NÃO sabe nada sobre Entry.
+// NÃO sabe nada sobre Entry. (Clone da interface io.Writer)
 type Writer interface {
 	Write([]byte) (int, error)
 	Close() error
@@ -24,38 +24,52 @@ type LogzWriter interface {
 	String() string
 }
 
+// LogzWriterImpl é a implementação padrão de LogzWriter.
+// Promove (herda) todos os métodos e propriedades de io.Writer.
 type LogzWriterImpl struct {
 	output io.Writer
 }
 
+// NewLogzWriter cria um novo LogzWriter.
 func NewLogzWriter(w io.Writer) LogzWriter {
 	return &LogzWriterImpl{
 		output: w,
 	}
 }
 
+// GetIOWriter retorna o io.Writer.
 func (l *LogzWriterImpl) GetIOWriter() io.Writer {
 	return l.output
 }
 
+// SetOutput define um novo io.Writer.
 func (l *LogzWriterImpl) SetOutput(w io.Writer) {
 	l.output = w
 }
 
+// GetOutput retorna o io.Writer.
 func (l *LogzWriterImpl) GetOutput() io.Writer { return l.output }
+
+// Write implementa a interface io.Writer.
 func (l *LogzWriterImpl) Write(p []byte) (n int, err error) {
 	return l.output.Write(p)
 }
+
+// WriteLogz implementa a interface LogzWriter.
 func (l *LogzWriterImpl) WriteLogz(p []byte) error {
 	_, err := l.output.Write(p)
 	return err
 }
+
+// Sync implementa a interface LogzWriter.
 func (l *LogzWriterImpl) Sync() error {
 	if syncer, ok := l.output.(interface{ Sync() error }); ok {
 		return syncer.Sync()
 	}
 	return nil
 }
+
+// Close implementa a interface LogzWriter.
 func (l *LogzWriterImpl) Close() error {
 	if closer, ok := l.output.(io.Closer); ok {
 		return closer.Close()

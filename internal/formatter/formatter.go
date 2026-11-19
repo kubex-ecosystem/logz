@@ -35,6 +35,8 @@ func ParseFormatter(format string, pretty bool) Formatter {
 		return NewCSVFormatter(pretty)
 	case "xml":
 		return NewXMLFormatter(pretty)
+	case "hud":
+		return NewHUDFormatter(pretty)
 	default:
 		return NewTextFormatter(pretty)
 	}
